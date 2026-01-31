@@ -1,0 +1,215 @@
+# Domain: Digital Governance and E-Services
+# Problem Statement: Unified Citizen Service Delivery Platform (UCSDP)
+# Last Updated: 2026-01-31
+
+terms:
+  - name: Citizen
+    definition: >
+      A resident who accesses government services through the platform to apply for certificates, welfare benefits, permissions, or to raise grievances.
+    examples:
+      - A citizen applying for an income certificate
+      - A resident checking scholarship eligibility
+    aliases:
+      - Applicant
+      - Resident
+
+  - name: Service Facilitator
+    definition: >
+      An authorized intermediary who assists citizens in accessing government services through assisted digital channels.
+    examples:
+      - CSC operator submitting applications on behalf of citizens
+      - MeeSeva staff helping upload documents
+    aliases:
+      - CSC Operator
+      - MeeSeva Operator
+
+  - name: Department Officer
+    definition: >
+      A government official responsible for first-level verification and processing of citizen service requests.
+    examples:
+      - Verifying income certificate documents
+      - Checking eligibility for welfare schemes
+    aliases:
+      - Village Revenue Officer (VRO)
+      - Revenue Inspector (RI)
+      - Institute Nodal Officer (INO)
+      - Welfare Officer
+      - Municipal Officer
+
+  - name: Department Supervisor
+    definition: >
+      A senior authority responsible for monitoring service delivery, handling escalations, and making final decisions.
+    examples:
+      - Approving certificates
+      - Overriding officer decisions
+    aliases:
+      - Mandal Revenue Officer (MRO)
+      - Tahsildar
+      - District Nodal Officer (DNO)
+      - Municipal Commissioner
+
+  - name: Grievance Officer
+    definition: >
+      An official responsible for handling citizen complaints related to delays, rejections, or misconduct in service delivery.
+    examples:
+      - Investigating delayed certificate complaints
+      - Resolving service-related grievances
+    aliases:
+      - Complaint Resolution Officer
+
+  - name: Administrator
+    definition: >
+      A system authority responsible for configuring users, roles, services, and policy rules within the platform.
+    examples:
+      - Creating officer accounts
+      - Defining SLA timelines
+    aliases:
+      - System Admin
+
+  - name: Service Request
+    definition: >
+      A formal request submitted by a citizen or service facilitator to obtain a government service.
+    examples:
+      - Certificate application
+      - Permission request
+    aliases:
+      - Application
+
+  - name: Certificate Service
+    definition: >
+      A government service that issues officially verified documents certifying a citizen's income, caste, or residence status.
+    examples:
+      - Income certificate
+      - Caste certificate
+      - Residential certificate
+    aliases:
+      - Certificate Issuance
+
+  - name: Welfare Service
+    definition: >
+      A government service that provides financial or material benefits to eligible citizens based on defined criteria.
+    examples:
+      - Scholarship scheme
+      - Pension scheme
+      - Ration entitlement
+    aliases:
+      - Subsidy Service
+      - Benefit Scheme
+
+  - name: Eligibility
+    definition: >
+      A rule-based assessment used to determine whether a citizen qualifies for a welfare or entitlement service.
+    examples:
+      - Income-based scholarship eligibility
+      - Age-based pension eligibility
+    aliases:
+      - Qualification Criteria
+
+  - name: Authorization & Licensing Service
+    definition: >
+      A government service that grants authorization to conduct regulated public or commercial activities.
+    examples:
+      - Public event permission
+      - Vendor activity permission
+    aliases:
+      - Authorization Service
+
+  - name: Record Correction
+    definition: >
+      A service that allows correction of incorrect personal details in official government records after verification.
+    examples:
+      - Name correction
+      - Date of birth correction
+    aliases:
+      - Data Correction
+      - Record Updation
+
+  - name: Grievance
+    definition: >
+      A formal complaint raised by a citizen regarding service delay, rejection, or improper handling.
+    examples:
+      - Complaint about delayed certificate
+      - Complaint about officer behavior
+    aliases:
+      - Complaint
+
+  - name: Workflow
+    definition: >
+      A predefined sequence of steps through which a service request moves from submission to completion.
+    examples:
+      - Certificate approval workflow
+      - Grievance resolution workflow
+    aliases:
+      - Process Flow
+
+  - name: SLA
+    definition: >
+      A legally defined time limit within which a government service must be delivered to the citizen.
+    examples:
+      - 15-day certificate delivery timeline
+    aliases:
+      - Service Timeline
+
+  - name: Escalation
+    definition: >
+      The process of transferring a delayed or disputed service request to a higher authority for resolution.
+    examples:
+      - Application escalated after SLA breach
+    aliases:
+      - Escalated Case
+
+  - name: Approval
+    definition: >
+      An official decision that authorizes the completion and delivery of a requested government service.
+    examples:
+      - Certificate approval
+      - Permission grant
+    aliases:
+      - Sanction
+
+  - name: Rejection
+    definition: >
+      An official decision denying a service request due to non-compliance with rules or eligibility criteria.
+    examples:
+      - Rejection of incomplete application
+    aliases:
+      - Denial
+
+  - name: Payment
+    definition: >
+      A government-mandated service fee paid by a citizen for processing a service request, such as certificate issuance or permission approval.
+    examples:
+      - Paying a fee for income certificate application
+      - Refund issued after application rejection
+    aliases:
+      - Service Fee
+      - Application Fee
+
+  - name: ApplicationStatus
+    definition: >
+      The current stage of a service request in its processing lifecycle, visible to citizens and officials for transparency.
+    examples:
+      - Application marked as "Under Review"
+      - Status updated to "Approved"
+    aliases:
+      - Service Status
+      - Request Status
+
+  - name: Accountability
+    definition: >
+      The obligation of government officials to perform assigned duties within defined timelines, rules, and authority levels.
+    examples:
+      - Officer held responsible for delayed application
+      - Supervisor overriding incorrect decisions
+    aliases:
+      - Responsibility
+      - Official Accountability
+
+  - name: Audit Log
+    definition: >
+      A permanent record of actions performed by officials during service processing for accountability.
+    examples:
+      - Officer approval log
+      - Supervisor override record
+    aliases:
+      - Activity Log
