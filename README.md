@@ -49,7 +49,6 @@ The system involves the following actors:
 - Verify submitted documents
 - Request clarifications from citizens
 - Recommend approval or rejection of applications
-- Process record correction requests
 - Update application status within defined workflows
 
 ---
