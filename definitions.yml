@@ -105,7 +105,7 @@ terms:
     aliases:
       - Qualification Criteria
 
-  - name: Authorization & Licensing Service
+  - name: Authorization & Permission Service
     definition: >
       A government service that grants authorization to conduct regulated public or commercial activities.
     examples:
