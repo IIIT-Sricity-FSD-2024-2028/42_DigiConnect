@@ -13,16 +13,6 @@ terms:
       - Applicant
       - Resident
 
-  - name: Service Facilitator
-    definition: >
-      An authorized intermediary who assists citizens in accessing government services through assisted digital channels.
-    examples:
-      - CSC operator submitting applications on behalf of citizens
-      - MeeSeva staff helping upload documents
-    aliases:
-      - CSC Operator
-      - MeeSeva Operator
-
   - name: Department Officer
     definition: >
       A government official responsible for first-level verification and processing of citizen service requests.
