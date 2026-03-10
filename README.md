@@ -15,8 +15,8 @@ The Unified Citizen Service Delivery Platform (UCSDP) aims to address these chal
 
 The system involves the following actors:
 
-1. **Citizen / Service Facilitator**  
-   Represents both direct citizens and assisted-access users. A Service Facilitator acts on behalf of a citizen to submit applications and manage service requests using the same system interfaces and workflows.
+1. **Citizen**  
+   A citizen can submit applications and manage service requests using the system interfaces and workflows.
 
 2. **Department Officer (First-Level Officer)**  
    Responsible for reviewing, verifying, and processing submitted applications and record correction requests.
@@ -34,7 +34,7 @@ The system involves the following actors:
 
 ## Planned Features for Each Actor:
 
-### Citizen / Service Facilitator
+### Citizen
 - Apply for government services (certificates, welfare schemes, permissions)
 - Upload and manage required documents
 - Track application and request status
