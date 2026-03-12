@@ -64,10 +64,8 @@ CREATE TABLE services (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     category_id BIGINT NOT NULL,
     department_id BIGINT NOT NULL,
-    created_by BIGINT,
     FOREIGN KEY (category_id) REFERENCES service_categories(category_id),
-    FOREIGN KEY (department_id) REFERENCES departments(department_id),
-    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+    FOREIGN KEY (department_id) REFERENCES departments(department_id)
 );
 
 CREATE TABLE requirements (
@@ -84,18 +82,18 @@ CREATE TABLE requirements (
 );
 
 CREATE TABLE workflow_stages (
-    stage_no         BIGINT AUTO_INCREMENT,
-    service_id       BIGINT NOT NULL,
-    stage_name       VARCHAR(80) NOT NULL,
-    stage_order      INT NOT NULL,
-    description      TEXT,
-    is_final_stage   BOOLEAN NOT NULL DEFAULT FALSE,
-    responsible_role_id BIGINT NOT NULL,
+    stage_no BIGINT AUTO_INCREMENT,
+    service_id BIGINT NOT NULL,
+    stage_name VARCHAR(80) NOT NULL,
+    stage_order INT NOT NULL,
+    description TEXT,
+    is_final_stage BOOLEAN NOT NULL DEFAULT FALSE,
+    role_id BIGINT NOT NULL,
     PRIMARY KEY (service_id, stage_no),
     KEY (stage_no),
     UNIQUE (service_id, stage_order),
     FOREIGN KEY (service_id) REFERENCES services(service_id) ON DELETE CASCADE,
-    FOREIGN KEY (responsible_role_id) REFERENCES roles(role_id)
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
 
 CREATE TABLE sla_policies (
@@ -116,40 +114,30 @@ CREATE TABLE applications (
     application_number VARCHAR(30) NOT NULL UNIQUE,
     service_id BIGINT NOT NULL,
     citizen_id BIGINT NOT NULL,
-    submitted_by BIGINT NOT NULL,
     current_status VARCHAR(40) NOT NULL DEFAULT 'DRAFT',
     submission_date TIMESTAMP,
     last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     sla_due_at TIMESTAMP,
     remarks TEXT,
     is_renewal BOOLEAN DEFAULT FALSE,
-    parent_application_id BIGINT,
     FOREIGN KEY (service_id) REFERENCES services(service_id),
-    FOREIGN KEY (citizen_id) REFERENCES users(user_id),
-    FOREIGN KEY (submitted_by) REFERENCES users(user_id),
-    FOREIGN KEY (parent_application_id) REFERENCES applications(application_id)
+    FOREIGN KEY (citizen_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE application_documents (
     document_no BIGINT AUTO_INCREMENT,
     application_id BIGINT NOT NULL,
-    req_service_id BIGINT,
     requirement_no BIGINT,
     file_name VARCHAR(200) NOT NULL,
     file_type VARCHAR(50),
     file_url TEXT,
     verification_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    uploaded_by BIGINT,
-    verified_by BIGINT,
-    verified_at TIMESTAMP,
     remarks TEXT,
     PRIMARY KEY (application_id, document_no),
     KEY (document_no),
     FOREIGN KEY (application_id) REFERENCES applications(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (uploaded_by) REFERENCES users(user_id),
-    FOREIGN KEY (verified_by) REFERENCES users(user_id),
-    FOREIGN KEY (req_service_id, requirement_no) REFERENCES requirements(service_id, requirement_no)
+    FOREIGN KEY (requirement_no) REFERENCES requirements(requirement_no)
 );
 
 CREATE TABLE application_queries (
@@ -174,7 +162,6 @@ CREATE TABLE application_queries (
 CREATE TABLE payments (
     payment_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     application_id BIGINT NOT NULL,
-    paid_by BIGINT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     payment_status VARCHAR(20) NOT NULL DEFAULT 'INITIATED',
     payment_method VARCHAR(20),
@@ -182,7 +169,6 @@ CREATE TABLE payments (
     paid_at TIMESTAMP,
     gateway_response TEXT,
     FOREIGN KEY (application_id) REFERENCES applications(application_id) ON DELETE CASCADE,
-    FOREIGN KEY (paid_by) REFERENCES users(user_id),
     CONSTRAINT chk_payment_method CHECK (
         payment_status = 'INITIATED'
         OR payment_method IS NOT NULL
@@ -248,7 +234,10 @@ CREATE TABLE notifications (
 
 CREATE TABLE audit_logs (
     audit_log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    actor_id BIGINT,
+    user_id BIGINT,
+    service_id BIGINT,
+    grievance_id BIGINT,
+    application_id BIGINT,
     action VARCHAR(100),
     entity_type VARCHAR(30),
     entity_id BIGINT,
@@ -256,35 +245,10 @@ CREATE TABLE audit_logs (
     new_value TEXT,
     action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip_address VARCHAR(45),
-    entity_action_type VARCHAR(60),
-    FOREIGN KEY (actor_id) REFERENCES users(user_id)
-);
-
-CREATE TABLE issued_certificates (
-    certificate_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    application_id BIGINT NOT NULL UNIQUE,
-    issued_by BIGINT NOT NULL,
-    certificate_number VARCHAR(100) NOT NULL UNIQUE,
-    issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    valid_until DATE,
-    download_url TEXT NOT NULL,
-    digital_signature TEXT,
-    is_downloaded BOOLEAN DEFAULT FALSE,
-    downloaded_at TIMESTAMP,
-    FOREIGN KEY (application_id) REFERENCES applications(application_id),
-    FOREIGN KEY (issued_by) REFERENCES users(user_id)
-);
-
-CREATE TABLE application_status_history (
-    history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    application_id BIGINT NOT NULL,
-    old_status VARCHAR(40),
-    new_status VARCHAR(40) NOT NULL,
-    changed_by BIGINT,
-    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    remarks TEXT,
-    FOREIGN KEY (application_id) REFERENCES applications(application_id),
-    FOREIGN KEY (changed_by) REFERENCES users(user_id)
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (service_id) REFERENCES services(service_id),
+    FOREIGN KEY (grievance_id) REFERENCES grievances(grievance_id),
+    FOREIGN KEY (application_id) REFERENCES applications(application_id)
 );
 
 CREATE TABLE user_roles (
@@ -367,7 +331,6 @@ CREATE INDEX idx_applications_citizen ON applications(citizen_id);
 CREATE INDEX idx_applications_service ON applications(service_id);
 CREATE INDEX idx_applications_status ON applications(current_status);
 CREATE INDEX idx_applications_sla ON applications(sla_due_at);
-CREATE INDEX idx_applications_submitted_by ON applications(submitted_by);
 CREATE INDEX idx_app_docs_app ON application_documents(application_id);
 CREATE INDEX idx_app_queries_app ON application_queries(application_id);
 CREATE INDEX idx_app_queries_status ON application_queries(status);
@@ -376,17 +339,12 @@ CREATE INDEX idx_assignments_app ON application_assignments(application_id);
 CREATE INDEX idx_assignments_officer ON application_assignments(assigned_to);
 CREATE INDEX idx_decisions_app ON application_decisions(application_id);
 CREATE INDEX idx_decisions_user ON application_decisions(decided_by);
-CREATE INDEX idx_cert_application ON issued_certificates(application_id);
-CREATE INDEX idx_cert_number ON issued_certificates(certificate_number);
-CREATE INDEX idx_status_history_app ON application_status_history(application_id);
-CREATE INDEX idx_status_history_time ON application_status_history(changed_at);
 CREATE INDEX idx_grievances_citizen ON grievances(citizen_id);
 CREATE INDEX idx_grievances_status ON grievances(grievance_status);
 CREATE INDEX idx_grievances_priority ON grievances(priority);
 CREATE INDEX idx_grv_attach_grievance ON grievance_attachments(grievance_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_notifications_read ON notifications(read_status);
-CREATE INDEX idx_audit_actor ON audit_logs(actor_id);
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_timestamp ON audit_logs(action_timestamp);
 
