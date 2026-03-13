@@ -244,7 +244,6 @@ CREATE TABLE audit_logs (
     old_value TEXT,
     new_value TEXT,
     action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ip_address VARCHAR(45),
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (service_id) REFERENCES services(service_id),
     FOREIGN KEY (grievance_id) REFERENCES grievances(grievance_id),
@@ -347,5 +346,6 @@ CREATE INDEX idx_notifications_user ON notifications(user_id);
 CREATE INDEX idx_notifications_read ON notifications(read_status);
 CREATE INDEX idx_audit_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX idx_audit_timestamp ON audit_logs(action_timestamp);
+
 
 SHOW TABLES;
