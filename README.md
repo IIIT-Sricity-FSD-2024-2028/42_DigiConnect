@@ -7,7 +7,7 @@
 
 Government services such as certificate issuance, welfare scheme eligibility, permission approvals, and grievance redressal are currently delivered through fragmented systems across multiple departments. Citizens often face repeated document submissions, lack of transparency in application status, delays in service delivery, and unclear accountability mechanisms.
 
-The Unified Citizen Service Delivery Platform (UCSDP) aims to address these challenges by providing a centralized digital system where citizens can access multiple government services through a single portal. The platform supports structured workflows, role-based access control, SLA-based monitoring, escalation mechanisms, and grievance handling to ensure transparency, accountability, and efficient service delivery.
+The DigiConnect aims to address these challenges by providing a centralized digital system where citizens can access multiple government services through a single portal. The platform supports structured workflows, role-based access control, SLA-based monitoring, escalation mechanisms, and grievance handling to ensure transparency, accountability, and efficient service delivery.
 
 ---
 
