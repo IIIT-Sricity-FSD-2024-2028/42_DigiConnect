@@ -55,6 +55,7 @@ terms:
       - Defining SLA timelines
     aliases:
       - System Admin
+      - Super User
 
   - name: Service Request
     definition: >
