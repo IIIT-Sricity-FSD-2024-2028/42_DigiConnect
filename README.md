@@ -72,9 +72,10 @@ The system involves the following actors:
 
 ---
 
-### Admin
+### Super User
 - Configure and manage available government services
 - Onboard department officers and supervisors
 - Assign roles and access permissions
 - Define and update SLA rules and policies
 - Maintain system-level configurations and settings
+- Maintain workflow-config for services
