@@ -99,12 +99,14 @@ export function validateForm(container) {
         }
       }
 
-      // Date of Birth validation (must be < 2015)
+      // Date of Birth validation (must be 18+)
       if (labelText.includes('date of birth') || input.id.toLowerCase().includes('dob')) {
         const birthDate = new Date(val);
-        const birthYear = birthDate.getFullYear();
-        if (birthYear >= 2015) {
-          setError(input, 'Registration is only open to individuals born in 2014 or earlier.');
+        const today = new Date();
+        const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+        
+        if (birthDate > eighteenYearsAgo) {
+          setError(input, 'You must be at least 18 years old to register.');
           continue;
         }
       }
@@ -429,9 +431,17 @@ export function initEventDelegation() {
     });
   });
 
-  // Fix DOB minimum globally
+  // Fix DOB minimum and dynamic 18+ maximum globally
   document.querySelectorAll('input[type="date"]').forEach(el => {
     if (!el.min) el.min = '1900-01-01';
+    
+    const idStr = (el.id || '').toLowerCase();
+    const isDob = idStr.includes('dob') || (el.previousElementSibling && el.previousElementSibling.textContent.toLowerCase().includes('birth'));
+    if (isDob) {
+       const today = new Date();
+       const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+       el.max = maxDate.toISOString().split('T')[0];
+    }
   });
 
   // ── Edge Cases: Maintenance Time ──
