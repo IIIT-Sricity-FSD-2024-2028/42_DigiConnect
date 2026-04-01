@@ -429,6 +429,25 @@ export function initEventDelegation() {
     });
   });
 
+  // Fix DOB minimum globally
+  document.querySelectorAll('input[type="date"]').forEach(el => {
+    if (!el.min) el.min = '1900-01-01';
+  });
+
+  // ── Edge Cases: Maintenance Time ──
+  const maintStart = document.getElementById('maintStart');
+  const maintEnd = document.getElementById('maintEnd');
+  if (maintStart && maintEnd) {
+    const enforceMaintTime = () => {
+      if (maintStart.value && maintEnd.value && new Date(maintEnd.value) < new Date(maintStart.value)) {
+        if(window.showToast) window.showToast("Maintenance end time cannot be before start time.", "error");
+        maintEnd.value = maintStart.value;
+      }
+    };
+    maintStart.addEventListener('change', enforceMaintTime);
+    maintEnd.addEventListener('change', enforceMaintTime);
+  }
+
   // ── Global Input Restrictors ──
   document.addEventListener('input', e => {
     const el = e.target;
@@ -443,6 +462,26 @@ export function initEventDelegation() {
       // Restrict Names: Only alphabets (upper/lower) and spaces allowed
       if ((idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname')) && !idStr.includes('username')) {
         el.value = el.value.replace(/[^a-zA-Z\s]/g, '');
+      }
+
+      // Restrict Pincode: Max 6 digits
+      if (idStr.includes('pincode') || idStr === 'pin') {
+        if (el.value.length > 6) el.value = el.value.slice(0, 6);
+      }
+
+      // Restrict Employee ID: Alphanumeric and hyphens only
+      if (idStr.includes('empid') || idStr.includes('emp_id') || idStr === 'ofempid' || idStr === 'uempid') {
+        el.value = el.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase();
+      }
+    }
+  });
+
+  // Block e, -, +, . on number inputs (since app uses strictly positive integers)
+  document.addEventListener('keydown', e => {
+    const el = e.target;
+    if (el.tagName === 'INPUT' && el.type === 'number') {
+      if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+        e.preventDefault();
       }
     }
   });
