@@ -429,6 +429,24 @@ export function initEventDelegation() {
     });
   });
 
+  // ── Global Input Restrictors ──
+  document.addEventListener('input', e => {
+    const el = e.target;
+    if (el.tagName === 'INPUT') {
+      const idStr = (el.id || '').toLowerCase();
+      
+      // Restrict Phone/Mobile: Only numbers allowed
+      if (el.type === 'tel' || idStr.includes('phone') || idStr.includes('mobile')) {
+        el.value = el.value.replace(/[^0-9]/g, '');
+      }
+      
+      // Restrict Names: Only alphabets (upper/lower) and spaces allowed
+      if ((idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname')) && !idStr.includes('username')) {
+        el.value = el.value.replace(/[^a-zA-Z\s]/g, '');
+      }
+    }
+  });
+
   // ── Global click handlers ──
   setupGlobalClickHandlers();
 }
