@@ -459,9 +459,20 @@ export function initEventDelegation() {
         el.value = el.value.replace(/[^0-9]/g, '');
       }
       
-      // Restrict Names: Only alphabets (upper/lower) and spaces allowed
-      if ((idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname')) && !idStr.includes('username')) {
+      // Restrict Names (Including "Name on Card"): Only alphabets and spaces
+      const isNameField = idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname') || (el.placeholder && el.placeholder.includes('As printed'));
+      if (isNameField && !idStr.includes('username')) {
         el.value = el.value.replace(/[^a-zA-Z\s]/g, '');
+      }
+
+      // Restrict OTP & CVV: Max limits and numbers only
+      if (el.classList.contains('otp-input') || (el.placeholder && el.placeholder.includes('•••'))) {
+        el.value = el.value.replace(/[^0-9]/g, '');
+      }
+
+      // Restrict Card Expiry (MM/YY): Only numbers and slashes allowed
+      if (el.placeholder === 'MM/YY') {
+        el.value = el.value.replace(/[^0-9/]/g, '');
       }
 
       // Restrict Pincode: Max 6 digits
