@@ -191,7 +191,7 @@
                         <div
                             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                             <label class="form-label" for="password" style="margin:0;">Password</label>
-                            <a href="#" style="font-size:0.8rem; color:var(--navy-500); font-weight:600;">Forgot
+                            <a href="#" id="forgotPwLink" style="font-size:0.8rem; color:var(--navy-500); font-weight:600;">Forgot
                                 password?</a>
                         </div>
                         <div class="input-wrapper">
@@ -240,6 +240,98 @@
                     By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
                 </p>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Forgot Password Modal ── -->
+    <div class="modal-overlay" id="forgotPasswordModal">
+        <div class="modal-card" style="max-width:440px; width:90%; padding:var(--space-xl);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-md);">
+                <div>
+                    <h3 style="font-size:1.25rem; font-weight:800; color:var(--navy-900); margin:0;">Reset Password</h3>
+                    <p style="font-size:0.875rem; color:var(--color-text-muted); margin-top:4px;" id="fpSubtitle">Step 1 of 3 — Find Account</p>
+                </div>
+                <button type="button" style="background:none; border:none; cursor:pointer; color:var(--color-text-muted); font-size:1.5rem; line-height:1;" onclick="closeModal('forgotPasswordModal')">&times;</button>
+            </div>
+
+            <!-- Step Indicator -->
+            <div style="display:flex; gap:8px; margin-bottom:var(--space-xl);">
+                <div class="step-pill active" id="fpPill-1" style="flex:1; height:4px; border-radius:2px; background:var(--navy-500); transition:background 0.3s;"></div>
+                <div class="step-pill" id="fpPill-2" style="flex:1; height:4px; border-radius:2px; background:var(--slate-200); transition:background 0.3s;"></div>
+                <div class="step-pill" id="fpPill-3" style="flex:1; height:4px; border-radius:2px; background:var(--slate-200); transition:background 0.3s;"></div>
+            </div>
+
+            <!-- Step 1: Enter Username/Email -->
+            <div id="fpStep1">
+                <p style="font-size:0.875rem; color:var(--color-text-muted); margin-bottom:var(--space-lg);">
+                    Enter your username, email, or phone number to find your account.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="fpIdentity">Username / Email / Phone</label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <input type="text" id="fpIdentity" class="form-input has-icon" placeholder="Enter your username, email or phone" />
+                    </div>
+                </div>
+                <div id="fpStep1Error" class="alert alert-danger" style="display:none; margin-bottom:var(--space-md);">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/></svg>
+                    <span id="fpStep1ErrorMsg">Account not found.</span>
+                </div>
+                <button type="button" class="auth-submit-btn" id="fpFindAccountBtn">Find My Account</button>
+            </div>
+
+            <!-- Step 2: Answer Security Question -->
+            <div id="fpStep2" style="display:none;">
+                <div style="background:var(--slate-50); border:1px solid var(--slate-200); border-radius:var(--radius-md); padding:var(--space-md); margin-bottom:var(--space-lg);">
+                    <div style="font-size:0.75rem; font-weight:700; color:var(--navy-600); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Account Found</div>
+                    <div style="font-size:1rem; font-weight:700; color:var(--navy-900);" id="fpFoundName">—</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Security Question</label>
+                    <div style="font-size:0.9375rem; font-weight:600; color:var(--navy-900); padding:12px 14px; background:var(--white); border-radius:var(--radius-md); border:1px solid var(--slate-200);" id="fpSecurityQuestion">—</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fpSecurityAnswer">Your Answer <span class="required">*</span></label>
+                    <input type="text" id="fpSecurityAnswer" class="form-input" placeholder="Type your answer here" />
+                </div>
+                <div id="fpStep2Error" class="alert alert-danger" style="display:none; margin-bottom:var(--space-md);">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/></svg>
+                    <span id="fpStep2ErrorMsg">Incorrect answer. Please try again.</span>
+                </div>
+                <div style="display:flex; gap:var(--space-sm);">
+                    <button type="button" class="btn btn-outline" style="flex:1;" id="fpBackToStep1">← Back</button>
+                    <button type="button" class="auth-submit-btn" style="flex:2;" id="fpVerifyAnswerBtn">Verify Answer</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Set New Password -->
+            <div id="fpStep3" style="display:none;">
+                <div style="background:var(--green-50); border-radius:var(--radius-md); padding:var(--space-md); margin-bottom:var(--space-lg); display:flex; align-items:center; gap:var(--space-sm);">
+                    <svg width="20" height="20" fill="none" stroke="var(--green-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span style="font-size:0.85rem; font-weight:600; color:var(--green-700);">Identity verified! Set your new password below.</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fpNewPassword">New Password <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <input type="password" id="fpNewPassword" class="form-input has-icon" placeholder="Min 8 characters" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fpConfirmPassword">Confirm Password <span class="required">*</span></label>
+                    <div class="input-wrapper">
+                        <svg class="input-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <input type="password" id="fpConfirmPassword" class="form-input has-icon" placeholder="Re-enter new password" />
+                    </div>
+                </div>
+                <button type="button" class="auth-submit-btn" id="fpResetPasswordBtn">Reset Password</button>
             </div>
         </div>
     </div>
