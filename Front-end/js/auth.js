@@ -280,6 +280,157 @@ export function initLoginPage() {
       }, 800);
     });
   }
+
+  // ── Forgot Password Flow ──
+  let fpTargetUser = null; // holds the matched user object during the flow
+
+  const forgotLink = document.getElementById('forgotPwLink');
+  if (forgotLink) {
+    forgotLink.addEventListener('click', e => {
+      e.preventDefault();
+      // Reset modal to step 1
+      fpTargetUser = null;
+      const s1 = document.getElementById('fpStep1');
+      const s2 = document.getElementById('fpStep2');
+      const s3 = document.getElementById('fpStep3');
+      if (s1) s1.style.display = 'block';
+      if (s2) s2.style.display = 'none';
+      if (s3) s3.style.display = 'none';
+      if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 1 of 3 — Find Account';
+      if (document.getElementById('fpPill-1')) {
+          document.getElementById('fpPill-1').style.background = 'var(--navy-500)';
+          document.getElementById('fpPill-2').style.background = 'var(--slate-200)';
+          document.getElementById('fpPill-3').style.background = 'var(--slate-200)';
+      }
+      const idInput = document.getElementById('fpIdentity');
+      if (idInput) idInput.value = '';
+      const ansInput = document.getElementById('fpSecurityAnswer');
+      if (ansInput) ansInput.value = '';
+      document.getElementById('fpStep1Error').style.display = 'none';
+      document.getElementById('fpStep2Error').style.display = 'none';
+      openModal('forgotPasswordModal');
+    });
+  }
+
+  // Step 1: Find account
+  const fpFindBtn = document.getElementById('fpFindAccountBtn');
+  if (fpFindBtn) {
+    fpFindBtn.addEventListener('click', () => {
+      const identity = document.getElementById('fpIdentity')?.value?.trim();
+      const errBox = document.getElementById('fpStep1Error');
+      const errMsg = document.getElementById('fpStep1ErrorMsg');
+      if (errBox) errBox.style.display = 'none';
+
+      if (!identity) {
+        showToast('Please enter your username, email or phone.', 'warning');
+        return;
+      }
+
+      const users = getUsers();
+      const identityLower = identity.toLowerCase();
+      const identityDigits = identity.replace(/\D/g, '');
+
+      const user = users.find(u =>
+        (u.username && u.username.toLowerCase() === identityLower) ||
+        (u.email && u.email.toLowerCase() === identityLower) ||
+        (u.phone && u.phone.replace(/\D/g, '') === identityDigits && identityDigits.length >= 10)
+      );
+
+      if (!user) {
+        if (errBox) errBox.style.display = 'flex';
+        if (errMsg) errMsg.textContent = 'No account found with that username, email or phone number.';
+        return;
+      }
+
+      if (!user.securityQuestion || !user.securityAnswer) {
+        if (errBox) errBox.style.display = 'flex';
+        if (errMsg) errMsg.textContent = 'This account does not have a security question set up. Please contact support.';
+        return;
+      }
+
+      // Account found — advance to step 2
+      fpTargetUser = user;
+      document.getElementById('fpStep1').style.display = 'none';
+      document.getElementById('fpStep2').style.display = 'block';
+      if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 2 of 3 — Verify Identity';
+      if (document.getElementById('fpPill-2')) document.getElementById('fpPill-2').style.background = 'var(--navy-500)';
+      document.getElementById('fpFoundName').textContent = user.name;
+      document.getElementById('fpSecurityQuestion').textContent = user.securityQuestion;
+      document.getElementById('fpSecurityAnswer').value = '';
+      document.getElementById('fpStep2Error').style.display = 'none';
+    });
+  }
+
+  // Step 2: Back button
+  const fpBackBtn = document.getElementById('fpBackToStep1');
+  if (fpBackBtn) {
+    fpBackBtn.addEventListener('click', () => {
+      document.getElementById('fpStep2').style.display = 'none';
+      document.getElementById('fpStep1').style.display = 'block';
+      if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 1 of 3 — Find Account';
+      if (document.getElementById('fpPill-2')) document.getElementById('fpPill-2').style.background = 'var(--slate-200)';
+    });
+  }
+
+  // Step 2: Verify security answer
+  const fpVerifyBtn = document.getElementById('fpVerifyAnswerBtn');
+  if (fpVerifyBtn) {
+    fpVerifyBtn.addEventListener('click', () => {
+      const answer = document.getElementById('fpSecurityAnswer')?.value?.trim();
+      const errBox = document.getElementById('fpStep2Error');
+      const errMsg = document.getElementById('fpStep2ErrorMsg');
+      if (errBox) errBox.style.display = 'none';
+
+      if (!answer) {
+        showToast('Please enter your answer.', 'warning');
+        return;
+      }
+
+      if (!fpTargetUser || answer.toLowerCase() !== fpTargetUser.securityAnswer.toLowerCase()) {
+        if (errBox) errBox.style.display = 'flex';
+        if (errMsg) errMsg.textContent = 'Incorrect answer. Please try again.';
+        return;
+      }
+
+      // Answer correct — advance to step 3
+      document.getElementById('fpStep2').style.display = 'none';
+      document.getElementById('fpStep3').style.display = 'block';
+      if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 3 of 3 — Set Password';
+      if (document.getElementById('fpPill-3')) document.getElementById('fpPill-3').style.background = 'var(--navy-500)';
+      document.getElementById('fpNewPassword').value = '';
+      document.getElementById('fpConfirmPassword').value = '';
+    });
+  }
+
+  // Step 3: Reset password
+  const fpResetBtn = document.getElementById('fpResetPasswordBtn');
+  if (fpResetBtn) {
+    fpResetBtn.addEventListener('click', () => {
+      const newPw = document.getElementById('fpNewPassword')?.value;
+      const confirmPw = document.getElementById('fpConfirmPassword')?.value;
+
+      if (!newPw || newPw.length < 8) {
+        showToast('Password must be at least 8 characters.', 'warning');
+        return;
+      }
+      if (newPw !== confirmPw) {
+        showToast('Passwords do not match.', 'error');
+        return;
+      }
+
+      // Update user password in localStorage
+      const users = getUsers();
+      const idx = users.findIndex(u => u.id === fpTargetUser.id);
+      if (idx !== -1) {
+        users[idx].password = newPw;
+        setUsers(users);
+      }
+
+      fpTargetUser = null;
+      closeModal('forgotPasswordModal');
+      showToast('Password reset successfully! You can now sign in with your new password.', 'success');
+    });
+  }
 }
 
 /**
