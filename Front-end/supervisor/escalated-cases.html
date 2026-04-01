@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Escalated Cases – DigiConnect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/dashboard.css"/>
+  <style>
+    .filter-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:0.8rem;font-weight:600;cursor:pointer;border:1.5px solid var(--color-border);background:var(--color-surface);color:var(--slate-600);transition:all 0.15s;}
+    .filter-chip:hover{border-color:var(--navy-300);}
+    .filter-chip.active{background:var(--navy-700);color:#fff;border-color:var(--navy-700);}
+    .filter-chip.sla.active{background:var(--red-600);border-color:var(--red-600);}
+    .filter-chip.grievance.active{background:var(--amber-500);border-color:var(--amber-500);}
+    .esc-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-lg);transition:all 0.2s;}
+    .esc-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+    .esc-card.sla-type{border-left:4px solid var(--red-500);}
+    .esc-card.grievance-type{border-left:4px solid var(--amber-400);}
+    .flow-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:0.68rem;font-weight:700;}
+    .flow-pill.sla{background:var(--red-50);color:var(--red-700);border:1px solid var(--red-200);}
+    .flow-pill.grievance{background:var(--amber-50);color:var(--amber-700);border:1px solid var(--amber-200);}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+  </style>
+</head>
+<body data-page="escalated-cases">
+<div class="app-layout">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <aside class="sidebar" id="sidebar"></aside>
+
+  <!-- ══════════════ TOPBAR ══════════════ -->
+  <header class="topbar"></header>
+
+  <!-- ══════════════ MAIN ══════════════ -->
+  <main class="main-content">
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h1 class="page-title">Escalated Cases</h1>
+        <p class="page-subtitle">SLA breach escalations and grievance officer escalations requiring your immediate decision.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="showToast('Report exported.','success')">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:var(--space-xl);">
+      <div class="stat-card danger">
+        <div class="stat-card-inner">
+          <div><div class="stat-label">Total Escalated</div><div class="stat-value" id="stat-total" style="color:var(--red-500);">10</div></div>
+          <div class="stat-icon red"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg></div>
+        </div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-card-inner">
+          <div><div class="stat-label">SLA Breaches</div><div class="stat-value" id="stat-sla" style="color:var(--red-500);">6</div></div>
+          <div class="stat-icon red"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+        </div>
+      </div>
+      <div class="stat-card accent">
+        <div class="stat-card-inner">
+          <div><div class="stat-label">Grievance Escalations</div><div class="stat-value" id="stat-grievance" style="color:var(--amber-500);">4</div></div>
+          <div class="stat-icon amber"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
+        </div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-card-inner">
+          <div><div class="stat-label">Urgent</div><div class="stat-value" id="stat-urgent" style="color:var(--red-500);">3</div></div>
+          <div class="stat-icon red"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-lg);">
+      <div class="filter-chip active" id="chip-all" onclick="setFilter('all',this)">All Cases (10)</div>
+      <div class="filter-chip sla" id="chip-sla" onclick="setFilter('sla',this)">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        SLA Breaches (6)
+      </div>
+      <div class="filter-chip grievance" id="chip-grievance" onclick="setFilter('grievance',this)">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+        Grievance Escalations (4)
+      </div>
+      <div class="filter-chip" id="chip-urgent" onclick="setFilter('urgent',this)">
+        <svg width="12" height="12" fill="none" stroke="var(--red-500)" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01"/></svg>
+        Urgent Only (3)
+      </div>
+    </div>
+
+    <!-- Cases Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:var(--space-lg);" id="escGrid"></div>
+
+    <!-- Empty state -->
+    <div id="emptyState" style="display:none;text-align:center;padding:var(--space-3xl);">
+      <svg width="56" height="56" fill="none" stroke="var(--slate-300)" stroke-width="1.5" viewBox="0 0 24 24" style="margin-bottom:var(--space-lg);"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      <div style="font-size:1.125rem;font-weight:700;color:var(--navy-900);">No cases in this filter</div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+
+    <script type="module" src="../js/escalation.js"></script>
+</body>
+</html>
