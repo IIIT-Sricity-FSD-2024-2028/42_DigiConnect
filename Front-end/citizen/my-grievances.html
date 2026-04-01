@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Grievances – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .grv-card {
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .grv-card:hover {
+            border-color: var(--navy-300);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .grv-card.selected {
+            border-color: var(--navy-600);
+            box-shadow: 0 0 0 2px var(--navy-100);
+        }
+
+        .grv-priority-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .timeline-chat {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .chat-bubble.officer {
+            background: var(--slate-100);
+            border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+            align-self: flex-start;
+        }
+
+        .chat-bubble.citizen {
+            background: var(--navy-600);
+            color: #fff;
+            border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+            align-self: flex-end;
+        }
+
+        .chat-meta {
+            font-size: 0.72rem;
+            margin-top: 4px;
+        }
+
+        .chat-meta.officer {
+            color: var(--color-text-muted);
+        }
+
+        .chat-meta.citizen {
+            color: var(--navy-200);
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body data-page="my-grievances">
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <main class="main-content">
+            <div class="page-header"
+                style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <h1 class="page-title">My Grievances</h1>
+                    <p class="page-subtitle">Track all your filed grievances and communicate with the Grievance Officer.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid"
+                style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin-bottom:var(--space-xl);">
+                <div class="stat-card">
+                    <div class="stat-card-inner">
+                        <div>
+                            <div class="stat-label">Total Filed</div>
+                            <div class="stat-value">3</div>
+                        </div>
+                        <div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-inner">
+                        <div>
+                            <div class="stat-label">Open</div>
+                            <div class="stat-value" style="color:var(--amber-500);">1</div>
+                        </div>
+                        <div class="stat-icon amber"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></div>
+                    </div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-card-inner">
+                        <div>
+                            <div class="stat-label">Resolved</div>
+                            <div class="stat-value" style="color:var(--green-500);">2</div>
+                        </div>
+                        <div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-inner">
+                        <div>
+                            <div class="stat-label">Avg. Resolution</div>
+                            <div class="stat-value">3.5 days</div>
+                        </div>
+                        <div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter tabs + list -->
+            <div style="display:grid;grid-template-columns:340px 1fr;gap:var(--space-lg);align-items:start;">
+
+                <!-- Left: Grievance List -->
+                <div>
+                    <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md);">
+                        <button class="btn btn-primary btn-sm filter-btn active" data-filter="all"
+                            onclick="filterGrv('all',this)">All (3)</button>
+                        <button class="btn btn-outline btn-sm filter-btn" data-filter="open"
+                            onclick="filterGrv('open',this)">Open</button>
+                        <button class="btn btn-outline btn-sm filter-btn" data-filter="resolved"
+                            onclick="filterGrv('resolved',this)">Resolved</button>
+                    </div>
+                    <div id="grvList" style="display:flex;flex-direction:column;gap:var(--space-sm);"></div>
+                </div>
+
+                <!-- Right: Detail Panel -->
+                <div id="grvDetail">
+                    <div class="card">
+                        <div class="card-body" style="padding:0;">
+                            <!-- Detail Header -->
+                            <div style="padding:var(--space-lg);border-bottom:1px solid var(--color-border);">
+                                <div
+                                    style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:var(--space-sm);">
+                                    <div>
+                                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                            <span
+                                                style="font-family:var(--font-mono);font-size:0.875rem;font-weight:800;color:var(--navy-600);"
+                                                id="dGrvId">GRV-048</span>
+                                            <span class="badge" id="dGrvBadge">Under Review</span>
+                                            <span class="badge" id="dPriorityBadge">Normal</span>
+                                        </div>
+                                        <h3 style="font-size:1rem;font-weight:700;color:var(--navy-900);"
+                                            id="dGrvTitle">—</h3>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:2px;"
+                                            id="dGrvMeta">—</div>
+                                    </div>
+                                </div>
+                                <div
+                                    style="display:flex;gap:var(--space-xl);flex-wrap:wrap;margin-top:var(--space-md);">
+                                    <div>
+                                        <div
+                                            style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:var(--color-text-muted);">
+                                            Filed On</div>
+                                        <div style="font-weight:700;color:var(--navy-900);font-size:0.875rem;"
+                                            id="dFiled">—</div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:var(--color-text-muted);">
+                                            Officer</div>
+                                        <div style="font-weight:700;color:var(--navy-900);font-size:0.875rem;"
+                                            id="dOfficer">—</div>
+                                    </div>
+                                    <div>
+                                        <div
+                                            style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;font-weight:700;color:var(--color-text-muted);">
+                                            Related App</div>
+                                        <div style="font-weight:700;color:var(--navy-500);font-size:0.875rem;"
+                                            id="dRelatedApp">—</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div style="padding:var(--space-lg);border-bottom:1px solid var(--color-border);">
+                                <div
+                                    style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:8px;">
+                                    Your Complaint</div>
+                                <p style="font-size:0.875rem;color:var(--slate-700);line-height:1.6;" id="dGrvDesc">—
+                                </p>
+                            </div>
+
+
+                        </div>
+                    </div>
+                    <!-- Rating panel (for resolved) -->
+                    <div id="ratingPanel"
+                        style="display:none;padding:var(--space-lg);border-top:1px solid var(--color-border);">
+                        <div
+                            style="font-size:0.875rem;font-weight:600;color:var(--navy-900);margin-bottom:var(--space-sm);">
+                            Rate the resolution</div>
+                        <div style="display:flex;gap:8px;" id="starRating">
+                            <span style="font-size:1.75rem;cursor:pointer;" onclick="rateGrv(1)">★</span>
+                            <span style="font-size:1.75rem;cursor:pointer;" onclick="rateGrv(2)">★</span>
+                            <span style="font-size:1.75rem;cursor:pointer;" onclick="rateGrv(3)">★</span>
+                            <span style="font-size:1.75rem;cursor:pointer;" onclick="rateGrv(4)">★</span>
+                            <span style="font-size:1.75rem;cursor:pointer;" onclick="rateGrv(5)">★</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </main>
+    </div>
+    <div id="toast-container"></div>
+
+
+
+    <script type="module" src="../js/grievance.js"></script>
+</body>
+
+</html>

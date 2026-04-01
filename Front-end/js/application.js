@@ -12,7 +12,7 @@ import { checkSLA } from './escalation.js';
 
 function addAuditEntry(action, details) {
   const session = getSession();
-  const logs = getAuditLogs();  
+  const logs = getAuditLogs();
   logs.unshift({ id: generateId('LOG'), action, actor: session ? session.email : 'system', role: session ? session.role : 'system', date: new Date().toISOString(), details });
   if (logs.length > 100) logs.length = 100;
   setAuditLogs(logs);

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Services – DigiConnect Super User</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+</head>
+
+<body data-page="manage-services">
+    <div class="app-layout">
+
+        <!-- ===================== SIDEBAR ===================== -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- ===================== TOPBAR ===================== -->
+        <header class="topbar"></header>
+
+        <!-- ===================== MAIN ===================== -->
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Service Configuration</h1>
+                    <p class="page-subtitle">Create, manage, and configure all government services. Use <a
+                            href="workflow-config.html" style="color:var(--navy-600);font-weight:600;">Workflow
+                            Config</a> to manage per-service stage flows.</p>
+                </div>
+            </div>
+
+            <!-- Filters Row -->
+            <div class="card" style="margin-bottom:var(--space-lg);">
+                <div class="card-body" style="padding:var(--space-md) var(--space-lg);">
+                    <div style="display:flex;gap:var(--space-md);align-items:center;flex-wrap:wrap;">
+                        <div style="position:relative;flex:1;min-width:200px;">
+                            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate-400);"
+                                width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" class="form-input" placeholder="Search services…"
+                                style="padding-left:38px;" oninput="filterServices(this.value)" />
+                        </div>
+                        <select class="form-input" style="width:auto;padding:10px 36px 10px 12px;"
+                            onchange="filterByCategory(this.value)">
+                            <option value="">All Categories</option>
+                            <option>Certificate</option>
+                            <option>Welfare</option>
+                            <option>Permission</option>
+                            <option>Correction</option>
+                        </select>
+                        <select class="form-input" style="width:auto;padding:10px 36px 10px 12px;"
+                            onchange="filterByStatus(this.value)">
+                            <option value="">All Status</option>
+                            <option>Active</option>
+                            <option>Draft</option>
+                            <option>Inactive</option>
+                        </select>
+                        <div
+                            style="display:flex;gap:4px;border:1px solid var(--color-border);border-radius:var(--radius-md);padding:3px;">
+                            <button class="btn-icon" id="gridViewBtn" onclick="setView('grid')"
+                                style="background:var(--navy-100);color:var(--navy-600);"><svg width="14" height="14"
+                                    fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg></button>
+                            <button class="btn-icon" id="listViewBtn" onclick="setView('list')"><svg width="14"
+                                    height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Services Grid -->
+            <div id="servicesGrid"
+                style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+            </div>
+
+            <!-- Services List -->
+            <div id="servicesList" style="display:none;margin-bottom:var(--space-xl);">
+                <div class="card">
+                    <div class="table-wrapper" style="border:none;border-radius:0;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Service Name</th>
+                                    <th>Category</th>
+                                    <th>SLA</th>
+                                    <th>Fee (₹)</th>
+                                    <th>Req. Docs</th>
+                                    <th>Workflow Stages</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicesListBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Service Modal (4-step) -->
+    <div class="modal-overlay" id="serviceModal">
+        <div class="modal" style="max-width:720px;width:100%;max-height:90vh;overflow-y:auto;">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Add New Service</span>
+                <button class="btn-icon" onclick="window.closeModal('serviceModal')"><svg width="16" height="16" fill="none"
+                        stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="stepper" style="margin-bottom:var(--space-xl);" id="modalStepper">
+                    <div class="stepper-step active" data-step="1">
+                        <div class="stepper-circle">1</div>
+                        <div class="stepper-label">Basic Info</div>
+                    </div>
+                    <div class="stepper-step" data-step="2">
+                        <div class="stepper-circle">2</div>
+                        <div class="stepper-label">Documents</div>
+                    </div>
+                    <div class="stepper-step" data-step="3">
+                        <div class="stepper-circle">3</div>
+                        <div class="stepper-label">Workflow</div>
+                    </div>
+                    <div class="stepper-step" data-step="4">
+                        <div class="stepper-circle">4</div>
+                        <div class="stepper-label">Rules</div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Basic Info -->
+                <div id="mStep1">
+                    <div class="form-grid">
+                        <div class="form-group col-span-full">
+                            <label class="form-label">Service Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="svcName" placeholder="e.g. Income Certificate" />
+                            <div class="form-error" id="svcNameErr" style="display:none;">Service name is required.
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Category <span class="required">*</span></label>
+                            <select class="form-input" id="svcCategory">
+                                <option value="" disabled selected hidden>Select category</option>
+                                <option>Certificate</option>
+                                <option>Welfare</option>
+                                <option>Permission</option>
+                                <option>Correction</option>
+                            </select>
+                            <div class="form-error" id="svcCatErr" style="display:none;">Category is required.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Department <span class="required">*</span></label>
+                            <select class="form-input" id="svcDept">
+                                <option value="" disabled selected hidden>Select department</option>
+                                <option>Revenue Department</option>
+                                <option>Welfare Department</option>
+                                <option>Municipal Corporation</option>
+                                <option>Rural Development</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-span-full">
+                            <label class="form-label">Description <span class="required">*</span></label>
+                            <textarea class="form-input" id="svcDesc" rows="3"
+                                placeholder="Brief description of this service and who it's for…"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Service Fee (₹)</label>
+                            <input type="number" class="form-input" id="svcFee" placeholder="0 for free" value="0"
+                                min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SLA (Days) <span class="required">*</span></label>
+                            <input type="number" class="form-input" id="svcSla" placeholder="e.g. 7" min="1" max="90" />
+                            <div class="form-error" id="svcSlaErr" style="display:none;">SLA in days is required.</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Eligibility</label>
+                            <select class="form-input">
+                                <option>All Citizens</option>
+                                <option>Below Poverty Line</option>
+                                <option>SC / ST only</option>
+                                <option>Women only</option>
+                                <option>Farmers only</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Renewal Period</label>
+                            <select class="form-input">
+                                <option>Not Applicable</option>
+                                <option>Annual</option>
+                                <option>Every 3 Years</option>
+                                <option>Every 5 Years</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Documents -->
+                <div id="mStep2" style="display:none;">
+                    <div
+                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md);">
+                        <h4 style="font-weight:700;color:var(--navy-900);">Required Documents</h4>
+                        <button class="btn btn-primary btn-sm" onclick="addDocRow()">+ Add Document</button>
+                    </div>
+                    <div id="docList" style="display:flex;flex-direction:column;gap:var(--space-sm);"></div>
+                    <div class="alert alert-info" style="margin-top:var(--space-md);">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Citizens will be prompted to upload these documents when applying for this service.
+                    </div>
+                </div>
+
+                <!-- Step 3: Workflow -->
+                <div id="mStep3" style="display:none;">
+                    <div
+                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md);">
+                        <h4 style="font-weight:700;color:var(--navy-900);">Workflow Stages</h4>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-outline btn-sm"
+                                onclick="window.location.href='workflow-config.html'">Advanced Config →</button>
+                            <button class="btn btn-primary btn-sm" onclick="addWorkflowStage()">+ Add Stage</button>
+                        </div>
+                    </div>
+                    <div id="workflowList" style="display:flex;flex-direction:column;gap:var(--space-sm);"></div>
+                </div>
+
+                <!-- Step 4: Rules -->
+                <div id="mStep4" style="display:none;">
+                    <div class="form-grid">
+                        <div class="form-group col-span-full">
+                            <label class="form-label">Eligibility Rules</label>
+                            <textarea class="form-input" rows="4"
+                                placeholder="Define eligibility criteria, e.g.:&#10;- Annual income must be below ₹2,00,000&#10;- Must be a resident of the state for ≥5 years"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Maximum Applications Per Citizen</label>
+                            <select class="form-input">
+                                <option>1 (One time)</option>
+                                <option>Once per year</option>
+                                <option>Unlimited</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Verification Required</label>
+                            <select class="form-input">
+                                <option>Document verification only</option>
+                                <option>Field verification + Document</option>
+                                <option>Aadhaar eKYC + Document</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-span-full">
+                            <label class="form-label">Activate Service After Configuration?</label>
+                            <div style="display:flex;gap:var(--space-md);margin-top:4px;">
+                                <label
+                                    style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem;"><input
+                                        type="radio" name="activate" value="yes"
+                                        style="accent-color:var(--navy-600);" /> Activate immediately</label>
+                                <label
+                                    style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem;"><input
+                                        type="radio" name="activate" value="no" checked
+                                        style="accent-color:var(--navy-600);" /> Save as Draft</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content:space-between;">
+                <button class="btn btn-outline" id="modalBackBtn" style="display:none;" onclick="modalStep(-1)">←
+                    Back</button>
+                <div style="display:flex;gap:var(--space-sm);margin-left:auto;">
+                    <button class="btn btn-outline" onclick="window.closeModal('serviceModal')">Cancel</button>
+                    <button class="btn btn-primary" id="modalNextBtn" onclick="modalStep(1)">Continue →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deactivate Confirm Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header"><span class="modal-title">Confirm Deactivation</span><button class="btn-icon"
+                    onclick="document.getElementById('deleteModal').classList.remove('active')"><svg width="16"
+                        height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg></button></div>
+            <div class="modal-body">
+                <p style="color:var(--color-text-muted);font-size:0.9rem;">Are you sure you want to deactivate <strong
+                        id="deleteServiceName"></strong>? Citizens will no longer be able to apply. Existing
+                    applications will not be affected.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline"
+                    onclick="document.getElementById('deleteModal').classList.remove('active')">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDeactivate()">Deactivate Service</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+
+
+    <script type="module" src="../js/crud.js"></script>
+</body>
+
+</html>
