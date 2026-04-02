@@ -71,27 +71,39 @@ export function addAuditEntry(action, details, actorOverride) {
  * @returns {{ officerId: string, officerName: string }}
  */
 export function assignOfficerByDept(serviceName) {
-  const dept = SERVICE_DEPT_MAP[serviceName] || 'General';
-  const officerIds = DEPT_MAP[dept]?.officers || ['EMP-001'];
   const users = getUsers();
   const queue = getOfficerQueue();
+  
+  // ── LIVE SYNC: Find officers who are Active AND have this service or department assigned ──
+  // Check both service name match and department match
+  const dept = SERVICE_DEPT_MAP[serviceName] || 'General';
+  
+  const eligibleOfficers = users.filter(u => 
+    u.role === 'officer' && 
+    u.status === 'Active' && 
+    (
+      (u.services && u.services.includes(serviceName)) || 
+      (u.dept && u.dept.includes(dept))
+    )
+  );
 
-  // Find least-loaded officer from dept pool
-  let bestOfficer = null;
+  if (eligibleOfficers.length === 0) {
+    // Fallback: search for ANY active officer
+    const fallback = users.find(u => u.role === 'officer' && u.status === 'Active') || { id: 'EMP-001', name: 'Suresh Reddy' };
+    return { officerId: fallback.id, officerName: fallback.name };
+  }
+
+  // Find least-loaded officer from eligible pool
+  let bestOfficer = eligibleOfficers[0];
   let minLoad = Infinity;
 
-  officerIds.forEach(id => {
-    const u = users.find(u => u.id === id && u.role === 'officer' && u.status === 'Active');
-    if (!u) return;
-    const load = queue.filter(q => q.officerId === id && !['approve','reject'].includes(q.status)).length;
-    if (load < minLoad) { minLoad = load; bestOfficer = u; }
+  eligibleOfficers.forEach(u => {
+    const load = queue.filter(q => q.officerId === u.id && !['approve','reject'].includes(q.status)).length;
+    if (load < minLoad) { 
+      minLoad = load; 
+      bestOfficer = u; 
+    }
   });
-
-  // Fallback to first available officer
-  if (!bestOfficer) {
-    bestOfficer = users.find(u => u.role === 'officer' && u.status === 'Active')
-      || { id: 'EMP-001', name: 'Suresh Reddy' };
-  }
 
   return { officerId: bestOfficer.id, officerName: bestOfficer.name };
 }

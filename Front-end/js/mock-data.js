@@ -540,6 +540,7 @@ export function initializeMockData() {
     localStorage.setItem('DigiConnect_super_approved_today', '42');
     localStorage.setItem('DigiConnect_super_esc_sla_cases', JSON.stringify([...SUPER_ESC_SLA_CASES, ...SUPER_ESC_GRIEVANCE_CASES]));
     localStorage.setItem('DigiConnect_super_pending_apps', JSON.stringify(SUPER_PENDING_APPS));
+    localStorage.setItem('DigiConnect_settings', JSON.stringify(MOCK_SETTINGS));
     localStorage.setItem('DigiConnect_initialized_v24', 'true');
   }
 }
@@ -562,6 +563,7 @@ export function resetMockData() {
   localStorage.removeItem('DigiConnect_super_approved_today');
   localStorage.removeItem('DigiConnect_super_esc_sla_cases');
   localStorage.removeItem('DigiConnect_super_pending_apps');
+  localStorage.removeItem('DigiConnect_settings');
   localStorage.removeItem('DigiConnect_session');
   initializeMockData();
 }
@@ -859,4 +861,37 @@ const SUPER_PENDING_APPS = [
   { id: 'APP-2389', service: 'Caste Certificate', citizen: 'Lalitha M.', officer: 'Anita Sharma', slaLeft: -7 },
 ];
 
-export { MOCK_USERS, MOCK_SERVICES, MOCK_APPLICATIONS, MOCK_GRIEVANCES, MOCK_NOTIFICATIONS, MOCK_AUDIT_LOGS, MOCK_PENDING_OFFICERS, OFFICER_QUEUE, OFFICER_QUERIES, OFFICER_ACTIVITY, OFFICER_SLA_RISKS, OFFICER_WEEK_CHART, SUPER_OFFICER_APPROVED, SUPER_SLA_BREACHES, SUPER_GRIEVANCES, SUPER_TEAM, SUPER_ESC_SLA_CASES, SUPER_ESC_GRIEVANCE_CASES, SUPER_PENDING_APPS };
+const MOCK_SETTINGS = {
+  general: {
+    platformName: 'DigiConnect Telangana',
+    supportEmail: 'support.digiconnect@telangana.gov.in',
+    sessionTimeout: 30,
+    languageDefault: 'en'
+  },
+  sla: {
+    slaCert: 7,
+    slaWelfare: 14,
+    slaPermission: 5,
+    slaCorrection: 10,
+    slaGrievance: 15
+  },
+  notifications: {
+    emailEnabled: true,
+    smsEnabled: true,
+    whatsappEnabled: false,
+    pushEnabled: true
+  },
+  security: {
+    twoFactorEnabled: false,
+    passwordExpiry: 90,
+    maxLoginAttempts: 5,
+    aadhaarMasking: true
+  },
+  maintenance: {
+    enabled: false,
+    message: 'System is undergoing scheduled maintenance. Please try again later.',
+    estimatedEnd: ''
+  }
+};
+
+export { MOCK_USERS, MOCK_SERVICES, MOCK_APPLICATIONS, MOCK_GRIEVANCES, MOCK_NOTIFICATIONS, MOCK_AUDIT_LOGS, MOCK_PENDING_OFFICERS, OFFICER_QUEUE, OFFICER_QUERIES, OFFICER_ACTIVITY, OFFICER_SLA_RISKS, OFFICER_WEEK_CHART, SUPER_OFFICER_APPROVED, SUPER_SLA_BREACHES, SUPER_GRIEVANCES, SUPER_TEAM, SUPER_ESC_SLA_CASES, SUPER_ESC_GRIEVANCE_CASES, SUPER_PENDING_APPS, MOCK_SETTINGS };

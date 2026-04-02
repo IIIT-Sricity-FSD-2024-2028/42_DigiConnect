@@ -2,8 +2,9 @@
 // crud.js — Generic CRUD operations + Admin page initializers
 // ═══════════════════════════════════════════
 
-import { getCollection, setCollection, getUsers, setUsers, getServices, setServices, getApplications, getGrievances, getAuditLogs, setAuditLogs, getSession, getPendingOfficers, setPendingOfficers } from './state.js';
+import { getCollection, setCollection, getUsers, setUsers, getServices, setServices, getApplications, getGrievances, getAuditLogs, setAuditLogs, getSession, getPendingOfficers, setPendingOfficers, getSettings, setSettings } from './state.js';
 import { initPage } from './navigation.js';
+import { addAuditEntry } from './workflow.js';
 import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal } from './utils.js';
 
 // Expose utils
@@ -17,7 +18,6 @@ export function addItem(collectionKey, item) { const items = getCollection(colle
 export function updateItem(collectionKey, id, updates) { const items = getCollection(collectionKey); const idx = items.findIndex(i => i.id === id); if (idx === -1) return null; items[idx] = { ...items[idx], ...updates }; setCollection(collectionKey, items); return items[idx]; }
 export function deleteItem(collectionKey, id) { const items = getCollection(collectionKey); const filtered = items.filter(i => i.id !== id); setCollection(collectionKey, filtered); return filtered.length < items.length; }
 export function filterItems(collectionKey, pred) { return getCollection(collectionKey).filter(pred); }
-function addAuditEntry(action, details) { const s = getSession(); const logs = getAuditLogs(); logs.unshift({ id: generateId('LOG'), action, actor: s ? s.email : 'system', role: s ? s.role : 'system', date: new Date().toISOString(), details }); if (logs.length > 100) logs.length = 100; setAuditLogs(logs); }
 
 // Manage Users
 export function initManageUsers() {
@@ -1015,7 +1015,8 @@ export function initAuditLogs() {
   window.filterLogs = () => {
     const search = document.getElementById('logSearch')?.value.toLowerCase() || '';
     const role = document.getElementById('roleFilter')?.value || '';
-    const allProcessed = getProcessedLogs();
+    // LIVE SYNC: Re-fetch latest logs from storage
+    const allProcessed = getProcessedLogs(); 
     
     const filtered = allProcessed.filter(log => {
       const matchSearch = log.actor.toLowerCase().includes(search) || log.action.toLowerCase().includes(search) || (log.details && log.details.toLowerCase().includes(search));
@@ -1024,6 +1025,7 @@ export function initAuditLogs() {
       return matchSearch && matchRole && matchCat;
     });
     window.renderLogs(filtered);
+    window.updateAuditLogStats(); // Update stats in real-time too
   }
 
   window.toggleCat = (el) => {
@@ -1101,24 +1103,46 @@ export function initSystemSettings() {
       { name:'Authentication Service',status:'Operational',    uptime:'99.99%' },
   ];
 
-  const statusRowsContainer = document.getElementById('statusRows');
-  if (statusRowsContainer) {
-      statusRowsContainer.innerHTML = systemModules.map(m => {
-          const isOk = m.status === 'Operational';
-          return `
-              <div class="settings-row">
-                  <div style="display:flex;align-items:center;gap:10px;">
-                      <div style="width:10px;height:10px;border-radius:50%;background:${isOk?'var(--green-500)':'var(--amber-400)'};flex-shrink:0;"></div>
-                      <div>
-                          <div class="settings-row-label">${m.name}</div>
-                          <div class="settings-row-desc">Uptime (30d): ${m.uptime}</div>
-                      </div>
-                  </div>
-                  <span class="badge ${isOk?'badge-success':'badge-warning'}">${m.status}</span>
-              </div>
-          `;
-      }).join('');
-  }
+  // ── LIVE SYNC: Load Settings ──
+  window.loadSettings = () => {
+      const settings = getSettings();
+      if (!settings.general) return;
+      
+      const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      const setCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+
+      // General
+      setVal('platformName', settings.general.platformName);
+      setVal('supportEmail', settings.general.supportEmail);
+      setVal('sessionTimeout', settings.general.sessionTimeout);
+      setVal('languageDefault', settings.general.languageDefault);
+
+      // SLA
+      setVal('slaCert', settings.sla?.slaCert);
+      setVal('slaWelfare', settings.sla?.slaWelfare);
+      setVal('slaPermission', settings.sla?.slaPermission);
+      setVal('slaCorrection', settings.sla?.slaCorrection);
+      setVal('slaGrievance', settings.sla?.slaGrievance);
+
+      // Notifications
+      setCheck('emailEnabled', settings.notifications?.emailEnabled);
+      setCheck('smsEnabled', settings.notifications?.smsEnabled);
+      setCheck('whatsappEnabled', settings.notifications?.whatsappEnabled);
+      setCheck('pushEnabled', settings.notifications?.pushEnabled);
+
+      // Security
+      setCheck('twoFactorEnabled', settings.security?.twoFactorEnabled);
+      setVal('passwordExpiry', settings.security?.passwordExpiry);
+      setVal('maxLoginAttempts', settings.security?.maxLoginAttempts);
+      setCheck('aadhaarMasking', settings.security?.aadhaarMasking);
+      
+      // Maintenance
+      const mToggle = document.getElementById('maintenanceToggle');
+      if (mToggle) mToggle.checked = !!settings.maintenance?.enabled;
+      setVal('maintenanceMsg', settings.maintenance?.message);
+  };
+
+  window.loadSettings();
 
   // Bind SLA input auto-saving dynamically over to storage
   ['slaCert', 'slaWelfare', 'slaPermission', 'slaCorrection'].forEach(id => {
@@ -1165,20 +1189,45 @@ export function initSystemSettings() {
   };
 
   window.saveAllSettings = () => {
-      const name = document.getElementById('platformName')?.value?.trim();
-      const email = document.getElementById('supportEmail')?.value?.trim();
+      const getVal = (id) => document.getElementById(id)?.value?.trim();
+      const getCheck = (id) => document.getElementById(id)?.checked;
+
+      const newSettings = {
+          general: {
+              platformName: getVal('platformName'),
+              supportEmail: getVal('supportEmail'),
+              sessionTimeout: parseInt(getVal('sessionTimeout'), 10),
+              languageDefault: getVal('languageDefault')
+          },
+          sla: {
+              slaCert: parseInt(getVal('slaCert'), 10),
+              slaWelfare: parseInt(getVal('slaWelfare'), 10),
+              slaPermission: parseInt(getVal('slaPermission'), 10),
+              slaCorrection: parseInt(getVal('slaCorrection'), 10),
+              slaGrievance: parseInt(getVal('slaGrievance'), 10)
+          },
+          notifications: {
+              emailEnabled: getCheck('emailEnabled'),
+              smsEnabled: getCheck('smsEnabled'),
+              whatsappEnabled: getCheck('whatsappEnabled'),
+              pushEnabled: getCheck('pushEnabled')
+          },
+          security: {
+              twoFactorEnabled: getCheck('twoFactorEnabled'),
+              passwordExpiry: parseInt(getVal('passwordExpiry'), 10),
+              maxLoginAttempts: parseInt(getVal('maxLoginAttempts'), 10),
+              aadhaarMasking: getCheck('aadhaarMasking')
+          },
+          maintenance: {
+              enabled: getCheck('maintenanceToggle'),
+              message: getVal('maintenanceMsg'),
+              estimatedEnd: ''
+          }
+      };
       
-      if (name !== undefined && !name) { 
-          if(window.showToast) window.showToast('Platform name cannot be empty.', 'error'); 
-          return; 
-      }
-      if (email !== undefined && (!email || !email.includes('@'))) { 
-          if(window.showToast) window.showToast('Enter a valid support email.', 'error'); 
-          return; 
-      }
-      
-      if(window.showToast) window.showToast('Settings saved successfully!', 'success');
-      addAuditEntry('Settings Updated', 'System configurations changed');
+      setSettings(newSettings);
+      if(window.showToast) window.showToast('All system settings saved and synchronized!', 'success');
+      addAuditEntry('Settings Updated', 'Full system configuration update by Super User');
   };
 
   window.confirmDanger = (msg, successMsg) => {

@@ -130,3 +130,23 @@ export function setSuperApprovedToday(count) { localStorage.setItem('DigiConnect
 export function setSuperEscSlaCases(data) { setCollection('super_esc_sla_cases', data); }
 export function setSuperPendingApps(data) { setCollection('super_pending_apps', data); }
 
+/**
+ * Get platform settings
+ * @returns {object}
+ */
+export function getSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('DigiConnect_settings')) || {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Set platform settings
+ * @param {object} settings
+ */
+export function setSettings(settings) {
+  localStorage.setItem('DigiConnect_settings', JSON.stringify(settings));
+}
+

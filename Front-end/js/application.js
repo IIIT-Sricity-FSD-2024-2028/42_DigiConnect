@@ -20,7 +20,7 @@ import {
 
 export function initApplyService() {
   const session = initPage({ title: 'Apply for Service', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'Apply for Service' }], requiredRole: 'citizen' });
-  const services = getServices().filter(s => s.name !== 'Marriage Certificate' && s.name !== 'Death Certificate');
+  const services = getServices().filter(s => s.status === 'Active');
   let selectedService = null;
   let currentStep = 1;
 
