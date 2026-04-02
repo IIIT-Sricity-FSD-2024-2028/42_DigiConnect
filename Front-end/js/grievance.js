@@ -2,10 +2,15 @@
 // grievance.js — Grievance lifecycle management
 // ═══════════════════════════════════════════
 
-import { getSession, getGrievances, setGrievances, getAuditLogs, setAuditLogs, getUsers, getApplications } from './state.js';
+import { getSession, getGrievances, setGrievances, getAuditLogs, setAuditLogs, getUsers, getApplications, setApplications } from './state.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, getQueryParam, openModal, closeModal } from './utils.js';
 import { renderNotifPanel, addNotification } from './notifications.js';
+import {
+  addAuditEntry, assignGrievanceOfficer, getSupervisorByDept,
+  pushToEscalatedCases, pushToSuperApprovals, updateMasterApp,
+  notifyCitizen, notifySupervisor, notifyGrievanceOfficer
+} from './workflow.js';
 
 // ── Shared helpers ──
 function setTextContent(id, value) {
@@ -13,7 +18,7 @@ function setTextContent(id, value) {
   if (el) el.textContent = value ?? '';
 }
 
-function addAuditEntry(action, details) {
+function localAuditEntry(action, details) {
   const session = getSession();
   const logs = getAuditLogs();
   logs.unshift({ id: generateId('LOG'), action, actor: session ? session.email : 'system', role: session ? session.role : 'system', date: new Date().toISOString(), details });
@@ -61,6 +66,46 @@ export function initRaiseGrievance() {
     
     // Validate step 2
     if (step === 3) {
+      const appId = document.getElementById('gAppId')?.value?.trim();
+      if (appId) {
+        if (!/^APP-\d+$/i.test(appId)) {
+          if(window.showToast) window.showToast('Please enter a valid Application ID (e.g., APP-1234).', 'warning');
+          return;
+        }
+        
+        // ── Strict Ownership Check ──
+        const apps = getApplications();
+        const app = apps.find(a => a.id.toUpperCase() === appId.toUpperCase());
+        
+        if (!app) {
+          if(window.showToast) window.showToast('Application ID not found in our records.', 'error');
+          return;
+        }
+        
+        if (app.citizenId !== session.id) {
+          if(window.showToast) window.showToast('You can only raise grievances for applications submitted through your account.', 'danger');
+          return;
+        }
+
+        // ── Auto-fill Department from Application ──
+        const deptSelect = document.getElementById('gDept');
+        if (deptSelect && app.dept) {
+          let matched = false;
+          for (let i = 0; i < deptSelect.options.length; i++) {
+            if (deptSelect.options[i].text === app.dept || deptSelect.options[i].value === app.dept) {
+              deptSelect.selectedIndex = i;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+             // Fallback to "Other" option if specific department isn't in dropdown
+             const other = Array.from(deptSelect.options).find(o => o.text === 'Other');
+             if (other) deptSelect.value = other.value;
+          }
+        }
+      }
+
       const title = document.getElementById('gTitle')?.value?.trim();
       const desc = document.getElementById('gDesc')?.value?.trim();
       if (!title || !desc) {
@@ -131,26 +176,32 @@ export function initRaiseGrievance() {
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
       const priority = document.getElementById('gPriority')?.value || 'medium';
 
+      // ── FIX 6: Dynamic Grievance Officer Assignment (least-load) ──
+      const { officerId, officerName } = assignGrievanceOfficer();
+
       const grievances = getGrievances();
       const newGrievance = {
         id: generateId('GRV'),
         citizenId: session.id, citizenName: session.name,
-        officerId: 'EMP-004', officerName: 'Priya Nair',
+        officerId, officerName,
         category: selectedCategory || 'delay',
         subject, description,
         relatedAppId: relatedApp || null,
-        status: 'new', priority: priority, slaStatus: 'safe',
+        status: 'open', priority: priority, slaStatus: 'safe',
         filedDate: new Date().toISOString().split('T')[0],
         lastUpdated: new Date().toISOString().split('T')[0],
         history: [
           { action: 'Grievance Filed', date: new Date().toISOString(), actor: session.name, note: `Complaint: ${subject}` },
-          { action: 'Assigned to Officer', date: new Date().toISOString(), actor: 'System', note: 'Assigned to Priya Nair (Grievance Officer).' },
+          { action: 'Assigned to Officer', date: new Date().toISOString(), actor: 'System', note: `Assigned to ${officerName} (Grievance Officer).` },
         ],
       };
       grievances.push(newGrievance);
       setGrievances(grievances);
-      addAuditEntry('Grievance Filed', `${session.name} filed grievance ${newGrievance.id}: ${subject}`);
-      addNotification({ userId: 'EMP-004', title: 'New Grievance Assigned', message: `Grievance ${newGrievance.id} assigned to you.`, type: 'info', link: `grievance/grievance-detail.html?id=${newGrievance.id}` });
+
+      // ── Audit + Notifications ──
+      addAuditEntry('Grievance Filed', `${session.name} filed grievance ${newGrievance.id}: ${subject}. Assigned to ${officerName}.`);
+      notifyGrievanceOfficer(officerId, 'New Grievance Assigned', `Grievance ${newGrievance.id} from ${session.name} assigned to you.`, newGrievance.id);
+      addNotification({ userId: session.id, title: 'Grievance Submitted', message: `Your grievance ${newGrievance.id} has been filed and assigned to ${officerName}.`, type: 'success', link: `citizen/my-grievances.html?id=${newGrievance.id}` });
 
       window.gNextStep(4);
       
@@ -227,8 +278,14 @@ export function initMyGrievances() {
 
   window.filterGrv = (filter, btn) => {
     currentFilter = filter;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    if(btn) btn.classList.add('active');
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.remove('active', 'btn-primary');
+      b.classList.add('btn-outline');
+    });
+    if(btn) {
+      btn.classList.remove('btn-outline');
+      btn.classList.add('active', 'btn-primary');
+    }
     selectedId = null;
     renderList();
   };
@@ -245,7 +302,7 @@ export function initMyGrievances() {
 
     const setTC = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     setTC('dGrvId', g.id);
-    const statusMap = { new:'Filed', open:'Investigating', resolved:'Resolved', rejected:'Rejected', escalated:'Escalated' };
+    const statusMap = { open:'Open', investigating:'Investigating', resolved:'Resolved', rejected:'Rejected', escalated:'Escalated' };
     setTC('dGrvBadge', statusMap[g.status] || g.status);
     const badgeEl = document.getElementById('dGrvBadge');
     if (badgeEl) badgeEl.className = `badge ${TERMINAL.includes(g.status) ? 'badge-success' : g.status==='escalated'?'badge-danger': 'badge-warning'}`;
@@ -366,7 +423,7 @@ export function initGrievanceDetail() {
   const heroCat = document.getElementById('heroCat');
   if (heroCat) heroCat.innerHTML = `<span class="category-tag ${getCatClass(grievance.category)}">${getCatLabel(grievance.category)}</span>`;
 
-  const statusInfo = { new: ['New', 'badge-info', 'NEW_GRIEVANCE'], open: ['Investigating', 'badge-warning', 'UNDER_INVESTIGATION'], escalated: ['Escalated', 'badge-danger', 'GRIEVANCE_ESCALATED'], resolved: ['Resolved', 'badge-success', 'GRIEVANCE_RESOLVED'], rejected: ['Rejected', 'badge-neutral', 'GRIEVANCE_REJECTED'] };
+  const statusInfo = { open: ['Open', 'badge-info', 'OPEN_GRIEVANCE'], investigating: ['Investigating', 'badge-warning', 'UNDER_INVESTIGATION'], escalated: ['Escalated', 'badge-danger', 'GRIEVANCE_ESCALATED'], resolved: ['Resolved', 'badge-success', 'GRIEVANCE_RESOLVED'], rejected: ['Rejected', 'badge-neutral', 'GRIEVANCE_REJECTED'] };
   const [sLabel, sCls, sCode] = statusInfo[grievance.status] || [grievance.status, 'badge-neutral', ''];
   const heroStatus = document.getElementById('heroStatus');
   if (heroStatus) heroStatus.innerHTML = `<span class="badge ${sCls}">${sLabel}</span><div style="font-size:0.6rem;font-family:var(--font-mono);color:var(--color-text-muted);margin-top:2px;">${sCode}</div>`;
@@ -620,7 +677,7 @@ export function initGrievanceDetail() {
   const completedSteps = new Set();
   
   if (grievance) {
-    if (grievance.status === 'open') { currentMaxStep = 3; completedSteps.add(1); completedSteps.add(2); }
+    if (grievance.status === 'investigating') { currentMaxStep = 3; completedSteps.add(1); completedSteps.add(2); }
     if (grievance.status === 'resolved' || grievance.status === 'escalated' || grievance.status === 'rejected') { currentMaxStep = 4; completedSteps.add(1); completedSteps.add(2); completedSteps.add(3); }
     
     if (currentMaxStep === 3) currentActiveTab = 'investigate';
@@ -739,7 +796,7 @@ export function initGrievanceDetail() {
     // Update grievance in localStorage
     grievance.category = selectedCat;
     grievance.priority = selectedPriority;
-    grievance.status = 'open';
+    grievance.status = 'investigating';
     grievance.lastUpdated = new Date().toISOString().split('T')[0];
     grievance.history.push({ action: 'Categorized as ' + getCatLabel(selectedCat), date: new Date().toISOString(), actor: session.name, note: `Category: ${getCatLabel(selectedCat)}. Priority: ${selectedPriority}. Status → UNDER_INVESTIGATION.` });
     grievance.history.push({ action: 'Investigation Started', date: new Date().toISOString(), actor: session.name, note: `Started formal investigation of application context.` });
@@ -875,21 +932,67 @@ export function initGrievanceDetail() {
       date: today.toISOString(), actor: session.name, note: resNote,
     });
     setGrievances(grievances);
-    
+
     // Dynamically update the audit timeline
     window.renderAuditHistory();
 
     const actionLabel = { resolve: 'Resolved', reject: 'Rejected', escalate: 'Escalated' }[selectedResType];
     addAuditEntry(`Grievance ${actionLabel}`, `${session.name} ${actionLabel.toLowerCase()} grievance ${grievance.id}. ${resNote}`);
 
-    // Notify citizen
-    addNotification({
-      userId: grievance.citizenId,
-      title: `Grievance ${actionLabel}`,
-      message: `Your grievance ${grievance.id} has been ${actionLabel.toLowerCase()}.`,
-      type: selectedResType === 'resolve' ? 'success' : selectedResType === 'reject' ? 'info' : 'warning',
-      link: '#',
-    });
+    // ── FIX 5 & 6: Category-based resolution actions ──
+    if (selectedResType === 'resolve') {
+      const apps = getApplications();
+      const relatedApp = grievance.relatedAppId ? apps.find(a => a.id === grievance.relatedAppId) : null;
+
+      if (grievance.category === 'rejection' && relatedApp) {
+        // REJECTION resolution: Reopen app → send to Supervisor queue
+        updateMasterApp(relatedApp.id, 'supervisor-review', 'Application Reopened by Grievance Resolution', `Grievance ${grievance.id} resolved as unfair rejection. Sent to Supervisor for final decision.`, session.name);
+        const supervisorId = getSupervisorByDept(relatedApp.serviceName);
+        pushToSuperApprovals({ id: relatedApp.id, service: relatedApp.serviceName, citizen: relatedApp.citizenName, submitted: relatedApp.submittedDate?.split('T')[0] || '—', slaLeft: 3, officerNote: `Reopened via Grievance ${grievance.id} — unfair rejection overturned.`, docs: relatedApp.documents?.map(d => d.name) || [] }, { name: session.name, role: 'Grievance Officer', title: 'GRV' }, relatedApp);
+        notifySupervisor(supervisorId, 'Application Reopened — Grievance Resolution', `${relatedApp.serviceName} (${relatedApp.id}) reopened after grievance ${grievance.id} found rejection was unfair. Your review needed.`, 'warning', `supervisor/supervisor-review.html?id=${relatedApp.id}&mode=final`);
+        addAuditEntry('App Reopened via Grievance', `${session.name} reopened ${relatedApp.id} after grievance ${grievance.id}. Sent to Supervisor.`);
+        grievance.history.push({ action: 'Application Reopened → Supervisor', date: today.toISOString(), actor: session.name, note: `Application ${relatedApp.id} escalated to Supervisor for final approval.` });
+        setGrievances(grievances);
+
+      } else if (grievance.category === 'delay' && relatedApp) {
+        // DELAY resolution: Expedite flag + audit warning against officer
+        updateMasterApp(relatedApp.id, 'under-review', 'Expedite Flag Set', `Grievance ${grievance.id}: Delay complaint resolved. Application expedited.`, session.name);
+        addAuditEntry('Officer Warning — Delay', `${session.name} logged delay warning against officer (App ${relatedApp.id}). Grievance ${grievance.id}.`);
+
+      } else if (grievance.category === 'payment') {
+        // PAYMENT resolution: Log resolution (refund simulated)
+        addAuditEntry('Payment Grievance Resolved', `${session.name} resolved payment grievance ${grievance.id}. Refund/resolution logged for ${grievance.citizenName}.`);
+
+      } else if (grievance.category === 'misconduct') {
+        // MISCONDUCT (minor) resolution: Audit warning against officer
+        addAuditEntry('Officer Warning — Misconduct', `${session.name} logged misconduct warning (minor) against officer for grievance ${grievance.id}.`);
+
+      } else {
+        // SYSTEMIC: Log audit + notify citizen
+        addAuditEntry('Systemic Issue Resolved', `${session.name} resolved systemic grievance ${grievance.id}. Audit warning logged.`);
+      }
+    }
+
+    if (selectedResType === 'escalate') {
+      // ── FIX 5: Grievance Officer → Supervisor escalation ──
+      // Only serious misconduct or long SLA cases
+      const apps = getApplications();
+      const relatedApp = grievance.relatedAppId ? apps.find(a => a.id === grievance.relatedAppId) : null;
+      grievance.relatedService = relatedApp?.serviceName || 'Service';
+      pushToEscalatedCases(grievance, session, resNote);
+      const supervisorId = getSupervisorByDept(relatedApp?.serviceName || '');
+      notifySupervisor(supervisorId, 'Grievance Escalated to You', `Grievance ${grievance.id} from ${grievance.citizenName} escalated by ${session.name}. Immediate action required.`, 'danger', 'supervisor/escalated-cases.html');
+      addAuditEntry('Grievance Escalated to Supervisor', `${session.name} escalated grievance ${grievance.id} to Supervisor. Reason: ${resNote}`);
+    }
+
+    // ── Notify Citizen always ──
+    const citizenNotifMap = {
+      resolve:  { title: 'Grievance Resolved', msg: `Your grievance ${grievance.id} has been resolved. ${resNote}`, type: 'success' },
+      reject:   { title: 'Grievance Rejected', msg: `Your grievance ${grievance.id} was closed. Reason: ${resNote}`, type: 'info' },
+      escalate: { title: 'Grievance Escalated', msg: `Your grievance ${grievance.id} has been escalated to the Supervisor for final action.`, type: 'warning' },
+    };
+    const cn = citizenNotifMap[selectedResType];
+    notifyCitizen(grievance.citizenId, cn.title, cn.msg, cn.type, null);
 
     // Toast & hero update
     const toastMsgs = { resolve: 'Grievance resolved. Status → GRIEVANCE_RESOLVED. Citizen notified.', reject: 'Grievance rejected. Status → GRIEVANCE_REJECTED. Citizen notified.', escalate: 'Escalated to Department Supervisor. Status → GRIEVANCE_ESCALATED.' };

@@ -2,12 +2,13 @@
 // dashboard.js — Dashboard page controllers for all roles
 // ═══════════════════════════════════════════
 
-import { getSession, getApplications, getGrievances, getUsers, getServices, getAuditLogs, setGrievances, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries, getSuperApprovals, setSuperApprovals, getSuperApprovedToday, setSuperApprovedToday, getSuperEscSlaCases, setSuperEscSlaCases } from './state.js';
+import { getSession, getApplications, getGrievances, getUsers, getServices, setServices, getAuditLogs, setGrievances, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries, getSuperApprovals, setSuperApprovals, getSuperApprovedToday, setSuperApprovedToday, getSuperEscSlaCases, setSuperEscSlaCases } from './state.js';
 import { initPage } from './navigation.js';
 import { showToast, getGreeting, formatDate, formatDateTime } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { checkSLA } from './escalation.js';
 import { OFFICER_QUERIES, OFFICER_ACTIVITY, OFFICER_SLA_RISKS, OFFICER_WEEK_CHART, SUPER_OFFICER_APPROVED, SUPER_SLA_BREACHES, SUPER_GRIEVANCES, SUPER_TEAM } from './mock-data.js';
+import { addAuditEntry, isOfficerFinalService, getSupervisorByDept, pushToSuperApprovals, updateMasterApp, notifyCitizen, notifySupervisor } from './workflow.js';
 
 // ══════════════════════════════════════════
 // Citizen Dashboard
@@ -54,7 +55,7 @@ export function initCitizenDashboard() {
 
   const recentAppsContainer = document.getElementById('recentApplications');
   if (recentAppsContainer) {
-    const recent = apps.slice(0, 4);
+    const recent = [...apps].sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate)).slice(0, 4);
     recentAppsContainer.innerHTML = recent.map(a => {
       const typeClass = a.serviceType === 'certificate' ? 'cert' : a.serviceType === 'welfare' ? 'welfare' : a.serviceType === 'permission' ? 'permission' : 'correction';
       const statusClass = a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : a.status === 'query' ? 'badge-warning' : 'badge-info';
@@ -73,8 +74,8 @@ export function initCitizenDashboard() {
 
   const grievContainer = document.getElementById('recentGrievances');
   if (grievContainer) {
-    const active = ['new', 'open', 'under-review', 'escalated'];
-    const recent = grievances.filter(g => active.includes(g.status)).slice(0, 3);
+    const active = ['open', 'investigating', 'under-review', 'escalated'];
+    const recent = grievances.filter(g => active.includes(g.status)).sort((a, b) => new Date(b.filedDate) - new Date(a.filedDate)).slice(0, 3);
     grievContainer.innerHTML = recent.map(g => `
       <div class="application-item" style="cursor:pointer;" onclick="window.location.href='my-grievances.html?id=${g.id}'" data-testid="recent-griev-${g.id}">
         <div class="app-type-icon grievance"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg></div>
@@ -109,39 +110,56 @@ export function initOfficerDashboard() {
   let currentServiceFilter = '';
   let currentSortFilter = 'sla';
   const isActive = a => !['approve', 'reject'].includes(a.status);
-  
+
   let officerQueue = getOfficerQueue();
   let displayQueue = [...officerQueue].filter(a => a.slaLeft >= 0 && isActive(a));
   const urgency = a => a.slaLeft < 0 ? 0 : a.slaLeft;
-  displayQueue.sort((a,b) => urgency(a) - urgency(b));
+  displayQueue.sort((a, b) => urgency(a) - urgency(b));
 
   function priColor(a) { return a.slaLeft < 0 ? 'var(--red-500)' : a.slaLeft <= 2 ? 'var(--amber-400)' : a.slaLeft <= 4 ? 'var(--orange-300)' : 'var(--slate-200)'; }
   function priLabel(a) { return a.slaLeft < 0 ? `${Math.abs(a.slaLeft)}d overdue` : a.slaLeft <= 2 ? `${a.slaLeft}d left ⚠` : a.slaLeft + ` days left`; }
   function priClass(a) { return a.slaLeft < 0 ? 'breach' : a.slaLeft <= 2 ? 'warn' : 'safe'; }
 
+  let currentPage = 1;
+  let pageSize = 5;
+
   function renderQueue() {
     const container = document.getElementById('queueList');
     if (!container) return;
-    container.innerHTML = displayQueue.slice(0, 6).map(a => `
+    
+    const totalPages = Math.ceil(displayQueue.length / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const startIndex = (currentPage - 1) * pageSize;
+    const pagedQueue = displayQueue.slice(startIndex, startIndex + pageSize);
+
+    container.innerHTML = pagedQueue.map(a => `
       <div class="app-row" onclick="window.openReview('${a.id}')">
         <div class="priority-bar" style="background:${priColor(a)};"></div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">
             <span style="font-family:var(--font-mono);font-size:0.75rem;font-weight:800;color:var(--navy-600);">${a.id}</span>
-            <span class="badge ${a.status==='new'?'badge-info':a.status==='urgent'?'badge-danger':'badge-warning'}">${a.status==='new'?'New':a.status==='urgent'?'Urgent':'In Review'}</span>
+            <span class="badge ${a.status === 'new' ? 'badge-info' : a.status === 'urgent' ? 'badge-danger' : 'badge-warning'}">${a.status === 'new' ? 'New' : a.status === 'urgent' ? 'Urgent' : 'In Review'}</span>
           </div>
           <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);">${a.service}</div>
           <div style="font-size:0.75rem;color:var(--color-text-muted);">${a.citizen} &nbsp;·&nbsp; Submitted ${a.submitted}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:0.75rem;font-weight:700;color:${a.slaLeft<0?'var(--red-500)':a.slaLeft<=2?'var(--amber-600)':'var(--green-600)'};">${priLabel(a)}</div>
-          <div class="sla-bar" style="width:80px;height:4px;margin-top:5px;margin-left:auto;"><div class="sla-fill ${priClass(a)}" style="width:${Math.max(5,Math.min(100,(a.slaLeft/Math.max(a.slaTotal,1))*100))}%;"></div></div>
+          <div style="font-size:0.75rem;font-weight:700;color:${a.slaLeft < 0 ? 'var(--red-500)' : a.slaLeft <= 2 ? 'var(--amber-600)' : 'var(--green-600)'};">${priLabel(a)}</div>
+          <div class="sla-bar" style="width:80px;height:4px;margin-top:5px;margin-left:auto;"><div class="sla-fill ${priClass(a)}" style="width:${Math.max(5, Math.min(100, (a.slaLeft / Math.max(a.slaTotal, 1)) * 100))}%;"></div></div>
           <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end;">
             <button class="action-chip chip-approve" onclick="event.stopPropagation();window.quickAction('${a.id}','approve')">✓ Approve</button>
           </div>
         </div>
       </div>
     `).join('') || '<div style="padding:var(--space-xl);text-align:center;color:var(--color-text-muted);">No applications found</div>';
+    
+    if (document.getElementById('currentPage')) document.getElementById('currentPage').textContent = currentPage;
+    if (document.getElementById('totalPages')) document.getElementById('totalPages').textContent = totalPages;
+    if (document.getElementById('shownCount')) document.getElementById('shownCount').textContent = pagedQueue.length ? `${startIndex + 1}-${startIndex + pagedQueue.length}` : '0';
+    if (document.getElementById('totalCount')) document.getElementById('totalCount').textContent = displayQueue.length;
+    
+    if (document.getElementById('prevBtn')) document.getElementById('prevBtn').disabled = currentPage === 1;
+    if (document.getElementById('nextBtn')) document.getElementById('nextBtn').disabled = currentPage === totalPages;
   }
 
   function renderBreachList() {
@@ -177,20 +195,20 @@ export function initOfficerDashboard() {
     const queries = getOfficerQueries();
     container.innerHTML = queries.map(q => `
       <div class="app-row">
-        <div style="width:36px;height:36px;border-radius:50%;background:${q.responded?'var(--green-100)':'var(--amber-100)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="16" height="16" fill="none" stroke="${q.responded?'var(--green-500)':'var(--amber-600)'}" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${q.responded?'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z':'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'}"/></svg>
+        <div style="width:36px;height:36px;border-radius:50%;background:${q.responded ? 'var(--green-100)' : 'var(--amber-100)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="16" height="16" fill="none" stroke="${q.responded ? 'var(--green-500)' : 'var(--amber-600)'}" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${q.responded ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'}"/></svg>
         </div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
             <span style="font-family:var(--font-mono);font-size:0.75rem;font-weight:700;color:var(--navy-600);">${q.id}</span>
-            <span class="badge ${q.responded?'badge-success':'badge-warning'}">${q.responded?'Responded':'Awaiting'}</span>
+            <span class="badge ${q.responded ? 'badge-success' : 'badge-warning'}">${q.responded ? 'Responded' : 'Awaiting'}</span>
           </div>
           <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);">${q.citizen} — ${q.service}</div>
           <div style="font-size:0.75rem;color:var(--slate-600);margin-top:2px;">"${q.query}"</div>
           <div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:3px;">Sent ${q.sent} · Response deadline: <strong>${q.deadline}</strong></div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
-          ${q.responded?`<button class="btn btn-success btn-sm" onclick="event.stopPropagation();window.location.href='review-application.html?id=${q.id}'">Review</button>`:`<button class="btn btn-outline btn-sm" onclick="window.showToast('SMS reminder sent to ${q.citizen}.','info')">Send Reminder</button>`}
+          ${q.responded ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();window.location.href='review-application.html?id=${q.id}'">Review</button>` : `<button class="btn btn-outline btn-sm" onclick="window.showToast('SMS reminder sent to ${q.citizen}.','info')">Send Reminder</button>`}
         </div>
       </div>
     `).join('') || '<div style="padding:var(--space-xl);text-align:center;color:var(--color-text-muted);">No active queries</div>';
@@ -200,7 +218,7 @@ export function initOfficerDashboard() {
     const container = document.getElementById('activityList');
     if (!container) return;
     const dateEl = document.getElementById('actDate');
-    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
     const paths = {
       check: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -224,7 +242,7 @@ export function initOfficerDashboard() {
     if (!container) return;
     container.innerHTML = OFFICER_SLA_RISKS.map(s => `
       <div onclick="window.openReview('${s.id}')" style="cursor:pointer;">
-        <div style="display:flex;justify-content:space-between;font-size:0.72rem;margin-bottom:2px;"><span style="color:var(--slate-600);">${s.id}</span><span style="font-weight:700;color:${s.status==='breach'?'var(--red-500)':'var(--amber-500)'};">${s.status==='breach'?'BREACH':'At Risk'}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;margin-bottom:2px;"><span style="color:var(--slate-600);">${s.id}</span><span style="font-weight:700;color:${s.status === 'breach' ? 'var(--red-500)' : 'var(--amber-500)'};">${s.status === 'breach' ? 'BREACH' : 'At Risk'}</span></div>
         <div class="sla-bar" style="height:5px;margin-bottom:4px;"><div class="sla-fill ${s.status}" style="width:${s.pct}%;"></div></div>
       </div>
     `).join('');
@@ -236,17 +254,17 @@ export function initOfficerDashboard() {
     if (!chart || !labels) return;
     const { days, vals } = OFFICER_WEEK_CHART;
     const max = Math.max(...vals) || 1;
-    chart.innerHTML = vals.map((v,i) => `<div style="flex:1;display:flex;align-items:flex-end;"><div class="mini-chart-bar" style="height:${Math.max(v/max*72,v>0?4:4)}px;background:${i===4?'var(--navy-600)':'var(--navy-200)'};" title="${v} approved"></div></div>`).join('');
+    chart.innerHTML = vals.map((v, i) => `<div style="flex:1;display:flex;align-items:flex-end;"><div class="mini-chart-bar" style="height:${Math.max(v / max * 72, v > 0 ? 4 : 4)}px;background:${i === 4 ? 'var(--navy-600)' : 'var(--navy-200)'};" title="${v} approved"></div></div>`).join('');
     labels.innerHTML = days.map(d => `<span>${d}</span>`).join('');
   }
 
   // Bind inline functions to window for dashboard
-  window.filterQueue = function(service) {
+  window.filterQueue = function (service) {
     currentServiceFilter = service || '';
     applyFilters();
   };
 
-  window.sortQueue = function(by) {
+  window.sortQueue = function (by) {
     currentSortFilter = by || 'sla';
     applyFilters();
   };
@@ -257,16 +275,31 @@ export function initOfficerDashboard() {
     if (currentServiceFilter) {
       displayQueue = displayQueue.filter(a => a.service === currentServiceFilter);
     }
-    displayQueue.sort((a,b) => {
+    displayQueue.sort((a, b) => {
       if (currentSortFilter === 'date') return 0; // simplified
       if (currentSortFilter === 'sla') return urgency(a) - urgency(b);
       return a.service.localeCompare(b.service);
     });
+    currentPage = 1;
     renderQueue();
   }
+  
+  window.changePageSize = function (size) {
+    pageSize = parseInt(size, 10);
+    currentPage = 1;
+    renderQueue();
+  };
+
+  window.changePage = function (dir) {
+    const totalPages = Math.ceil(displayQueue.length / pageSize) || 1;
+    currentPage += dir;
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    renderQueue();
+  };
 
   let currentApp = null;
-  window.openReview = function(id) {
+  window.openReview = function (id) {
     officerQueue = getOfficerQueue();
     currentApp = officerQueue.find(a => a.id === id);
     if (!currentApp) return;
@@ -278,16 +311,16 @@ export function initOfficerDashboard() {
             <div class="review-item"><span class="review-key">Applicant</span><span class="review-value">${currentApp.citizen}</span></div>
             <div class="review-item"><span class="review-key">Service</span><span class="review-value">${currentApp.service}</span></div>
             <div class="review-item"><span class="review-key">Submitted</span><span class="review-value">${currentApp.submitted} 2025</span></div>
-            <div class="review-item"><span class="review-key">SLA Status</span><span class="review-value" style="font-weight:700;color:${currentApp.slaLeft<0?'var(--red-500)':currentApp.slaLeft<=2?'var(--amber-500)':'var(--green-500)'};">${currentApp.slaLeft<0?Math.abs(currentApp.slaLeft)+' days overdue':currentApp.slaLeft+' days left'}</span></div>
-            ${currentApp.income?`<div class="review-item"><span class="review-key">Annual Income</span><span class="review-value">₹${currentApp.income}</span></div>`:''}
-            ${currentApp.community?`<div class="review-item"><span class="review-key">Community</span><span class="review-value">${currentApp.community}</span></div>`:''}
-            ${currentApp.purpose?`<div class="review-item"><span class="review-key">Purpose</span><span class="review-value">${currentApp.purpose}</span></div>`:''}
+            <div class="review-item"><span class="review-key">SLA Status</span><span class="review-value" style="font-weight:700;color:${currentApp.slaLeft < 0 ? 'var(--red-500)' : currentApp.slaLeft <= 2 ? 'var(--amber-500)' : 'var(--green-500)'};">${currentApp.slaLeft < 0 ? Math.abs(currentApp.slaLeft) + ' days overdue' : currentApp.slaLeft + ' days left'}</span></div>
+            ${currentApp.income ? `<div class="review-item"><span class="review-key">Annual Income</span><span class="review-value">₹${currentApp.income}</span></div>` : ''}
+            ${currentApp.community ? `<div class="review-item"><span class="review-key">Community</span><span class="review-value">${currentApp.community}</span></div>` : ''}
+            ${currentApp.purpose ? `<div class="review-item"><span class="review-key">Purpose</span><span class="review-value">${currentApp.purpose}</span></div>` : ''}
           </div></div>
         </div>
         <div>
           <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:var(--space-sm);">Uploaded Documents</div>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            ${['Aadhaar Card.pdf','Ration Card / Utility Bill.jpg','Salary Slip 2024.pdf','Self-Declaration.pdf'].slice(0,currentApp.docs).map(d=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);"><span style="font-size:0.8rem;">${d}</span><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="window.showToast('Document opened.','info')">View</button></div>`).join('')}
+            ${['Aadhaar Card.pdf', 'Ration Card / Utility Bill.jpg', 'Salary Slip 2024.pdf', 'Self-Declaration.pdf'].slice(0, currentApp.docs).map(d => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);"><span style="font-size:0.8rem;">${d}</span><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="window.showToast('Document opened.','info')">View</button></div>`).join('')}
           </div>
         </div>
       </div>
@@ -299,33 +332,54 @@ export function initOfficerDashboard() {
     document.getElementById('reviewModal').classList.add('active');
   };
 
-  window.closeModal = function(id) {
+  window.closeModal = function (id) {
     document.getElementById(id)?.classList.remove('active');
   };
 
-  window.doAction = function(action) {
+  window.doAction = function (action) {
     if (action === 'query') {
       if (currentApp) window.location.href = `review-application.html?id=${currentApp.id}&action=query`;
       return;
     }
     window.closeModal('reviewModal');
     if (currentApp) {
-      currentApp.status = action; // 'approve' or 'reject'
+      currentApp.status = action;
       officerQueue = getOfficerQueue();
       const index = officerQueue.findIndex(a => a.id === currentApp.id);
-      if (index > -1) {
-        officerQueue[index] = currentApp;
-        setOfficerQueue(officerQueue);
+      if (index > -1) { officerQueue[index] = currentApp; setOfficerQueue(officerQueue); }
+
+      // ── Live connections: sync master apps + notify citizens ──
+      const allApps = getApplications();
+      const masterApp = allApps.find(ap => ap.id === currentApp.id);
+      const citizenId = masterApp?.citizenId || null;
+      const serviceName = currentApp.service || masterApp?.serviceName || '';
+      const supervisorId = masterApp?.supervisorId || getSupervisorByDept(serviceName);
+      const remarks = document.getElementById('officerRemarks')?.value || '';
+
+      if (action === 'approve') {
+        if (isOfficerFinalService(serviceName)) {
+          updateMasterApp(currentApp.id, 'approved', 'Officer Approved (Final)', `Final approval by ${session.name}.`, session.name);
+          notifyCitizen(citizenId, '✅ Application Approved!', `Your ${serviceName} (${currentApp.id}) has been approved.`, 'success', currentApp.id);
+          addAuditEntry('Officer Final Approval', `${session.name} gave final approval for ${serviceName} (${currentApp.id}).`);
+        } else {
+          updateMasterApp(currentApp.id, 'officer-approved', 'Officer Approved', `Approved by ${session.name}. Remarks: ${remarks}`, session.name);
+          pushToSuperApprovals(currentApp, session, masterApp);
+          notifyCitizen(citizenId, 'Application Approved by Officer', `Your ${serviceName} (${currentApp.id}) approved by officer. Supervisor review next.`, 'info', currentApp.id);
+          notifySupervisor(supervisorId, 'Application Awaiting Final Approval', `${serviceName} (${currentApp.id}) approved by ${session.name}. Final approval needed.`, 'info', `supervisor/supervisor-review.html?id=${currentApp.id}&mode=final`);
+          addAuditEntry('Officer Approved → Supervisor', `${session.name} approved ${serviceName} (${currentApp.id}).`);
+        }
+      } else if (action === 'reject') {
+        updateMasterApp(currentApp.id, 'rejected', 'Application Rejected', `Rejected by ${session.name}. ${remarks}`, session.name);
+        notifyCitizen(citizenId, 'Application Rejected', `Your ${serviceName} (${currentApp.id}) was rejected. You may raise a grievance.`, 'error', currentApp.id);
+        addAuditEntry('Officer Rejected', `${session.name} rejected ${serviceName} (${currentApp.id}).`);
       }
     }
     const msgs = {
-      approve:`${currentApp?.id} approved! Certificate queued for issue. Citizen notified.`,
-      reject:`${currentApp?.id} rejected. Citizen has been notified with reason.`,
-      query:`Query raised on ${currentApp?.id}. Citizen notified via SMS & portal.`
+      approve: `${currentApp?.id} approved! Sent to Supervisor for final review. Citizen notified.`,
+      reject: `${currentApp?.id} rejected. Citizen has been notified with reason.`,
     };
-    showToast(msgs[action], action==='approve'?'success':action==='reject'?'warning':'info');
-    
-    // Re-render lists to hide the actioned application
+    showToast(msgs[action] || `Action done.`, action === 'approve' ? 'success' : 'warning');
+
     applyFilters();
     renderBreachList();
     updateOfficerCounters();
@@ -338,24 +392,41 @@ export function initOfficerDashboard() {
     const officerQueries = getOfficerQueries();
     const queriesCount = officerQueries.filter(q => !q.responded).length;
     const approvedCount = 14 + [...officerQueue].filter(a => a.status === 'approve').length;
-    
+
     if (document.getElementById('stat-pending')) document.getElementById('stat-pending').textContent = queueCount;
     if (document.getElementById('stat-approved')) document.getElementById('stat-approved').textContent = approvedCount;
     if (document.getElementById('stat-breached')) document.getElementById('stat-breached').textContent = breachCount;
     if (document.getElementById('stat-queries')) document.getElementById('stat-queries').textContent = queriesCount;
-    
+
     if (document.getElementById('tab-badge-queue')) document.getElementById('tab-badge-queue').textContent = queueCount;
     if (document.getElementById('tab-badge-breach')) document.getElementById('tab-badge-breach').textContent = breachCount;
     if (document.getElementById('tab-badge-queries')) document.getElementById('tab-badge-queries').textContent = queriesCount;
+
+    if (document.getElementById('qa-badge-breach')) document.getElementById('qa-badge-breach').textContent = breachCount;
+    if (document.getElementById('qa-badge-queries')) document.getElementById('qa-badge-queries').textContent = queriesCount;
+    
+    const breachBanner = document.getElementById('breachBanner');
+    if (breachBanner) {
+      if (breachCount > 0) {
+        breachBanner.style.display = 'flex'; // Ensure flex display is active
+        const bannerDiv = breachBanner.querySelector('div');
+        if (bannerDiv) {
+          const appText = breachCount === 1 ? '1 application have breached SLA.' : `${breachCount} applications have breached SLA.`;
+          bannerDiv.innerHTML = `<strong>${appText}</strong> Immediate action required to prevent escalation to supervisor. <button class="btn btn-sm" style="background:var(--red-600);color:#fff;border:none;margin-left:8px;" onclick="showTab('breach')">View Breaches ?</button>`;
+        }
+      } else {
+        breachBanner.style.display = 'none';
+      }
+    }
   }
 
-  window.quickAction = function(id, action) {
+  window.quickAction = function (id, action) {
     officerQueue = getOfficerQueue();
     currentApp = officerQueue.find(a => a.id === id);
     window.doAction(action);
   };
 
-  window.showTab = function(tabId) {
+  window.showTab = function (tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
     const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
@@ -390,32 +461,32 @@ export function initSupervisorDashboard() {
   renderNotifPanel();
 
   // ── Persisted state from localStorage ──
-  let pendingApprovals  = getSuperApprovals();
-  let approvedToday     = getSuperApprovedToday();
-  let allEscalated      = getSuperEscSlaCases();   // combined SLA + grievance list
-  let slaOnlyCases      = allEscalated.filter(c => c.type === 'sla');
+  let pendingApprovals = getSuperApprovals();
+  let approvedToday = getSuperApprovedToday();
+  let allEscalated = getSuperEscSlaCases();   // combined SLA + grievance list
+  let slaOnlyCases = allEscalated.filter(c => c.type === 'sla');
   let grievanceOnlyCases = allEscalated.filter(c => c.type === 'grievance');
-  let displayApprovals  = [...pendingApprovals];
+  let displayApprovals = [...pendingApprovals];
 
   // ── Stat + badge helpers ──
   function updateStats() {
-    const pendEl          = document.getElementById('sup-stat-pending');
-    const appEl           = document.getElementById('sup-stat-approved');
-    const badgeEl         = document.getElementById('badge-approvals');
-    const slaEl           = document.getElementById('sup-stat-sla');
-    const slaBadgeEl      = document.getElementById('badge-sla');
-    const grievEl         = document.getElementById('sup-stat-grievance');
-    const grievBadgeEl    = document.getElementById('badge-grievance');
-    if (pendEl)       pendEl.textContent       = pendingApprovals.length;
-    if (appEl)        appEl.textContent        = approvedToday;
-    if (badgeEl)      badgeEl.textContent      = pendingApprovals.length;
-    if (slaEl)        slaEl.textContent        = slaOnlyCases.length;
-    if (slaBadgeEl)   slaBadgeEl.textContent   = slaOnlyCases.length;
-    if (grievEl)      grievEl.textContent      = grievanceOnlyCases.length;
+    const pendEl = document.getElementById('sup-stat-pending');
+    const appEl = document.getElementById('sup-stat-approved');
+    const badgeEl = document.getElementById('badge-approvals');
+    const slaEl = document.getElementById('sup-stat-sla');
+    const slaBadgeEl = document.getElementById('badge-sla');
+    const grievEl = document.getElementById('sup-stat-grievance');
+    const grievBadgeEl = document.getElementById('badge-grievance');
+    if (pendEl) pendEl.textContent = pendingApprovals.length;
+    if (appEl) appEl.textContent = approvedToday;
+    if (badgeEl) badgeEl.textContent = pendingApprovals.length;
+    if (slaEl) slaEl.textContent = slaOnlyCases.length;
+    if (slaBadgeEl) slaBadgeEl.textContent = slaOnlyCases.length;
+    if (grievEl) grievEl.textContent = grievanceOnlyCases.length;
     if (grievBadgeEl) grievBadgeEl.textContent = grievanceOnlyCases.length;
   }
 
-  window.filterApprovals = function(service) {
+  window.filterApprovals = function (service) {
     displayApprovals = service
       ? pendingApprovals.filter(a => a.service === service)
       : [...pendingApprovals];
@@ -446,8 +517,8 @@ export function initSupervisorDashboard() {
         </td>
         <td style="font-size:0.8rem;color:var(--color-text-muted);">${a.submitted}</td>
         <td>
-          <span style="font-size:0.8rem;font-weight:700;color:${a.slaLeft<=2?'var(--red-500)':a.slaLeft<=4?'var(--amber-500)':'var(--green-600)'};">  
-            ${a.slaLeft<=2?'⚠ ':''}${a.slaLeft}d left
+          <span style="font-size:0.8rem;font-weight:700;color:${a.slaLeft <= 2 ? 'var(--red-500)' : a.slaLeft <= 4 ? 'var(--amber-500)' : 'var(--green-600)'};">  
+            ${a.slaLeft <= 2 ? '⚠ ' : ''}${a.slaLeft}d left
           </span>
         </td>
         <td>
@@ -463,11 +534,20 @@ export function initSupervisorDashboard() {
     `).join('');
   }
 
-  window.quickApprove = function(id, citizen) {
+  window.quickApprove = function (id, citizen) {
+    // ── Live connection: Supervisor final approve from dashboard ──
+    const app = pendingApprovals.find(a => a.id === id);
+    updateMasterApp(id, 'approved', 'Supervisor Quick Approval — Certificate Issued', `Quick approved by ${session.name} from dashboard.`, session.name);
+    const allApps = getApplications();
+    const masterApp = allApps.find(ap => ap.id === id);
+    const citizenId = masterApp?.citizenId || app?.citizenId || null;
+    notifyCitizen(citizenId, '🎉 Certificate Issued!', `Your ${app?.service || 'application'} (${id}) has been approved by the Supervisor. Certificate ready.`, 'success', id);
+    addAuditEntry('Supervisor Quick Approval', `${session.name} quick-approved ${id} from dashboard. Certificate issued to ${citizen}.`);
+
     showToast(`${id} approved. Certificate issued to ${citizen}. Audit trail updated.`, 'success');
-    pendingApprovals  = pendingApprovals.filter(a => a.id !== id);
-    displayApprovals  = displayApprovals.filter(a => a.id !== id);
-    approvedToday    += 1;
+    pendingApprovals = pendingApprovals.filter(a => a.id !== id);
+    displayApprovals = displayApprovals.filter(a => a.id !== id);
+    approvedToday += 1;
     setSuperApprovals(pendingApprovals);
     setSuperApprovedToday(approvedToday);
     renderApprovals();
@@ -548,29 +628,29 @@ export function initSupervisorDashboard() {
             <div style="font-weight:700;color:var(--navy-900);">${o.name}</div>
             <div style="font-size:0.75rem;color:var(--color-text-muted);">${o.role}</div>
           </div>
-          <span class="badge ${o.sla>=95?'badge-success':o.sla>=85?'badge-warning':'badge-danger'}" style="margin-left:auto;">${o.sla}% SLA</span>
+          <span class="badge ${o.sla >= 95 ? 'badge-success' : o.sla >= 85 ? 'badge-warning' : 'badge-danger'}" style="margin-left:auto;">${o.sla}% SLA</span>
         </div>
-        <div class="sla-bar" style="height:6px;margin-bottom:var(--space-md);"><div class="sla-fill ${o.sla>=95?'safe':o.sla>=85?'warn':'breach'}" style="width:${o.sla}%;"></div></div>
+        <div class="sla-bar" style="height:6px;margin-bottom:var(--space-md);"><div class="sla-fill ${o.sla >= 95 ? 'safe' : o.sla >= 85 ? 'warn' : 'breach'}" style="width:${o.sla}%;"></div></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-sm);margin-bottom:var(--space-md);text-align:center;">
           <div style="background:var(--amber-50);padding:8px;border-radius:var(--radius-sm);"><div style="font-size:1.125rem;font-weight:800;color:var(--amber-600);">${o.pending}</div><div style="font-size:0.65rem;color:var(--color-text-muted);font-weight:600;">PENDING</div></div>
           <div style="background:var(--green-50);padding:8px;border-radius:var(--radius-sm);"><div style="font-size:1.125rem;font-weight:800;color:var(--green-600);">${o.approved}</div><div style="font-size:0.65rem;color:var(--color-text-muted);font-weight:600;">APPROVED</div></div>
-          <div style="background:${o.breach>0?'var(--red-50)':'var(--slate-50)'};padding:8px;border-radius:var(--radius-sm);"><div style="font-size:1.125rem;font-weight:800;color:${o.breach>0?'var(--red-600)':'var(--slate-400)'}">${o.breach}</div><div style="font-size:0.65rem;color:var(--color-text-muted);font-weight:600;">BREACHED</div></div>
+          <div style="background:${o.breach > 0 ? 'var(--red-50)' : 'var(--slate-50)'};padding:8px;border-radius:var(--radius-sm);"><div style="font-size:1.125rem;font-weight:800;color:${o.breach > 0 ? 'var(--red-600)' : 'var(--slate-400)'}">${o.breach}</div><div style="font-size:0.65rem;color:var(--color-text-muted);font-weight:600;">BREACHED</div></div>
         </div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-outline btn-sm" style="flex:1;" onclick="window.showToast('Reminder sent to ${o.name}.','info')">Remind</button>
           <a href="workload-management.html" class="btn btn-outline btn-sm" style="flex:1;text-align:center;">Reassign</a>
         </div>
-        ${o.breach > 0 ? `<div style="margin-top:8px;font-size:0.72rem;color:var(--red-600);text-align:center;font-weight:600;">${o.breach} breach${o.breach>1?'es':''} — action needed</div>` : ''}
+        ${o.breach > 0 ? `<div style="margin-top:8px;font-size:0.72rem;color:var(--red-600);text-align:center;font-weight:600;">${o.breach} breach${o.breach > 1 ? 'es' : ''} — action needed</div>` : ''}
       </div>
     `).join('');
   }
 
   const supDate = document.getElementById('supDate');
   if (supDate) {
-    supDate.textContent = new Date().toLocaleDateString('en-IN', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    supDate.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   }
 
-  window.showTab = function(tabId) {
+  window.showTab = function (tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
     const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
@@ -606,47 +686,60 @@ export function initAdminDashboard() {
   window.showToast = showToast;
 
   window.updateAdminStats = () => {
-      const apps = getApplications();
-      const users = getUsers();
-      const services = getServices();
-      const grievances = getGrievances();
+    const apps = getApplications();
+    const users = getUsers();
+    const services = getServices();
+    const grievances = getGrievances();
 
-      const approvedCount = apps.filter(a => a.status === 'approved').length;
-      const pendingCount = apps.filter(a => a.status !== 'approved' && a.status !== 'rejected').length;
-      const citizenCount = users.filter(u => u.role === 'citizen').length;
-      const officerCount = users.filter(u => u.role === 'officer').length;
-      const activeGrievanceCount = grievances.filter(g => !['resolved','rejected','escalated-resolved'].includes(g.status)).length;
-      const activeServiceCount = services.filter(s => s.status === 'Active').length;
+    const approvedCount = apps.filter(a => a.status === 'approved').length;
+    const pendingCount = apps.filter(a => a.status !== 'approved' && a.status !== 'rejected').length;
+    const citizenCount = users.filter(u => u.role === 'citizen').length;
+    const officerCount = users.filter(u => u.role === 'officer').length;
+    const activeGrievanceCount = grievances.filter(g => !['resolved', 'rejected', 'escalated-resolved'].includes(g.status)).length;
+    const activeServiceCount = services.filter(s => s.status === 'Active').length;
 
-      if(document.getElementById('admin-stat-total-apps')) document.getElementById('admin-stat-total-apps').textContent = apps.length.toLocaleString();
-      if(document.getElementById('admin-stat-approved')) document.getElementById('admin-stat-approved').textContent = approvedCount.toLocaleString();
-      if(document.getElementById('admin-stat-pending')) document.getElementById('admin-stat-pending').textContent = pendingCount.toLocaleString();
-      if(document.getElementById('admin-stat-citizens')) document.getElementById('admin-stat-citizens').textContent = citizenCount.toLocaleString();
-      if(document.getElementById('admin-stat-officers')) document.getElementById('admin-stat-officers').textContent = officerCount.toLocaleString();
-      if(document.getElementById('admin-stat-grievances')) document.getElementById('admin-stat-grievances').textContent = activeGrievanceCount.toLocaleString();
-      if(document.getElementById('admin-stat-services')) document.getElementById('admin-stat-services').textContent = activeServiceCount.toLocaleString();
+    if (document.getElementById('admin-stat-total-apps')) document.getElementById('admin-stat-total-apps').textContent = apps.length.toLocaleString();
+    if (document.getElementById('admin-stat-approved')) document.getElementById('admin-stat-approved').textContent = approvedCount.toLocaleString();
+    if (document.getElementById('admin-stat-pending')) document.getElementById('admin-stat-pending').textContent = pendingCount.toLocaleString();
+    if (document.getElementById('admin-stat-citizens')) document.getElementById('admin-stat-citizens').textContent = citizenCount.toLocaleString();
+    if (document.getElementById('admin-stat-officers')) document.getElementById('admin-stat-officers').textContent = officerCount.toLocaleString();
+    if (document.getElementById('admin-stat-grievances')) document.getElementById('admin-stat-grievances').textContent = activeGrievanceCount.toLocaleString();
+    if (document.getElementById('admin-stat-services')) document.getElementById('admin-stat-services').textContent = activeServiceCount.toLocaleString();
+
+    // Dynamically update Delta references to match
+    const citizenDelta = document.getElementById('admin-delta-citizens');
+    if (citizenDelta) citizenDelta.textContent = `All-time total verified users`;
+    
+    const grievDelta = document.getElementById('admin-delta-grievances');
+    if (grievDelta) grievDelta.textContent = `${activeGrievanceCount} unresolved cases`;
+    
+    const approvalDelta = document.getElementById('admin-delta-approved');
+    if (approvalDelta) {
+      const rate = apps.length > 0 ? ((approvedCount / apps.length) * 100).toFixed(1) : 0;
+      approvalDelta.textContent = `${rate}% approval rate`;
+    }
   };
   window.updateAdminStats();
 
   // Date
   const dateEl = document.getElementById('todayDate');
   if (dateEl) {
-      dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   // Bar Chart
   const cats = [
-      { label: 'Income Certificate', val: 892, pct: 92, color: 'var(--navy-500)' },
-      { label: 'Caste Certificate', val: 674, pct: 70, color: 'var(--navy-400)' },
-      { label: 'Welfare / Subsidy', val: 521, pct: 54, color: 'var(--green-500)' },
-      { label: 'Residence Certificate', val: 408, pct: 42, color: 'var(--navy-300)' },
-      { label: 'Permissions & Auth', val: 287, pct: 30, color: 'var(--amber-500)' },
-      { label: 'Record Correction', val: 186, pct: 19, color: 'var(--purple-500)' },
-      { label: 'Grievances', val: 879, pct: 91, color: 'var(--orange-500)' },
+    { label: 'Income Certificate', val: 892, pct: 92, color: 'var(--navy-500)' },
+    { label: 'Caste Certificate', val: 674, pct: 70, color: 'var(--navy-400)' },
+    { label: 'Welfare / Subsidy', val: 521, pct: 54, color: 'var(--green-500)' },
+    { label: 'Residence Certificate', val: 408, pct: 42, color: 'var(--navy-300)' },
+    { label: 'Permissions & Auth', val: 287, pct: 30, color: 'var(--amber-500)' },
+    { label: 'Record Correction', val: 186, pct: 19, color: 'var(--purple-500)' },
+    { label: 'Grievances', val: 879, pct: 91, color: 'var(--orange-500)' },
   ];
   const chartBars = document.getElementById('chartBars');
   if (chartBars) {
-      chartBars.innerHTML = cats.map(c => `
+    chartBars.innerHTML = cats.map(c => `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
               <div style="min-width:160px;font-size:0.8rem;color:var(--slate-700);font-weight:500;">${c.label}</div>
               <div style="flex:1;height:10px;background:var(--slate-100);border-radius:5px;overflow:hidden;">
@@ -657,48 +750,57 @@ export function initAdminDashboard() {
       `).join('');
   }
 
-  // Services table
-  const services = [
-      { name: 'Income Certificate', cat: 'Certificate', apps: 892, sla: '7 days', status: 'Active' },
-      { name: 'Caste Certificate', cat: 'Certificate', apps: 674, sla: '7 days', status: 'Active' },
-      { name: 'Welfare Scheme', cat: 'Welfare', apps: 521, sla: '14 days', status: 'Active' },
-      { name: 'Event Permission', cat: 'Permission', apps: 287, sla: '5 days', status: 'Active' },
-      { name: 'Marriage Certificate', cat: 'Certificate', apps: 0, sla: '7 days', status: 'Draft' },
-      { name: 'Scholarship', cat: 'Welfare', apps: 134, sla: '21 days', status: 'Active' },
-  ];
-  const servicesTable = document.getElementById('servicesTable');
-  if (servicesTable) {
-      servicesTable.innerHTML = services.map(s => `
-          <tr>
-              <td style="font-weight:600;color:var(--navy-900);">${s.name}</td>
-              <td><span class="badge ${s.cat === 'Certificate' ? 'badge-info' : s.cat === 'Welfare' ? 'badge-success' : 'badge-warning'}">${s.cat}</span></td>
-              <td>${s.apps.toLocaleString()}</td>
-              <td><span style="font-size:0.8rem;color:var(--color-text-muted);">${s.sla}</span></td>
-              <td><span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-neutral'}">${s.status}</span></td>
-              <td>
-                  <div style="display:flex;gap:4px;">
-                      <button class="btn-icon" title="Edit" onclick="window.location.href='manage-services.html'"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
-                      <button class="btn-icon" title="${s.status === 'Active' ? 'Deactivate' : 'Activate'}" onclick="showToast('Service status updated!','success')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
-                  </div>
-              </td>
-          </tr>
-      `).join('');
-  }
+  // Services table dynamically synced from global state
+  window.renderAdminServicesTable = () => {
+    const services = getServices();
+    const servicesTable = document.getElementById('servicesTable');
+    if (servicesTable) {
+      servicesTable.innerHTML = services.slice(0, 6).map(s => `
+            <tr>
+                <td style="font-weight:600;color:var(--navy-900);">${s.name}</td>
+                <td><span class="badge ${s.cat === 'Certificate' ? 'badge-info' : s.cat === 'Welfare' ? 'badge-success' : 'badge-warning'}">${s.cat}</span></td>
+                <td>${(s.apps || 0).toLocaleString()}</td>
+                <td><span style="font-size:0.8rem;color:var(--color-text-muted);">${s.sla} days</span></td>
+                <td><span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-neutral'}">${s.status}</span></td>
+                <td>
+                    <div style="display:flex;gap:4px;">
+                        <button class="btn-icon" title="Edit" onclick="window.location.href='manage-services.html'"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
+                        <button class="btn-icon" title="${s.status === 'Active' ? 'Deactivate' : 'Activate'}" onclick="window.toggleServiceAdminDash('${s.id}')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+  };
+
+  window.toggleServiceAdminDash = (id) => {
+    const servicesData = getServices();
+    const svcIndex = servicesData.findIndex(s => s.id === id);
+    if (svcIndex > -1) {
+      servicesData[svcIndex].status = servicesData[svcIndex].status === 'Active' ? 'Inactive' : 'Active';
+      setServices(servicesData);
+      window.renderAdminServicesTable();
+      window.updateAdminStats();
+      showToast(`Service successfully set to ${servicesData[svcIndex].status}`, 'success');
+    }
+  };
+  
+  window.renderAdminServicesTable();
 
   // Officer Workload
   const officers = [
-      { name: 'Suresh Reddy', role: 'VRO', load: 28, max: 35 },
-      { name: 'Anita Sharma', role: 'RI', load: 34, max: 35 },
-      { name: 'Ramesh Kumar', role: 'MRO', load: 18, max: 35 },
-      { name: 'Priya Nair', role: 'Welfare Officer', load: 22, max: 35 },
-      { name: 'Kiran Babu', role: 'VRO', load: 31, max: 35 },
+    { name: 'Suresh Reddy', role: 'VRO', load: 28, max: 35 },
+    { name: 'Anita Sharma', role: 'RI', load: 34, max: 35 },
+    { name: 'Ramesh Kumar', role: 'MRO', load: 18, max: 35 },
+    { name: 'Priya Nair', role: 'Welfare Officer', load: 22, max: 35 },
+    { name: 'Kiran Babu', role: 'VRO', load: 31, max: 35 },
   ];
   const officerLoad = document.getElementById('officerLoad');
   if (officerLoad) {
-      officerLoad.innerHTML = officers.map(o => {
-          const pct = Math.round(o.load / o.max * 100);
-          const color = pct > 90 ? 'var(--red-500)' : pct > 70 ? 'var(--amber-400)' : 'var(--green-500)';
-          return `
+    officerLoad.innerHTML = officers.map(o => {
+      const pct = Math.round(o.load / o.max * 100);
+      const color = pct > 90 ? 'var(--red-500)' : pct > 70 ? 'var(--amber-400)' : 'var(--green-500)';
+      return `
               <div style="padding:10px var(--space-lg);border-bottom:1px solid var(--slate-100);">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                       <div style="display:flex;align-items:center;gap:8px;">
@@ -713,25 +815,25 @@ export function initAdminDashboard() {
                   <div class="sla-bar"><div class="sla-fill ${pct > 90 ? 'breach' : pct > 70 ? 'warn' : 'safe'}" style="width:${pct}%;"></div></div>
               </div>
           `;
-      }).join('');
+    }).join('');
   }
 
   // SLA Breached table
   let adminSlaData = [
-      { id: 'APP-2415', service: 'Income Certificate', citizen: 'Ravi Kumar', officer: 'Suresh R.', due: '18 Jan 2025', overdue: '5 days' },
-      { id: 'APP-2389', service: 'Caste Certificate', citizen: 'Meena Devi', officer: 'Anita S.', due: '16 Jan 2025', overdue: '7 days' },
-      { id: 'APP-2401', service: 'Welfare Scheme', citizen: 'Gopal Rao', officer: 'Ramesh K.', due: '20 Jan 2025', overdue: '3 days' },
-      { id: 'APP-2356', service: 'Event Permission', citizen: 'Sunil Events', officer: 'Priya N.', due: '15 Jan 2025', overdue: '8 days' },
+    { id: 'APP-2415', service: 'Income Certificate', citizen: 'Ravi Kumar', officer: 'Suresh R.', due: '18 Jan 2025', overdue: '5 days' },
+    { id: 'APP-2389', service: 'Caste Certificate', citizen: 'Meena Devi', officer: 'Anita S.', due: '16 Jan 2025', overdue: '7 days' },
+    { id: 'APP-2401', service: 'Welfare Scheme', citizen: 'Gopal Rao', officer: 'Ramesh K.', due: '20 Jan 2025', overdue: '3 days' },
+    { id: 'APP-2356', service: 'Event Permission', citizen: 'Sunil Events', officer: 'Priya N.', due: '15 Jan 2025', overdue: '8 days' },
   ];
 
   function renderAdminSlaTable() {
-      const slaTable = document.getElementById('slaTable');
-      if (!slaTable) return;
-      if (adminSlaData.length === 0) {
-          slaTable.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:var(--space-lg);color:var(--color-text-muted);">No SLA breaches found</td></tr>';
-          return;
-      }
-      slaTable.innerHTML = adminSlaData.map(r => `
+    const slaTable = document.getElementById('slaTable');
+    if (!slaTable) return;
+    if (adminSlaData.length === 0) {
+      slaTable.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:var(--space-lg);color:var(--color-text-muted);">No SLA breaches found</td></tr>';
+      return;
+    }
+    slaTable.innerHTML = adminSlaData.map(r => `
           <tr>
               <td><span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--navy-600);font-weight:600;">${r.id}</span></td>
               <td>${r.service}</td>
@@ -750,33 +852,33 @@ export function initAdminDashboard() {
   }
 
   window.escalateAdminSla = (id) => {
-      adminSlaData = adminSlaData.filter(r => r.id !== id);
-      renderAdminSlaTable();
-      showToast('Escalation sent successfully!', 'success');
+    adminSlaData = adminSlaData.filter(r => r.id !== id);
+    renderAdminSlaTable();
+    showToast('Escalation sent successfully!', 'success');
   };
 
   renderAdminSlaTable();
 
   // Audit list
   const audits = [
-      { icon: 'check-circle', color: 'var(--green-500)', msg: 'Application APP-2480 approved by Officer Suresh Reddy', time: '2 min ago' },
-      { icon: 'alert', color: 'var(--amber-500)', msg: 'SLA breach detected for APP-2415 – escalation triggered', time: '10 min ago' },
-      { icon: 'user-plus', color: 'var(--navy-400)', msg: 'New officer Kiran Babu onboarded (VRO, Hyderabad)', time: '1 hr ago' },
-      { icon: 'settings', color: 'var(--purple-500)', msg: 'Service "Marriage Certificate" created and set to Draft', time: '3 hrs ago' },
-      { icon: 'x-circle', color: 'var(--red-500)', msg: 'Application APP-2378 rejected by Officer Anita Sharma', time: '5 hrs ago' },
-      { icon: 'message', color: 'var(--navy-400)', msg: 'Grievance GRV-087 resolved by Grievance Officer', time: '6 hrs ago' },
+    { icon: 'check-circle', color: 'var(--green-500)', msg: 'Application APP-2480 approved by Officer Suresh Reddy', time: '2 min ago' },
+    { icon: 'alert', color: 'var(--amber-500)', msg: 'SLA breach detected for APP-2415 – escalation triggered', time: '10 min ago' },
+    { icon: 'user-plus', color: 'var(--navy-400)', msg: 'New officer Kiran Babu onboarded (VRO, Hyderabad)', time: '1 hr ago' },
+    { icon: 'settings', color: 'var(--purple-500)', msg: 'Service "Marriage Certificate" created and set to Draft', time: '3 hrs ago' },
+    { icon: 'x-circle', color: 'var(--red-500)', msg: 'Application APP-2378 rejected by Officer Anita Sharma', time: '5 hrs ago' },
+    { icon: 'message', color: 'var(--navy-400)', msg: 'Grievance GRV-087 resolved by Grievance Officer', time: '6 hrs ago' },
   ];
   const iconPaths = {
-      'check-circle': 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
-      'alert': 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
-      'user-plus': 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
-      'settings': 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
-      'x-circle': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
-      'message': 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+    'check-circle': 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    'alert': 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z',
+    'user-plus': 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
+    'settings': 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+    'x-circle': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+    'message': 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
   };
   const auditList = document.getElementById('auditList');
   if (auditList) {
-      auditList.innerHTML = audits.map(a => `
+    auditList.innerHTML = audits.map(a => `
           <div style="display:flex;gap:var(--space-md);padding:12px var(--space-lg);border-bottom:1px solid var(--slate-100);align-items:center;">
               <div style="width:32px;height:32px;border-radius:50%;background:${a.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                   <svg width="14" height="14" fill="none" stroke="${a.color}" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="${iconPaths[a.icon]}"/></svg>
@@ -803,9 +905,13 @@ export function initGrievanceDashboard() {
 
   // ── State ──
   const TERMINAL = ['resolved', 'rejected', 'escalated-resolved', 'escalated'];
+  // 'open' means citizen just raised it — same as 'new'.
+  // 'investigating' means the officer has opened and viewed it.
   const allGrievances = getGrievances();
-  // Active grievances only for dashboard
-  const activeGrievances = allGrievances.filter(g => !TERMINAL.includes(g.status));
+  // Active grievances only for dashboard (filter by assigned officer)
+  const activeGrievances = allGrievances.filter(g =>
+    !TERMINAL.includes(g.status) && g.officerId === session.id
+  );
 
   let filteredData = [...activeGrievances];
   let currentFilter = 'all';
@@ -813,14 +919,15 @@ export function initGrievanceDashboard() {
   let activeSearchQ = '';
   let currentPage = 1;
   let pageSize = 10;
-  // ── Summary Counts ──
-  const countNew = activeGrievances.filter(g => g.status === 'new').length;
-  const countOpen = activeGrievances.filter(g => g.status === 'open').length;
+
+  // ── Summary Counts: 'open' = newly raised (citizen), 'investigating' = officer viewed ──
+  const countNew = activeGrievances.filter(g => g.status === 'open').length;
+  const countInvestigating = activeGrievances.filter(g => g.status === 'investigating').length;
   const countResolved = allGrievances.filter(g => g.status === 'resolved').length;
   const countBreach = activeGrievances.filter(g => g.slaStatus === 'breach').length;
 
   setTextContent('countNew', countNew);
-  setTextContent('countOpen', countOpen);
+  setTextContent('countOpen', countInvestigating);   // reuse same DOM id for 'investigating'
   setTextContent('countResolved', countResolved);
   setTextContent('countBreach', countBreach);
 
@@ -836,11 +943,12 @@ export function initGrievanceDashboard() {
   function getPriorityColor(p) { return { high: 'var(--red-500)', medium: 'var(--amber-600)', low: '#166534' }[p] || 'var(--slate-500)'; }
   function getStatusInfo(s) {
     return {
-      new: { label: 'New', cls: 'badge-info', srs: 'NEW_GRIEVANCE' },
-      open: { label: 'Investigating', cls: 'badge-warning', srs: 'UNDER_INVESTIGATION' },
-      escalated: { label: 'Escalated', cls: 'badge-danger', srs: 'GRIEVANCE_ESCALATED' },
-      resolved: { label: 'Resolved', cls: 'badge-success', srs: 'GRIEVANCE_RESOLVED' },
-      rejected: { label: 'Rejected', cls: 'badge-neutral', srs: 'GRIEVANCE_REJECTED' },
+      new:           { label: 'New',           cls: 'badge-info',    srs: 'NEW_GRIEVANCE' },
+      open:          { label: 'New',            cls: 'badge-info',    srs: 'NEW_GRIEVANCE' },
+      investigating: { label: 'Investigating',  cls: 'badge-warning', srs: 'UNDER_INVESTIGATION' },
+      escalated:     { label: 'Escalated',      cls: 'badge-danger',  srs: 'GRIEVANCE_ESCALATED' },
+      resolved:      { label: 'Resolved',       cls: 'badge-success', srs: 'GRIEVANCE_RESOLVED' },
+      rejected:      { label: 'Rejected',       cls: 'badge-neutral', srs: 'GRIEVANCE_REJECTED' },
     }[s] || { label: s, cls: 'badge-neutral', srs: '' };
   }
   function getSlaDisplay(g) {
@@ -995,7 +1103,30 @@ export function initGrievanceDashboard() {
     openModalEl('quickViewModal');
   };
 
-  window.openDetail = function (id) { window.location.href = `grievance-detail.html?id=${id}`; };
+  window.openDetail = function (id) {
+    // ── FIX 4: Transition grievance from 'open' (new) to 'investigating' on first open ──
+    const allG = getGrievances();
+    const gIdx = allG.findIndex(x => x.id === id);
+    if (gIdx !== -1 && allG[gIdx].status === 'open') {
+      allG[gIdx].status = 'investigating';
+      allG[gIdx].lastUpdated = new Date().toISOString().split('T')[0];
+      allG[gIdx].history = allG[gIdx].history || [];
+      allG[gIdx].history.push({
+        action: 'Under Investigation',
+        date: new Date().toISOString(),
+        actor: session.name,
+        note: `${session.name} (Grievance Officer) started reviewing the grievance.`,
+      });
+      setGrievances(allG);
+      // Update the in-memory row badge immediately
+      const rowBadge = document.querySelector(`[data-testid="griev-row-${id}"] .badge`);
+      if (rowBadge) {
+        rowBadge.className = 'badge badge-warning';
+        rowBadge.textContent = 'Investigating';
+      }
+    }
+    window.location.href = `grievance-detail.html?id=${id}`;
+  };
 
   let _assigningId = '';
   window.openAssign = function (id) { _assigningId = id; openModalEl('assignModal'); };

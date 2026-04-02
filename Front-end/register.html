@@ -226,7 +226,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label" for="district">District <span class="required">*</span></label>
-                            <input type="text" id="district" class="form-input" placeholder="Your district" required />
+                            <input type="text" id="district" class="form-input" placeholder="Your district" required
+                                oninput="this.value=this.value.replace(/[^a-zA-Z\s]/g,'')" />
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="pincode">PIN Code <span class="required">*</span></label>
@@ -238,7 +239,7 @@
                     <div class="form-group">
                         <label class="form-label" for="address">Full Address <span class="required">*</span></label>
                         <textarea id="address" class="form-input" rows="2" placeholder="House No., Street, Village/Town"
-                            required style="resize:none;"></textarea>
+                            required style="resize:none;" oninput="this.value=this.value.replace(/[^a-zA-Z0-9\s,\-#/.]/g,'')"></textarea>
                     </div>
 
                     <div style="display:flex; gap:var(--space-sm);">

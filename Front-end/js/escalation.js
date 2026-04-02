@@ -7,6 +7,7 @@ import { initPage } from './navigation.js';
 import { showToast, formatDate, formatDateTime, openModal, closeModal, generateId } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { SUPER_ESC_SLA_CASES, SUPER_ESC_GRIEVANCE_CASES, SUPER_OFFICER_APPROVED, SUPER_TEAM, SUPER_PENDING_APPS } from './mock-data.js';
+import { addAuditEntry, updateMasterApp, notifyCitizen } from './workflow.js';
 
 /**
  * Check SLA status of an application
@@ -322,12 +323,28 @@ export function initSupervisorReview() {
       reject:  `${selectedFinal.id} rejected. ${selectedFinal.citizen} notified. Status → REJECTED. Audit trail updated.`
     };
     showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
+
+    // ── FIX 7: Supervisor Final → Master App + Citizen Notification ──
+    const updatedApp = updateMasterApp(
+      selectedFinal.id,
+      action === 'approve' ? 'approved' : 'rejected',
+      action === 'approve' ? 'Supervisor Final Approval — Certificate Issued' : 'Supervisor Final Rejection',
+      remarks || (action === 'approve' ? 'Final approval granted. Certificate issued.' : 'Application rejected at supervisor level.'),
+      session.name
+    );
+    const citizenId = updatedApp?.citizenId || selectedFinal.citizenId || null;
+    if (action === 'approve') {
+      notifyCitizen(citizenId, '🎉 Certificate Issued!', `Your ${selectedFinal.service} (${selectedFinal.id}) has been approved. Download your certificate now.`, 'success', selectedFinal.id);
+      addAuditEntry('Supervisor Final Approval', `${session.name} gave final approval for ${selectedFinal.service} (${selectedFinal.id}). Certificate issued to ${selectedFinal.citizen}.`);
+    } else {
+      notifyCitizen(citizenId, 'Application Rejected by Supervisor', `Your ${selectedFinal.service} (${selectedFinal.id}) was rejected. Reason: ${remarks}`, 'error', selectedFinal.id);
+      addAuditEntry('Supervisor Final Rejection', `${session.name} rejected ${selectedFinal.service} (${selectedFinal.id}). Reason: ${remarks}`);
+    }
+
     setTimeout(() => {
       activeFinalApprovals = activeFinalApprovals.filter(a => a.id !== selectedFinal.id);
       setSuperApprovals(activeFinalApprovals);
-      if (action === 'approve') {
-          setSuperApprovedToday(getSuperApprovedToday() + 1);
-      }
+      if (action === 'approve') setSuperApprovedToday(getSuperApprovedToday() + 1);
       selectedFinal = null;
       window.renderFinalList();
       syncReviewBadges();
@@ -497,7 +514,6 @@ export function initSupervisorReview() {
     if (action === 'reassign' && selectedOverride) {
       const offEl = document.getElementById('overrideReassignOfficer');
       const offName = offEl ? offEl.value : '';
-      // Do NOT remove from localStorage here — removal happens only on Confirm Reassignment in workload-management
       let url = `workload-management.html?reassignId=${selectedOverride.id}`;
       if (offName) url += `&targetOfficer=${encodeURIComponent(offName)}`;
       window.location.href = url;
@@ -509,10 +525,28 @@ export function initSupervisorReview() {
     const msgs = {
       approve:  `Override applied: ${selectedOverride.id} approved. Certificate issued. Audit trail updated.`,
       reject:   `Override applied: ${selectedOverride.id} rejected. Citizen notified. Audit trail updated.`,
-      reassign: `${selectedOverride.id} reassigned. Both officers notified.`
     };
-    showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
-    // Persist removal to localStorage so dashboard stat also stays in sync
+    showToast(msgs[action] || `Override action applied for ${selectedOverride.id}.`, action === 'approve' ? 'success' : 'warning');
+
+    // ── FIX 7b: Supervisor Override → Master App + Citizen Notification ──
+    if (action === 'approve' || action === 'reject') {
+      const updatedApp = updateMasterApp(
+        selectedOverride.id,
+        action === 'approve' ? 'approved' : 'rejected',
+        action === 'approve' ? 'Supervisor Override — Approved' : 'Supervisor Override — Rejected',
+        j,
+        session.name
+      );
+      const citizenId = updatedApp?.citizenId || selectedOverride.citizenId || null;
+      if (action === 'approve') {
+        notifyCitizen(citizenId, '🎉 Certificate Issued (Override)!', `Your ${selectedOverride.service} (${selectedOverride.id}) has been approved by the Supervisor. Certificate issued.`, 'success', selectedOverride.id);
+        addAuditEntry('Supervisor Override Approval', `${session.name} override-approved ${selectedOverride.service} (${selectedOverride.id}). Justification: ${j}`);
+      } else {
+        notifyCitizen(citizenId, 'Application Rejected (Override)', `Your ${selectedOverride.service} (${selectedOverride.id}) was rejected by the Supervisor. Reason: ${j}`, 'error', selectedOverride.id);
+        addAuditEntry('Supervisor Override Rejection', `${session.name} override-rejected ${selectedOverride.service} (${selectedOverride.id}). Justification: ${j}`);
+      }
+    }
+
     activeEscalated = activeEscalated.filter(e => e.id !== selectedOverride.id);
     setSuperEscSlaCases(activeEscalated);
     selectedOverride = null;
@@ -573,8 +607,8 @@ export function initWorkloadManagement() {
             <span style="font-size:0.875rem;font-weight:600;">${o.name}</span>
             <span style="font-size:0.75rem;font-weight:700;color:${o.pending>25?'var(--red-600)':o.pending>15?'var(--amber-600)':'var(--green-600)'};">${o.pending} pending</span>
           </div>
-          <div class="sla-bar" style="height:6px;">
-            <div style="height:100%;border-radius:3px;background:${o.pending>25?'var(--red-400)':o.pending>15?'var(--amber-400)':'var(--green-400)'};width:${(o.pending/max)*100}%;"></div>
+          <div class="sla-bar" style="height:6px; background:var(--slate-100); border-radius:3px; margin-bottom: 4px;">
+            <div style="height:100%;border-radius:3px;background:${o.pending>25?'var(--red-500)':o.pending>15?'var(--amber-400)':'var(--green-500)'};width:${(o.pending/max)*100}%;"></div>
           </div>
           <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:3px;">
             ${o.role} · ${o.sla}% SLA

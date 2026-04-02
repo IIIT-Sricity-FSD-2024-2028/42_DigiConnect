@@ -112,8 +112,6 @@
                             <div class="form-section-number">1</div>
                             <div>
                                 <div class="form-section-title">Applicant Information</div>
-                                <div class="form-section-subtitle">Pre-filled from your registered profile. Please
-                                    verify and update if needed.</div>
                             </div>
                         </div>
                         <div class="form-section-body">
@@ -123,17 +121,18 @@
                                     <path stroke-linecap="round" stroke-linejoin="round"
                                         d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Your Aadhaar-linked profile data has been auto-filled. Fields marked with * are
-                                mandatory.
+                                Fields marked with * are mandatory.
                             </div>
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label class="form-label">First Name <span class="required">*</span></label>
-                                    <input type="text" class="form-input" value="Ravi" id="f_firstName" />
+                                    <input type="text" class="form-input" placeholder="Enter your first name" id="f_firstName" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Last Name <span class="required">*</span></label>
-                                    <input type="text" class="form-input" value="Kumar" id="f_lastName" />
+                                    <input type="text" class="form-input" placeholder="Enter your last name" id="f_lastName" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Aadhaar Number <span class="required">*</span></label>
@@ -143,26 +142,19 @@
                                             <path stroke-linecap="round" stroke-linejoin="round"
                                                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                         </svg>
-                                        <input type="text" class="form-input has-icon" value="7823 4512 9087"
-                                            readonly />
-                                        <span
-                                            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:0.7rem;font-weight:600;color:var(--green-500);display:flex;align-items:center;gap:3px;">
-                                            <svg width="12" height="12" fill="none" stroke="currentColor"
-                                                stroke-width="2.5" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                    d="M5 13l4 4L19 7" />
-                                            </svg>Verified
-                                        </span>
+                                        <input type="text" class="form-input has-icon" placeholder="12 digit Aadhaar number"
+                                            id="f_aadhaar" maxlength="12" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Date of Birth <span class="required">*</span></label>
-                                    <input type="date" class="form-input" value="1990-06-15" />
+                                    <input type="date" class="form-input" id="f_dob" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Gender <span class="required">*</span></label>
-                                    <select class="form-input">
-                                        <option selected>Male</option>
+                                    <select class="form-input" id="f_gender">
+                                        <option value="">Select gender</option>
+                                        <option>Male</option>
                                         <option>Female</option>
                                         <option>Transgender</option>
                                     </select>
@@ -170,15 +162,16 @@
                                 <div class="form-group">
                                     <label class="form-label">Father / Husband Name <span
                                             class="required">*</span></label>
-                                    <input type="text" class="form-input" value="Suresh Kumar" />
+                                    <input type="text" class="form-input" placeholder="Enter name" id="f_guardianName" maxlength="80"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Mobile Number <span class="required">*</span></label>
-                                    <input type="tel" class="form-input" value="98765 43210" />
+                                    <input type="tel" class="form-input" placeholder="10 digit mobile number" id="f_mobile" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Email Address</label>
-                                    <input type="email" class="form-input" value="ravi.kumar@email.com" />
+                                    <input type="email" class="form-input" placeholder="Enter your email address" id="f_email" />
                                 </div>
                             </div>
                         </div>
@@ -198,36 +191,32 @@
                                 <div class="form-group col-span-full">
                                     <label class="form-label">Door No / Street / Locality <span
                                             class="required">*</span></label>
-                                    <input type="text" class="form-input" value="12-3-456, Saroornagar Colony" />
+                                    <input type="text" class="form-input" placeholder="Enter full block/street details" id="f_street" maxlength="150"
+                                        oninput="this.value=this.value.replace(/[^a-zA-Z0-9\s,\-#/.]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">State <span class="required">*</span></label>
-                                    <select class="form-input" onchange="populateDistricts(this.value)">
-                                        <option selected>Telangana</option>
-                                        <option>Andhra Pradesh</option>
-                                        <option>Karnataka</option>
-                                    </select>
+                                    <input type="text" class="form-input" id="f_state" placeholder="Enter State" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">District <span class="required">*</span></label>
-                                    <select class="form-input" id="districtSelect">
-                                        <option selected>Hyderabad</option>
-                                        <option>Rangareddy</option>
-                                        <option>Medchal-Malkajgiri</option>
-                                        <option>Warangal Urban</option>
-                                    </select>
+                                    <input type="text" class="form-input" id="districtSelect" placeholder="Enter District" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Mandal / Taluk <span class="required">*</span></label>
-                                    <input type="text" class="form-input" value="Saroornagar" />
+                                    <input type="text" class="form-input" placeholder="Enter Mandal/Taluk" id="f_mandal" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">Village / Ward <span class="required">*</span></label>
-                                    <input type="text" class="form-input" value="Saroornagar" />
+                                    <input type="text" class="form-input" placeholder="Enter Village/Ward" id="f_village" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z0-9\s\-]/g,'')" />
                                 </div>
                                 <div class="form-group">
                                     <label class="form-label">PIN Code <span class="required">*</span></label>
-                                    <input type="text" class="form-input" value="500035" maxlength="6" />
+                                    <input type="text" class="form-input" id="f_pincode" placeholder="6 digit PIN code" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
                                 </div>
                             </div>
                         </div>
@@ -335,24 +324,24 @@
                                     <div class="review-row"><span class="review-label">Full Name</span><span
                                             class="review-value" id="rev_name">Ravi Kumar</span></div>
                                     <div class="review-row"><span class="review-label">Aadhaar No.</span><span
-                                            class="review-value">7823 4512 9087</span></div>
+                                            class="review-value" id="rev_aadhaar">7823 4512 9087</span></div>
                                     <div class="review-row"><span class="review-label">Date of Birth</span><span
-                                            class="review-value">15 Jun 1990</span></div>
+                                            class="review-value" id="rev_dob">15 Jun 1990</span></div>
                                     <div class="review-row"><span class="review-label">Gender</span><span
-                                            class="review-value">Male</span></div>
+                                            class="review-value" id="rev_gender">Male</span></div>
                                     <div class="review-row"><span class="review-label">Mobile</span><span
-                                            class="review-value">98765 43210</span></div>
+                                            class="review-value" id="rev_mobile">98765 43210</span></div>
                                 </div>
                                 <div class="review-card">
                                     <div class="review-card-title">Address Details</div>
                                     <div class="review-row"><span class="review-label">Street</span><span
-                                            class="review-value">12-3-456, Saroornagar Colony</span></div>
+                                            class="review-value" id="rev_street">12-3-456, Saroornagar Colony</span></div>
                                     <div class="review-row"><span class="review-label">District</span><span
-                                            class="review-value">Hyderabad</span></div>
+                                            class="review-value" id="rev_district">Hyderabad</span></div>
                                     <div class="review-row"><span class="review-label">State</span><span
-                                            class="review-value">Telangana</span></div>
+                                            class="review-value" id="rev_state">Telangana</span></div>
                                     <div class="review-row"><span class="review-label">PIN Code</span><span
-                                            class="review-value">500035</span></div>
+                                            class="review-value" id="rev_pincode">500035</span></div>
                                 </div>
                             </div>
                             <div class="review-card" style="margin-bottom:var(--space-lg);">
@@ -361,13 +350,13 @@
                                         class="review-value" id="rev_svc"
                                         style="font-weight:700;color:var(--navy-800);">Income Certificate</span></div>
                                 <div class="review-row"><span class="review-label">Department</span><span
-                                        class="review-value">Revenue Department</span></div>
+                                        class="review-value" id="rev_dept">Revenue Department</span></div>
                                 <div class="review-row"><span class="review-label">SLA Period</span><span
-                                        class="review-value">7 Working Days</span></div>
+                                        class="review-value" id="rev_sla">7 Working Days</span></div>
                                 <div class="review-row"><span class="review-label">Application Fee</span><span
                                         class="review-value" id="rev_fee">₹50</span></div>
                                 <div class="review-row"><span class="review-label">Documents Uploaded</span><span
-                                        class="review-value">3 documents</span></div>
+                                        class="review-value" id="rev_docs">3 documents</span></div>
                             </div>
                         </div>
                     </div>
@@ -891,7 +880,7 @@
         }
     </style>
 
-    
+
 
     <script type="module" src="../js/application.js"></script>
 </body>

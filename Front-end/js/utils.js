@@ -461,7 +461,7 @@ export function initEventDelegation() {
   // ── Global Input Restrictors ──
   document.addEventListener('input', e => {
     const el = e.target;
-    if (el.tagName === 'INPUT') {
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
       const idStr = (el.id || '').toLowerCase();
       
       // Restrict Phone/Mobile: Only numbers allowed
@@ -470,9 +470,15 @@ export function initEventDelegation() {
       }
       
       // Restrict Names (Including "Name on Card"): Only alphabets and spaces
-      const isNameField = idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname') || (el.placeholder && el.placeholder.includes('As printed'));
+      const isNameField = idStr.includes('firstname') || idStr.includes('lastname') || idStr === 'uname' || idStr.includes('fullname') || idStr.includes('district') || (el.placeholder && el.placeholder.includes('As printed'));
       if (isNameField && !idStr.includes('username')) {
         el.value = el.value.replace(/[^a-zA-Z\s]/g, '');
+      }
+
+      // Restrict Address Fields: Alphanumeric and common symbols (,-#/.)
+      const isAddressField = idStr.includes('address') || idStr.includes('street') || idStr.includes('village') || idStr.includes('mandal');
+      if (isAddressField) {
+        el.value = el.value.replace(/[^a-zA-Z0-9\s,\-#/.]/g, '');
       }
 
       // Restrict OTP & CVV: Max limits and numbers only

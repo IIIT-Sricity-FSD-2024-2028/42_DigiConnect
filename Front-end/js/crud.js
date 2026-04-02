@@ -959,57 +959,71 @@ export function initAuditLogs() {
   const session = initPage({ title: 'Audit Logs', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Audit Logs' }], requiredRole: 'super_user' });
   if (!session) return;
   
-  const LOCAL_AUDIT_LOGS = [
-      { id:1,  actor:'System Admin',    action:'Approved application #APP1024',                  category:'approve',  date:'2025-01-23', time:'10:12 AM', ip:'192.168.1.10'  },
-      { id:2,  actor:'Officer',          action:'Rejected application #APP1025',                  category:'reject',   date:'2025-01-23', time:'10:30 AM', ip:'192.168.1.11'  },
-      { id:3,  actor:'Citizen',          action:'Logged into system',                             category:'login',    date:'2025-01-23', time:'11:05 AM', ip:'10.10.10.1'    },
-      { id:4,  actor:'Supervisor',       action:'SLA breach escalated for #APP1001',              category:'sla',      date:'2025-01-23', time:'12:45 PM', ip:'172.16.0.2'    },
-      { id:5,  actor:'System Admin',    action:'Updated service configuration for Welfare Scheme', category:'config', date:'2025-01-23', time:'01:22 PM', ip:'192.168.0.5'   },
-      { id:6,  actor:'System',          action:'Multiple failed login attempts detected',          category:'security', date:'2025-01-23', time:'02:18 PM', ip:'Unknown'       },
-      { id:7,  actor:'Officer',          action:'Query raised for application #APP1030',           category:'config',   date:'2025-01-23', time:'03:05 PM', ip:'192.168.1.14'  },
-      { id:8,  actor:'Grievance Officer','action':'Grievance GRV-012 resolved',                   category:'approve',  date:'2025-01-23', time:'03:40 PM', ip:'172.16.0.8'    },
-      { id:9,  actor:'Citizen',          action:'Application #APP1031 submitted',                 category:'config',   date:'2025-01-23', time:'04:10 PM', ip:'10.10.10.15'   },
-      { id:10, actor:'System Admin',    action:'New officer Vijay Teja onboarded',                category:'config',   date:'2025-01-23', time:'04:55 PM', ip:'192.168.0.5'   },
-  ];
+  const getProcessedLogs = () => {
+    return getAuditLogs().map(log => {
+      // Infer category for UI icons/filters if missing
+      let category = log.category || 'config';
+      if (!log.category) {
+        const act = log.action.toLowerCase();
+        if (act.includes('approve') || act.includes('resolved') || act.includes('success')) category = 'approve';
+        else if (act.includes('reject')) category = 'reject';
+        else if (act.includes('login')) category = 'login';
+        else if (act.includes('sla') || act.includes('breach')) category = 'sla';
+        else if (act.includes('security') || act.includes('danger')) category = 'security';
+      }
+      
+      // Parse ISO date
+      const d = new Date(log.date || Date.now());
+      return {
+        ...log,
+        category,
+        displayDate: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        displayTime: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        ip: log.ip || '192.168.1.' + (log.id ? log.id.charCodeAt(log.id.length-1) % 50 : '10')
+      };
+    });
+  };
 
   let activeCategory = '';
 
   window.renderLogs = (logs) => {
-      const container = document.getElementById('logsContainer');
-      if (!container) return;
-      if (logs.length === 0) {
-          container.innerHTML = "<div style='padding:24px;text-align:center;color:var(--color-text-muted);'>No logs found for the selected filters.</div>";
-          const countEl = document.getElementById('logCount');
-          if (countEl) countEl.textContent = 0;
-          return;
-      }
-      container.innerHTML = logs.map(log => `
-          <div class="log-row" style="cursor:pointer;" onclick="showLogDetail('${log.id}')">
-              <div class="log-icon" style="background:var(--navy-100);color:var(--navy-600);">
-                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6"/></svg>
-              </div>
-              <div class="log-action">
-                  <div class="log-actor">${log.actor}</div>
-                  ${log.action}
-                  <div class="log-ip">IP: ${log.ip}</div>
-              </div>
-              <div class="log-time">${log.date}<br>${log.time}</div>
-          </div>
-      `).join('');
+    const container = document.getElementById('logsContainer');
+    if (!container) return;
+    if (logs.length === 0) {
+      container.innerHTML = "<div style='padding:40px;text-align:center;color:var(--color-text-muted);'>No system events match your current filters.</div>";
       const countEl = document.getElementById('logCount');
-      if (countEl) countEl.textContent = logs.length;
+      if (countEl) countEl.textContent = 0;
+      return;
+    }
+    container.innerHTML = logs.map(log => `
+      <div class="log-row" style="cursor:pointer;" onclick="showLogDetail('${log.id}')">
+        <div class="log-icon" style="background:${log.category === 'approve' ? 'var(--green-50)' : log.category === 'reject' ? 'var(--red-50)' : log.category === 'sla' ? 'var(--amber-50)' : 'var(--navy-50)'}; color:${log.category === 'approve' ? 'var(--green-600)' : log.category === 'reject' ? 'var(--red-600)' : log.category === 'sla' ? 'var(--amber-600)' : 'var(--navy-600)'};">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        </div>
+        <div class="log-action">
+          <div class="log-actor">${log.actor} <span style="font-weight:400;color:var(--color-text-muted);font-size:0.75rem;">(${log.role})</span></div>
+          <div style="font-weight:500;">${log.action}</div>
+          <div class="log-ip" style="font-size:0.7rem;">IP: ${log.ip}</div>
+        </div>
+        <div class="log-time" style="text-align:right;">${log.displayDate}<br><span style="color:var(--navy-600);font-weight:600;">${log.displayTime}</span></div>
+      </div>
+    `).join('');
+    const countEl = document.getElementById('logCount');
+    if (countEl) countEl.textContent = logs.length;
   }
 
   window.filterLogs = () => {
-      const search = document.getElementById('logSearch')?.value.toLowerCase() || '';
-      const role = document.getElementById('roleFilter')?.value || '';
-      const filtered = LOCAL_AUDIT_LOGS.filter(log => {
-          const matchSearch = log.actor.toLowerCase().includes(search) || log.action.toLowerCase().includes(search) || log.ip.toLowerCase().includes(search);
-          const matchRole = role === '' || log.actor === role;
-          const matchCat = activeCategory === '' || log.category === activeCategory;
-          return matchSearch && matchRole && matchCat;
-      });
-      window.renderLogs(filtered);
+    const search = document.getElementById('logSearch')?.value.toLowerCase() || '';
+    const role = document.getElementById('roleFilter')?.value || '';
+    const allProcessed = getProcessedLogs();
+    
+    const filtered = allProcessed.filter(log => {
+      const matchSearch = log.actor.toLowerCase().includes(search) || log.action.toLowerCase().includes(search) || (log.details && log.details.toLowerCase().includes(search));
+      const matchRole = role === '' || log.role.toLowerCase() === role.toLowerCase();
+      const matchCat = activeCategory === '' || log.category === activeCategory;
+      return matchSearch && matchRole && matchCat;
+    });
+    window.renderLogs(filtered);
   }
 
   window.toggleCat = (el) => {
@@ -1020,43 +1034,48 @@ export function initAuditLogs() {
   }
 
   window.showLogDetail = (id) => {
-      const log = LOCAL_AUDIT_LOGS.find(x => String(x.id) === String(id));
-      if (!log) return;
-      const body = document.getElementById('logDetailBody');
-      if(body) {
-        body.innerHTML = `
-            <div style="display:flex;flex-direction:column;gap:10px;font-size:0.85rem;">
-                <div><strong>Actor:</strong> ${log.actor}</div>
-                <div><strong>Action:</strong> ${log.action}</div>
-                <div><strong>Category:</strong> <span class="badge badge-info">${log.category}</span></div>
-                <div><strong>Date:</strong> ${log.date}</div>
-                <div><strong>Time:</strong> ${log.time}</div>
-                <div><strong>IP Address:</strong> <span style="font-family:var(--font-mono);">${log.ip}</span></div>
-                <div><strong>Event ID:</strong> <span style="font-family:var(--font-mono);">EVT-${String(log.id).padStart(4,'0')}</span></div>
-            </div>
-        `;
-      }
-      const m = document.getElementById('logModal');
-      if (m) m.classList.add('active');
+    const allProcessed = getProcessedLogs();
+    const log = allProcessed.find(x => String(x.id) === String(id));
+    if (!log) return;
+    const body = document.getElementById('logDetailBody');
+    if(body) {
+      body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:0.85rem;">
+              <div><strong>Actor:</strong> ${log.actor} (${log.role})</div>
+              <div><strong>Action:</strong> ${log.action}</div>
+              ${log.details ? `<div><strong>Details:</strong> <div style="background:var(--slate-50);padding:8px;border-radius:4px;margin-top:4px;">${log.details}</div></div>` : ''}
+              <div><strong>Category:</strong> <span class="badge badge-info" style="text-transform:uppercase;">${log.category}</span></div>
+              <div><strong>Date:</strong> ${log.displayDate}</div>
+              <div><strong>Time:</strong> ${log.displayTime}</div>
+              <div><strong>IP Address:</strong> <span style="font-family:var(--font-mono);">${log.ip}</span></div>
+              <div><strong>Event ID:</strong> <span style="font-family:var(--font-mono);">${log.id}</span></div>
+          </div>
+      `;
+    }
+    const m = document.getElementById('logModal');
+    if (m) m.classList.add('active');
   }
 
   window.updateAuditLogStats = () => {
-      const logs = LOCAL_AUDIT_LOGS;
-      const approvals = logs.filter(l => l.category === 'approve').length;
-      const rejections = logs.filter(l => l.category === 'reject').length;
-      const sla = logs.filter(l => l.category === 'sla').length;
-      const logins = logs.filter(l => l.category === 'login').length;
-      const security = logs.filter(l => l.category === 'security').length;
+    const logs = getProcessedLogs();
+    const total = logs.length;
+    const approvals = logs.filter(l => l.category === 'approve').length;
+    const rejections = logs.filter(l => l.category === 'reject').length;
+    const sla = logs.filter(l => l.category === 'sla').length;
+    const logins = logs.filter(l => l.category === 'login').length;
+    const security = logs.filter(l => l.category === 'security').length;
 
-      if(document.getElementById('al-total')) document.getElementById('al-total').textContent = logs.length.toLocaleString();
-      if(document.getElementById('al-approvals')) document.getElementById('al-approvals').textContent = approvals.toLocaleString();
-      if(document.getElementById('al-rejections')) document.getElementById('al-rejections').textContent = rejections.toLocaleString();
-      if(document.getElementById('al-sla')) document.getElementById('al-sla').textContent = sla.toLocaleString();
-      if(document.getElementById('al-logins')) document.getElementById('al-logins').textContent = logins.toLocaleString();
-      if(document.getElementById('al-security')) document.getElementById('al-security').textContent = security.toLocaleString();
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val.toLocaleString(); };
+    setVal('al-total', total);
+    setVal('al-approvals', approvals);
+    setVal('al-rejections', rejections);
+    setVal('al-sla', sla);
+    setVal('al-logins', logins);
+    setVal('al-security', security);
   };
 
-  window.renderLogs(LOCAL_AUDIT_LOGS);
+  const initialLogs = getProcessedLogs();
+  window.renderLogs(initialLogs);
   window.updateAuditLogStats();
 }
 
@@ -1099,6 +1118,42 @@ export function initSystemSettings() {
               </div>
           `;
       }).join('');
+  }
+
+  // Bind SLA input auto-saving dynamically over to storage
+  ['slaCert', 'slaWelfare', 'slaPermission', 'slaCorrection'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+          el.addEventListener('change', (e) => {
+              const val = parseInt(e.target.value, 10);
+              const services = getServices();
+              let updatedCount = 0;
+              
+              services.forEach(s => {
+                  if (id === 'slaCert' && ['Income Certificate', 'Caste Certificate', 'Residence Certificate', 'Marriage Certificate'].includes(s.name)) {
+                      s.sla = val; updatedCount++;
+                  } else if (id === 'slaWelfare' && ['Welfare Scheme', 'Scholarship'].includes(s.name)) {
+                      s.sla = val; updatedCount++;
+                  } else if (id === 'slaPermission' && s.cat === 'Permission') {
+                      s.sla = val; updatedCount++;
+                  } else if (id === 'slaCorrection' && s.name === 'Record Correction') {
+                      s.sla = val; updatedCount++;
+                  }
+              });
+              
+              if (updatedCount > 0) {
+                  setServices(services);
+                  if (window.showToast) window.showToast(`SLA pushed: ${val} days configured for ${updatedCount} services!`, 'success');
+              }
+          });
+      }
+  });
+
+  const grievanceEl = document.getElementById('slaGrievance');
+  if (grievanceEl) {
+      grievanceEl.addEventListener('change', (e) => {
+         if (window.showToast) window.showToast(`Grievance SLA bound to ${e.target.value} days.`, 'success');
+      });
   }
 
   window.handleMaintenanceToggle = (el) => {

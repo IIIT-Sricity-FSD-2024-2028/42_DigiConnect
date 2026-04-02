@@ -635,7 +635,6 @@
                 <select class="form-select" style="min-width:130px;" onchange="handleSort(this.value)">
                     <option value="date-desc">Newest First</option>
                     <option value="date-asc">Oldest First</option>
-                    <option value="sla">SLA Status</option>
                     <option value="status">Status</option>
                 </select>
                 <div class="view-toggle">
@@ -659,7 +658,7 @@
 
             <!-- Result Count -->
             <div class="table-meta">
-                <div class="table-count">Showing <span id="visibleCount">12</span> of <span>12</span> applications</div>
+                <div class="table-count">Showing <span id="visibleCount">12</span> of <span id="visibleCountTotal">12</span> applications</div>
             </div>
 
             <!-- ══ TABLE VIEW ══ -->
@@ -685,23 +684,6 @@
                         </table>
                     </div>
                 </div>
-                <div class="pagination">
-                    <div class="pagination-info">Showing 1–10 of 12 applications</div>
-                    <div class="pagination-controls">
-                        <button class="page-btn" disabled>
-                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M15 18l-6-6 6-6"/>
-                            </svg>
-                        </button>
-                        <button class="page-btn active">1</button>
-                        <button class="page-btn">2</button>
-                        <button class="page-btn">
-                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M9 18l6-6-6-6"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <!-- ══ CARD VIEW ══ -->
@@ -709,23 +691,9 @@
                 <div class="apps-grid" id="appsCardGrid">
                     <!-- Cards injected by JS -->
                 </div>
-                <div class="pagination" style="margin-top:var(--space-lg);">
-                    <div class="pagination-info">Showing 1–12 of 12 applications</div>
-                    <div class="pagination-controls">
-                        <button class="page-btn" disabled>
-                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M15 18l-6-6 6-6"/>
-                            </svg>
-                        </button>
-                        <button class="page-btn active">1</button>
-                        <button class="page-btn">
-                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M9 18l6-6-6-6"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
             </div>
+
+
 
         </main>
     </div>

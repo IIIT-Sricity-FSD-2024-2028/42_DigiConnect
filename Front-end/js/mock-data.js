@@ -42,6 +42,83 @@ const MOCK_SERVICES = [
 
 const MOCK_APPLICATIONS = [
   {
+    id: 'APP-1001', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Revenue Department', status: 'approved', submittedDate: '2023-11-10', slaDate: '2023-11-17',
+    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-11-10T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Certificate Issued', date: '2023-11-15T11:00:00', actor: 'System', note: 'Certificate available for download.' }
+    ],
+    documents: [{ name: 'Aadhaar_Card.pdf', type: 'Identity Proof', date: '2023-11-10', status: 'verified' }]
+  },
+  {
+    id: 'APP-1002', serviceId: 'SVC-003', serviceName: 'Residence Certificate', serviceType: 'certificate',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-10-05', slaDate: '2023-10-12',
+    fee: 30, paymentMethod: 'Card', paymentStatus: 'paid', remarks: 'Completed.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-10-05T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Service Completed', date: '2023-10-10T11:00:00', actor: 'System', note: 'Service delivered.' }
+    ],
+    documents: [{ name: 'Electricity_Bill.pdf', type: 'Address Proof', date: '2023-10-05', status: 'verified' }]
+  },
+  {
+    id: 'APP-1003', serviceId: 'SVC-006', serviceName: 'Event Permission', serviceType: 'permission',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Municipal Corporation', status: 'approved', submittedDate: '2023-09-12', slaDate: '2023-09-17',
+    fee: 200, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-09-12T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Approved', date: '2023-09-15T11:00:00', actor: 'System', note: 'Event permitted.' }
+    ],
+    documents: [{ name: 'Event_Plan.pdf', type: 'Details', date: '2023-09-12', status: 'verified' }]
+  },
+  {
+    id: 'APP-1004', serviceId: 'SVC-008', serviceName: 'Record Correction', serviceType: 'correction',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-08-20', slaDate: '2023-08-30',
+    fee: 100, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Record Corrected.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-08-20T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Completed', date: '2023-08-25T11:00:00', actor: 'System', note: 'Correction done.' }
+    ],
+    documents: [{ name: 'Correction_Form.pdf', type: 'Form', date: '2023-08-20', status: 'verified' }]
+  },
+  {
+    id: 'APP-1005', serviceId: 'SVC-004', serviceName: 'Welfare / Subsidy Scheme', serviceType: 'welfare',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-004', officerName: 'Priya Nair',
+    dept: 'Welfare Department', status: 'approved', submittedDate: '2023-07-15', slaDate: '2023-07-29',
+    fee: 0, paymentMethod: 'free', paymentStatus: 'waived', remarks: 'Approved.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-07-15T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Approved', date: '2023-07-25T11:00:00', actor: 'System', note: 'Scheme approved.' }
+    ],
+    documents: [{ name: 'Income_Cert.pdf', type: 'Proof', date: '2023-07-15', status: 'verified' }]
+  },
+  {
+    id: 'APP-1006', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Revenue Department', status: 'approved', submittedDate: '2023-06-10', slaDate: '2023-06-17',
+    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-06-10T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Certificate Issued', date: '2023-06-15T11:00:00', actor: 'System', note: 'Certificate issued.' }
+    ],
+    documents: [{ name: 'Salary_Slip.pdf', type: 'Proof', date: '2023-06-10', status: 'verified' }]
+  },
+  {
+    id: 'APP-1007', serviceId: 'SVC-003', serviceName: 'Residence Certificate', serviceType: 'certificate',
+    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
+    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-05-05', slaDate: '2023-05-12',
+    fee: 30, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Completed.',
+    timeline: [
+      { action: 'Application Submitted', date: '2023-05-05T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
+      { action: 'Completed', date: '2023-05-10T11:00:00', actor: 'System', note: 'Service completed.' }
+    ],
+    documents: [{ name: 'Aadhaar.pdf', type: 'ID', date: '2023-05-05', status: 'verified' }]
+  },
+  {
     id: 'APP-2488', serviceId: 'SVC-002', serviceName: 'Caste Certificate', serviceType: 'certificate',
     citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
     dept: 'Revenue Department', status: 'escalated', submittedDate: '2025-01-10', slaDate: '2025-01-17',
@@ -202,7 +279,7 @@ const MOCK_APPLICATIONS = [
 ];
 
 // ── Grievance statuses ──
-// Active  : 'new'  (NEW_GRIEVANCE) | 'open' (UNDER_INVESTIGATION) | 'escalated' (GRIEVANCE_ESCALATED — pending supervisor)
+// Active  : 'open'  (NEW_GRIEVANCE) | 'investigating' (UNDER_INVESTIGATION) | 'escalated' (GRIEVANCE_ESCALATED — pending supervisor)
 // Terminal: 'resolved' (GRIEVANCE_RESOLVED) | 'rejected' (GRIEVANCE_REJECTED) | 'escalated-resolved' (Supervisor closed)
 // ── Categories ──
 // 'delay' | 'rejection' | 'payment' | 'misconduct'
@@ -215,79 +292,67 @@ const MOCK_GRIEVANCES = [
 
   {
     id: 'GRV-051', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
+    officerId: 'GRV-001', officerName: 'Nalini Rao',
     category: 'delay', subject: 'Caste Certificate delayed for 12 days',
     description: 'My application has been stuck under verification with the assigned officer. The SLA is breached and I am reporting this delay.',
-    relatedAppId: 'APP-2488', status: 'new', priority: 'high', slaStatus: 'breach',
+    relatedAppId: 'APP-2488', status: 'open', priority: 'high', slaStatus: 'breach',
     filedDate: '2025-01-28', lastUpdated: '2025-01-28',
     history: [
       { action: 'Grievance Raised', date: '2025-01-28T10:00:00', actor: 'Ravi Kumar', note: 'Citizen raised grievance due to delay at officer level.' },
-      { action: 'Assigned to Grievance Officer', date: '2025-01-28T10:05:00', actor: 'System', note: 'Assigned to Priya Nair for investigation.' },
+      { action: 'Assigned to Grievance Officer', date: '2025-01-28T10:05:00', actor: 'System', note: 'Assigned to Nalini Rao for investigation.' },
     ],
   },
-  {
-    id: 'GRV-050', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'rejection', subject: 'Caste certificate rejected without proper reason',
-    description: 'My caste certificate application was rejected without any explanation or reference to which document was found insufficient. The rejection letter only says "Does not meet requirements".',
-    relatedAppId: 'APP-2432', status: 'new', priority: 'medium', slaStatus: 'safe',
-    filedDate: '2025-01-27', lastUpdated: '2025-01-27',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-27T14:30:00', actor: 'Ravi Kumar', note: 'Complaint about vague rejection.' },
-      { action: 'Assigned to Officer', date: '2025-01-27T14:35:00', actor: 'System', note: 'Assigned to Priya Nair (Grievance Officer).' },
-    ],
-  },
+
   {
     id: 'GRV-049', citizenId: 'CIT-002', citizenName: 'Meena Devi',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
+    officerId: 'GRV-001', officerName: 'Nalini Rao',
     category: 'delay', subject: 'Event permission pending 28 days — event is next week',
     description: 'I applied for event permission 28 days ago. The SLA is 5 days. I visited the office three times and each time told to come back later. My event is scheduled for next week and I risk losing my deposit.',
-    relatedAppId: 'APP-2301', status: 'open', priority: 'high', slaStatus: 'breach',
+    relatedAppId: 'APP-2301', status: 'investigating', priority: 'high', slaStatus: 'breach',
     filedDate: '2025-01-20', lastUpdated: '2025-01-25',
     history: [
       { action: 'Grievance Filed', date: '2025-01-20T09:00:00', actor: 'Meena Devi', note: 'Event permission pending 23 days past SLA.' },
-      { action: 'Assigned to Officer', date: '2025-01-20T09:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2025-01-25T11:00:00', actor: 'Priya Nair', note: 'Investigating with Municipal Corporation.' },
+      { action: 'Assigned to Officer', date: '2025-01-20T09:05:00', actor: 'System', note: 'Assigned to Nalini Rao.' },
+      { action: 'Under Investigation', date: '2025-01-25T11:00:00', actor: 'Nalini Rao', note: 'Investigating with Municipal Corporation.' },
     ],
   },
   {
     id: 'GRV-048', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
+    officerId: 'GRV-001', officerName: 'Nalini Rao',
     category: 'delay', subject: 'Delay in Caste Certificate Processing',
     description: 'My caste certificate application (APP-2489) has been pending for over a week with no update. The SLA deadline has passed and no communication has been received from the officer.',
-    relatedAppId: 'APP-2489', status: 'open', priority: 'high', slaStatus: 'breach',
+    relatedAppId: 'APP-2489', status: 'investigating', priority: 'high', slaStatus: 'breach',
     filedDate: '2025-01-22', lastUpdated: '2025-01-24',
     history: [
       { action: 'Grievance Filed', date: '2025-01-22T14:00:00', actor: 'Ravi Kumar', note: 'Complaint about delay in caste certificate.' },
-      { action: 'Assigned to Officer', date: '2025-01-22T14:30:00', actor: 'System', note: 'Assigned to Priya Nair (Grievance Officer).' },
-      { action: 'Under Investigation', date: '2025-01-24T10:00:00', actor: 'Priya Nair', note: 'Investigating the delay with Revenue Department.' },
+      { action: 'Assigned to Officer', date: '2025-01-22T14:30:00', actor: 'System', note: 'Assigned to Nalini Rao (Grievance Officer).' },
+      { action: 'Under Investigation', date: '2025-01-24T10:00:00', actor: 'Nalini Rao', note: 'Investigating the delay with Revenue Department.' },
     ],
   },
   {
     id: 'GRV-047', citizenId: 'CIT-003', citizenName: 'Gopal Rao',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
+    officerId: 'GRV-001', officerName: 'Nalini Rao',
     category: 'misconduct', subject: 'Officer demanded informal payment for processing',
     description: 'When I visited the Revenue Office to inquire about my application, the officer (OFF-067) implied that the processing would be faster if I paid an "informal facilitation fee". I refused and want to formally report this misconduct.',
     relatedAppId: 'APP-2490', status: 'open', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-18', lastUpdated: '2025-01-23',
+    filedDate: '2025-01-18', lastUpdated: '2025-01-18',
     history: [
       { action: 'Grievance Filed', date: '2025-01-18T16:00:00', actor: 'Gopal Rao', note: 'Formal bribery allegation against OFF-067.' },
-      { action: 'Assigned to Officer', date: '2025-01-18T16:10:00', actor: 'System', note: 'Assigned to Priya Nair (Grievance Officer). CRITICAL PRIORITY.' },
-      { action: 'Audit Review Initiated', date: '2025-01-23T10:00:00', actor: 'Priya Nair', note: 'Reviewing audit logs and officer action history.' },
+      { action: 'Assigned to Officer', date: '2025-01-18T16:10:00', actor: 'System', note: 'Assigned to Nalini Rao (Grievance Officer). CRITICAL PRIORITY.' },
     ],
   },
   {
     id: 'GRV-046', citizenId: 'CIT-004', citizenName: 'Sunita Verma',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
+    officerId: 'GRV-001', officerName: 'Nalini Rao',
     category: 'misconduct', subject: 'Repeated harassment at Welfare Department office',
     description: 'I have been to the Welfare Department five times for my PM Kisan application. Each time a different officer handles it and says the previous officer made an error. I have been asked to re-submit documents three times already.',
     relatedAppId: 'APP-2399', status: 'escalated', priority: 'high', slaStatus: 'breach',
     filedDate: '2025-01-10', lastUpdated: '2025-01-26',
     history: [
       { action: 'Grievance Filed', date: '2025-01-10T10:00:00', actor: 'Sunita Verma', note: 'Complaint about repeated document re-submission demands.' },
-      { action: 'Assigned to Officer', date: '2025-01-10T10:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2025-01-15T11:00:00', actor: 'Priya Nair', note: 'Reviewing case history with Welfare Department.' },
-      { action: 'Escalated to Supervisor', date: '2025-01-26T14:00:00', actor: 'Priya Nair', note: 'Systemic issue found — escalating to Dept. Supervisor for corrective action.' },
+      { action: 'Assigned to Officer', date: '2025-01-10T10:05:00', actor: 'System', note: 'Assigned to Nalini Rao.' },
+      { action: 'Under Investigation', date: '2025-01-15T11:00:00', actor: 'Nalini Rao', note: 'Reviewing case history with Welfare Department.' },
+      { action: 'Escalated to Supervisor', date: '2025-01-26T14:00:00', actor: 'Nalini Rao', note: 'Systemic issue found — escalating to Dept. Supervisor for corrective action.' },
     ],
   },
 
@@ -308,22 +373,7 @@ const MOCK_GRIEVANCES = [
       { action: 'Resolved', date: '2025-01-12T16:00:00', actor: 'Priya Nair', note: 'Application reassigned and processed. Certificate issued.' },
     ],
   },
-  {
-    id: 'GRV-044', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'payment', subject: 'Welfare subsidy not credited for 2 months',
-    description: 'PM Kisan subsidy not credited for October and November despite approved application and correct bank details.',
-    relatedAppId: 'APP-2201', status: 'resolved', priority: 'high', slaStatus: 'safe',
-    filedDate: '2024-12-20', lastUpdated: '2024-12-28', closedDate: '2024-12-28', daysTaken: 8,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Found incorrect IFSC stored due to bank branch migration. Updated and both months subsidy credited within 3 working days.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-12-20T10:00:00', actor: 'Ravi Kumar', note: 'Missing subsidy for 2 months.' },
-      { action: 'Assigned to Officer', date: '2024-12-20T10:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2024-12-22T11:00:00', actor: 'Priya Nair', note: 'Checking payment gateway logs.' },
-      { action: 'Root Cause Found', date: '2024-12-24T14:00:00', actor: 'Priya Nair', note: 'Incorrect IFSC due to bank branch migration.' },
-      { action: 'Resolved', date: '2024-12-28T09:00:00', actor: 'Priya Nair', note: 'Both subsidy amounts credited successfully.' },
-    ],
-  },
+
   {
     id: 'GRV-043', citizenId: 'CIT-002', citizenName: 'Meena Devi',
     officerId: 'EMP-004', officerName: 'Priya Nair',
@@ -475,7 +525,7 @@ const MOCK_AUDIT_LOGS = [
  * Initialize localStorage with mock data if not already present
  */
 export function initializeMockData() {
-  if (!localStorage.getItem('DigiConnect_initialized_v21')) {
+  if (!localStorage.getItem('DigiConnect_initialized_v24')) {
     localStorage.clear();
     localStorage.setItem('DigiConnect_users', JSON.stringify(MOCK_USERS));
     localStorage.setItem('DigiConnect_services', JSON.stringify(MOCK_SERVICES));
@@ -490,7 +540,7 @@ export function initializeMockData() {
     localStorage.setItem('DigiConnect_super_approved_today', '42');
     localStorage.setItem('DigiConnect_super_esc_sla_cases', JSON.stringify([...SUPER_ESC_SLA_CASES, ...SUPER_ESC_GRIEVANCE_CASES]));
     localStorage.setItem('DigiConnect_super_pending_apps', JSON.stringify(SUPER_PENDING_APPS));
-    localStorage.setItem('DigiConnect_initialized_v21', 'true');
+    localStorage.setItem('DigiConnect_initialized_v24', 'true');
   }
 }
 

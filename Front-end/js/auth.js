@@ -476,8 +476,19 @@ export function initRegisterPage() {
       if (!phone || phone.replace(/\D/g, '').length < 10) { showToast('Enter a valid 10-digit mobile number.', 'warning'); document.getElementById('phone').focus(); return; }
       if (!state) { showToast('Please select your state.', 'warning'); document.getElementById('state').focus(); return; }
       if (!district) { showToast('District is required.', 'warning'); document.getElementById('district').focus(); return; }
+      if (!/^[a-zA-Z\s]+$/.test(district)) {
+          showToast('District contains invalid characters. Use alphabets and spaces only.', 'warning');
+          document.getElementById('district').focus();
+          return;
+      }
       if (!pin || pin.length < 6) { showToast('Enter a valid 6-digit PIN code.', 'warning'); document.getElementById('pincode').focus(); return; }
       if (!addr) { showToast('Full address is required.', 'warning'); document.getElementById('address').focus(); return; }
+      const addrPattern = /^[a-zA-Z0-9\s,\-#/.]+$/;
+      if (!addrPattern.test(addr)) {
+        showToast('Full Address contains invalid characters. Use alphanumeric, spaces, and ,-#/. symbols.', 'warning');
+        document.getElementById('address').focus();
+        return;
+      }
     }
     const prev = document.getElementById('step' + currentStep);
     const next = document.getElementById('step' + n);

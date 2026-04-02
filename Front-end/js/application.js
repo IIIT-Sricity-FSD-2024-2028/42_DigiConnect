@@ -2,21 +2,17 @@
 // application.js — Application lifecycle management
 // ═══════════════════════════════════════════
 
-import { getSession, getApplications, setApplications, getServices, getAuditLogs, setAuditLogs, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries } from './state.js';
+import { getSession, getApplications, setApplications, getServices, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries } from './state.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal, getQueryParam, formatCard } from './utils.js';
-import { renderNotifPanel } from './notifications.js';
-import { addNotification } from './notifications.js';
+import { renderNotifPanel, addNotification } from './notifications.js';
 import { checkSLA } from './escalation.js';
-// No longer importing OFFICER_QUEUE from mock-data directly
-
-function addAuditEntry(action, details) {
-  const session = getSession();
-  const logs = getAuditLogs();
-  logs.unshift({ id: generateId('LOG'), action, actor: session ? session.email : 'system', role: session ? session.role : 'system', date: new Date().toISOString(), details });
-  if (logs.length > 100) logs.length = 100;
-  setAuditLogs(logs);
-}
+import {
+  addAuditEntry, assignOfficerByDept, getSupervisorByDept,
+  pushToOfficerQueue, pushToSuperApprovals, pushOfficerQuery,
+  updateMasterApp, isOfficerFinalService,
+  notifyCitizen, notifyOfficer, notifySupervisor
+} from './workflow.js';
 
 // ══════════════════════════════════════════
 // Citizen: Apply for Service
@@ -24,9 +20,6 @@ function addAuditEntry(action, details) {
 
 export function initApplyService() {
   const session = initPage({ title: 'Apply for Service', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'Apply for Service' }], requiredRole: 'citizen' });
-  if (!session) return;
-  renderNotifPanel();
-
   const services = getServices().filter(s => s.name !== 'Marriage Certificate' && s.name !== 'Death Certificate');
   let selectedService = null;
   let currentStep = 1;
@@ -67,15 +60,15 @@ export function initApplyService() {
   const specificFields = {
     'Income Certificate': `
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Annual Income (₹) <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 120000" /></div>
+        <div class="form-group"><label class="form-label">Annual Income (₹) <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 120000" min="0" /></div>
         <div class="form-group"><label class="form-label">Income Source <span class="required">*</span></label><select class="form-input"><option>Agriculture</option><option>Daily Wage</option><option>Salaried</option><option>Business</option><option>Pension</option></select></div>
-        <div class="form-group"><label class="form-label">Occupation <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Farmer" /></div>
+        <div class="form-group"><label class="form-label">Occupation <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Farmer" oninput="this.value=this.value.replace(/[^A-Za-z\\s]/g,'')" /></div>
         <div class="form-group"><label class="form-label">Purpose of Certificate <span class="required">*</span></label><select class="form-input"><option>School / College Admission</option><option>Government Scheme</option><option>Bank Loan</option><option>Legal Purpose</option><option>Other</option></select></div>
       </div>`,
     'Caste Certificate': `
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Caste <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Yadav" /></div>
-        <div class="form-group"><label class="form-label">Sub-caste</label><input type="text" class="form-input" placeholder="If applicable" /></div>
+        <div class="form-group"><label class="form-label">Caste <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Yadav" oninput="this.value=this.value.replace(/[^A-Za-z\\s]/g,'')" /></div>
+        <div class="form-group"><label class="form-label">Sub-caste</label><input type="text" class="form-input" placeholder="If applicable" oninput="this.value=this.value.replace(/[^A-Za-z\\s]/g,'')" /></div>
         <div class="form-group"><label class="form-label">Category <span class="required">*</span></label><select class="form-input"><option>SC</option><option>ST</option><option>OBC</option><option>EWS</option></select></div>
         <div class="form-group"><label class="form-label">Religion <span class="required">*</span></label><select class="form-input"><option>Hindu</option><option>Muslim</option><option>Christian</option><option>Sikh</option><option>Buddhist</option><option>Other</option></select></div>
         <div class="form-group col-span-full"><label class="form-label">Purpose <span class="required">*</span></label><select class="form-input"><option>Education Reservation</option><option>Govt. Job Reservation</option><option>Welfare Scheme</option><option>Other</option></select></div>
@@ -88,30 +81,30 @@ export function initApplyService() {
       </div>`,
     'Welfare / Subsidy Scheme': `
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Land Holding (Acres) <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 2.5" /></div>
+        <div class="form-group"><label class="form-label">Land Holding (Acres) <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. 2.5" oninput="this.value=this.value.replace(/[^0-9.]/g, '').replace(/(\\..*?)\\..*/g, '$1')" /></div>
         <div class="form-group"><label class="form-label">Land Survey Number <span class="required">*</span></label><input type="text" class="form-input" placeholder="As per Patta" /></div>
-        <div class="form-group"><label class="form-label">Bank Account Number <span class="required">*</span></label><input type="text" class="form-input" placeholder="For direct benefit transfer" /></div>
-        <div class="form-group"><label class="form-label">IFSC Code <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. SBIN0001234" /></div>
+        <div class="form-group"><label class="form-label">Bank Account Number <span class="required">*</span></label><input type="text" class="form-input" placeholder="For direct benefit transfer" oninput="this.value=this.value.replace(/[^0-9]/g, '')" /></div>
+        <div class="form-group"><label class="form-label">IFSC Code <span class="required">*</span></label><input type="text" class="form-input" id="f_ifsc" placeholder="e.g. SBIN0001234" maxlength="11" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" /></div>
       </div>`,
     'Scholarship Application': `
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Course Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. B.Tech Computer Science" /></div>
         <div class="form-group"><label class="form-label">Institution Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="College / University name" /></div>
-        <div class="form-group"><label class="form-label">Admission Year <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 2024" /></div>
-        <div class="form-group"><label class="form-label">Annual Tuition Fee (₹) <span class="required">*</span></label><input type="number" class="form-input" placeholder="As per fee receipt" /></div>
+        <div class="form-group"><label class="form-label">Admission Year <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 2024" min="0" /></div>
+        <div class="form-group"><label class="form-label">Annual Tuition Fee (₹) <span class="required">*</span></label><input type="number" class="form-input" placeholder="As per fee receipt" min="0" /></div>
       </div>`,
     'Event Permission': `
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Event Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Annual Cultural Fest" /></div>
+        <div class="form-group"><label class="form-label">Event Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Annual Cultural Fest" oninput="this.value=this.value.replace(/[^A-Za-z0-9\\s]/g,'')" /></div>
         <div class="form-group"><label class="form-label">Event Type <span class="required">*</span></label><select class="form-input"><option>Cultural</option><option>Religious</option><option>Political</option><option>Sports</option><option>Commercial</option></select></div>
         <div class="form-group"><label class="form-label">Event Date <span class="required">*</span></label><input type="date" class="form-input" /></div>
-        <div class="form-group"><label class="form-label">Duration (Hours) <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 8" /></div>
+        <div class="form-group"><label class="form-label">Duration (Hours) <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 8" min="0" /></div>
         <div class="form-group"><label class="form-label">Venue Address <span class="required">*</span></label><input type="text" class="form-input" placeholder="Full venue address" /></div>
-        <div class="form-group"><label class="form-label">Expected Attendance <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 500" /></div>
+        <div class="form-group"><label class="form-label">Expected Attendance <span class="required">*</span></label><input type="number" class="form-input" placeholder="e.g. 500" min="0" /></div>
       </div>`,
     'Vendor License': `
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Business / Trade Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Ravi General Store" /></div>
+        <div class="form-group"><label class="form-label">Business / Trade Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Ravi General Store" oninput="this.value=this.value.replace(/[^A-Za-z0-9\\s]/g,'')" /></div>
         <div class="form-group"><label class="form-label">Type of Business <span class="required">*</span></label><select class="form-input"><option>Retail Shop</option><option>Food Vendor</option><option>Mobile Vendor</option><option>Kiosk</option><option>Service Business</option></select></div>
         <div class="form-group"><label class="form-label">Business Address <span class="required">*</span></label><input type="text" class="form-input" placeholder="Full address of business" /></div>
         <div class="form-group"><label class="form-label">Ownership Type</label><select class="form-input"><option>Own Property</option><option>Rented</option></select></div>
@@ -119,9 +112,9 @@ export function initApplyService() {
     'Record Correction': `
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Record Type <span class="required">*</span></label><select class="form-input"><option>Ration Card</option><option>Land Records</option><option>Birth Certificate</option><option>Death Certificate</option><option>Other Govt. Record</option></select></div>
-        <div class="form-group"><label class="form-label">Record / Document Number <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Ration Card No." /></div>
-        <div class="form-group"><label class="form-label">Current (Incorrect) Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="As in the document" /></div>
-        <div class="form-group"><label class="form-label">Correct Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="As per Aadhaar / proof" /></div>
+        <div class="form-group"><label class="form-label">Record / Document Number <span class="required">*</span></label><input type="text" class="form-input" placeholder="e.g. Ration Card No." oninput="this.value=this.value.replace(/[^A-Za-z0-9\\s\\-]/g,'')" /></div>
+        <div class="form-group"><label class="form-label">Current (Incorrect) Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="As in the document" oninput="this.value=this.value.replace(/[^A-Za-z\\s]/g,'')" /></div>
+        <div class="form-group"><label class="form-label">Correct Name <span class="required">*</span></label><input type="text" class="form-input" placeholder="As per Aadhaar / proof" oninput="this.value=this.value.replace(/[^A-Za-z\\s]/g,'')" /></div>
         <div class="form-group col-span-full"><label class="form-label">Reason for Correction <span class="required">*</span></label><textarea class="form-input" rows="3" placeholder="Briefly explain why the correction is needed…"></textarea></div>
       </div>`
   };
@@ -246,6 +239,53 @@ export function initApplyService() {
   window.nextStep = (stepNum) => {
     if (stepNum > currentStep) {
       if (window.validateForm && !window.validateForm('#formStep' + currentStep)) return;
+      if (currentStep === 1) {
+        const aadhaar = document.getElementById('f_aadhaar')?.value;
+        if (aadhaar && aadhaar.length !== 12) {
+          if(window.showToast) window.showToast('Aadhaar Number must be exactly 12 digits.', 'warning');
+          return;
+        }
+        const mobile = document.getElementById('f_mobile')?.value;
+        if (mobile && mobile.length !== 10) {
+          if(window.showToast) window.showToast('Mobile Number must be exactly 10 digits.', 'warning');
+          return;
+        }
+        const email = document.getElementById('f_email')?.value;
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailPattern.test(email)) {
+          if(window.showToast) window.showToast('Please enter a valid Email Address.', 'warning');
+          return;
+        }
+        const pincode = document.getElementById('f_pincode')?.value;
+        if (pincode) {
+          if (pincode.length !== 6) {
+            if(window.showToast) window.showToast('PIN Code must be exactly 6 digits.', 'warning');
+            return;
+          }
+          if (/^0+$/.test(pincode)) {
+            if(window.showToast) window.showToast('PIN Code cannot be all zeros. Please enter a valid PIN Code.', 'warning');
+            return;
+          }
+        }
+
+        const ifsc = document.getElementById('f_ifsc')?.value;
+        if (ifsc) {
+          const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+          if (!ifscPattern.test(ifsc)) {
+            if(window.showToast) window.showToast('Invalid IFSC Code. Please enter a valid 11-char code (e.g. SBIN0001234)', 'warning');
+            return;
+          }
+        }
+      }
+
+      if (currentStep === 2) {
+        const slots = document.querySelectorAll('#docUploadList .upload-slot');
+        const uploaded = document.querySelectorAll('#docUploadList .upload-slot.uploaded');
+        if (slots.length > 0 && uploaded.length < slots.length) {
+          if (window.showToast) window.showToast('Please upload all required documents to proceed.', 'warning');
+          return;
+        }
+      }
     }
     goToFormStep(stepNum);
   };
@@ -262,6 +302,42 @@ export function initApplyService() {
       }
     }
     currentStep = step;
+
+    // ── Sync Data to Stage 3 Review ──
+    if (step === 3) {
+      const v = (id) => document.getElementById(id)?.value?.trim() || '—';
+      const tc = (id, val) => { 
+        const el = document.getElementById(id); 
+        if (el) el.textContent = val || '—'; 
+      };
+
+      const first = v('f_firstName');
+      const last = v('f_lastName');
+      tc('rev_name', [first, last].filter(s => s && s !== '—').join(' ') || '—');
+      tc('rev_aadhaar', v('f_aadhaar'));
+      tc('rev_dob', v('f_dob'));
+      
+      const genderSelect = document.getElementById('f_gender');
+      tc('rev_gender', genderSelect?.options[genderSelect.selectedIndex]?.text);
+      
+      tc('rev_mobile', v('f_mobile'));
+      tc('rev_street', v('f_street'));
+      tc('rev_district', v('districtSelect'));
+      tc('rev_state', v('f_state'));
+      tc('rev_pincode', v('f_pincode'));
+
+      if (selectedService) {
+        tc('rev_svc', selectedService.name);
+        tc('rev_dept', selectedService.dept);
+        tc('rev_sla', selectedService.sla + ' Working Days');
+        tc('rev_fee', selectedService.feeLabel);
+      }
+
+      const uploaded = document.querySelectorAll('#docUploadList .upload-slot.uploaded .doc-name');
+      tc('rev_docs', uploaded.length > 0 
+        ? Array.from(uploaded).map(n => n.textContent).join(', ') 
+        : 'No documents uploaded');
+    }
   }
 
   window.validateDecl = () => {
@@ -321,26 +397,94 @@ export function initApplyService() {
 
     setTimeout(() => {
       const apps = getApplications();
+      // ── FIX 1: Dept-matched officer assignment ──
+      const { officerId, officerName } = assignOfficerByDept(selectedService.name);
+      const supervisorId = getSupervisorByDept(selectedService.name);
+
+      // ── Read ALL service-specific and personal fields from the form DOM ──
+      const v = (id) => document.getElementById(id)?.value?.trim() || null;
+      const vq = (selector) => document.querySelector(selector);
+      // Helper: get value from the nth input/select inside specificBody
+      const sf = (idx) => {
+        const inputs = document.getElementById('specificBody')?.querySelectorAll('input,select,textarea');
+        return inputs?.[idx]?.value?.trim() || null;
+      };
+
+      // Personal / common fields — IDs match apply-service.html exactly
+      const formFirst   = v('f_firstName') || '';
+      const formLast    = v('f_lastName')  || '';
+      const formName    = [formFirst, formLast].filter(Boolean).join(' ') || session.name;
+      const formDob     = v('f_dob');
+      const formGender  = v('f_gender') || document.getElementById('f_gender')?.options?.[document.getElementById('f_gender')?.selectedIndex]?.text;
+      const formGuardian= v('f_guardianName');
+      const formPhone   = v('f_mobile') || session.phone;
+      const formAadhaar = v('f_aadhaar') || session.aadhaar;
+      // Compose full address from all address sub-fields
+      const formStreet  = v('f_street')   || '';
+      const formVillage = v('f_village')  || '';
+      const formMandal  = v('f_mandal')   || '';
+      const formDistrict= v('districtSelect') || '';
+      const formState   = v('f_state')    || '';
+      const formPincode = v('f_pincode')  || '';
+      const formAddress = [formStreet, formVillage, formMandal, formDistrict, formState, formPincode]
+        .filter(Boolean).join(', ') || null;
+
+      // Service-specific fields — positionally from specificBody
+      let svcFields = {};
+      const sName = selectedService.name;
+      if (sName === 'Income Certificate') {
+        svcFields = { income: sf(0), incomeSource: sf(1), occupation: sf(2), purpose: sf(3) };
+      } else if (sName === 'Caste Certificate') {
+        svcFields = { community: sf(0), subCaste: sf(1), category: sf(2), religion: sf(3), purpose: sf(4) };
+      } else if (sName === 'Residence Certificate') {
+        svcFields = { duration: sf(0), residenceType: sf(1), purpose: sf(2) };
+      } else if (sName === 'Welfare / Subsidy Scheme') {
+        svcFields = { landHolding: sf(0), surveyNo: sf(1), bankAccount: sf(2), ifsc: sf(3) };
+      } else if (sName === 'Scholarship Application') {
+        svcFields = { courseName: sf(0), institution: sf(1), admissionYear: sf(2), tuitionFee: sf(3) };
+      } else if (sName === 'Event Permission') {
+        svcFields = { eventName: sf(0), eventType: sf(1), eventDate: sf(2), eventDuration: sf(3), venueAddress: sf(4), attendance: sf(5) };
+      } else if (sName === 'Vendor License') {
+        svcFields = { businessName: sf(0), businessType: sf(1), businessAddress: sf(2), ownershipType: sf(3) };
+      } else if (sName === 'Record Correction') {
+        svcFields = { recordType: sf(0), recordNo: sf(1), incorrect: sf(2), correct: sf(3), reason: sf(4) };
+      }
+
       const newApp = {
         id: existingRefId,
         serviceId: selectedService.id, serviceName: selectedService.name, serviceType: selectedService.cat.toLowerCase(),
-        citizenId: session.id, citizenName: session.name,
-        officerId: 'EMP-001', officerName: 'Suresh Reddy',
+        citizenId: session.id, citizenName: formName,
+        officerId, officerName,
+        supervisorId,
         dept: selectedService.dept, status: 'under-review',
         submittedDate: new Date().toISOString(),
         slaDate: new Date(Date.now() + selectedService.sla * 86400000).toISOString(),
         fee: selectedService.fee, paymentMethod: selectedService.fee === 0 ? 'free' : 'UPI', paymentStatus: selectedService.fee === 0 ? 'waived' : 'paid',
         remarks: '',
+        // Personal fields
+        dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
+        phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
+        street: formStreet, village: formVillage, mandal: formMandal,
+        district: formDistrict, state: formState,
+        // All service-specific fields spread in
+        ...svcFields,
         timeline: [
           { action: 'Application Submitted', date: new Date().toISOString(), actor: session.name, note: 'Application received and registered.' },
+          { action: 'Assigned to Officer', date: new Date().toISOString(), actor: 'System', note: `Auto-assigned to ${officerName} based on department.` },
           ...(selectedService.fee > 0 ? [{ action: 'Payment Confirmed', date: new Date().toISOString(), actor: 'System', note: `${selectedService.feeLabel} paid via UPI.` }] : []),
         ],
         documents: selectedService.docs.map(d => ({ name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending' })),
       };
       apps.push(newApp);
       setApplications(apps);
-      addAuditEntry('Application Submitted', `${session.name} applied for ${selectedService.name} (${newApp.id})`);
+
+      // ── FIX 1a: Push to Officer Queue (LIVE CONNECTION: Citizen → Officer) ──
+      pushToOfficerQueue(newApp, selectedService);
+
+      // ── Audit + Notifications ──
+      addAuditEntry('Application Submitted', `${session.name} applied for ${selectedService.name} (${newApp.id}). Assigned to ${officerName}.`);
       addNotification({ userId: session.id, title: 'Application Submitted', message: `Your application for ${selectedService.name} (${newApp.id}) has been submitted successfully.`, type: 'success', link: `citizen/track-application.html?id=${newApp.id}` });
+      notifyOfficer(officerId, 'New Application Assigned', `${selectedService.name} application (${newApp.id}) from ${session.name} is assigned to you.`, newApp.id);
 
       // Show success screen
       for (let i = 1; i <= 4; i++) {
@@ -396,6 +540,12 @@ export function initMyApplications() {
   if (!session) return;
   renderNotifPanel();
 
+  // Helper — sets text of first element matching a CSS selector
+  function setT(selector, val) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = val;
+  }
+
   const tbody = document.getElementById('appsTableBody') || document.getElementById('applicationsTableBody');
   const cardGrid = document.getElementById('appsCardGrid');
 
@@ -405,8 +555,13 @@ export function initMyApplications() {
   let query = '';
   let sortBy = 'date-desc';
   let currentView = 'table';
+  
+
 
   function renderView() {
+    // Always re-read from live storage so new submissions appear immediately
+    baseApps = getApplications().filter(a => a.citizenId === session.id);
+
     let filtered = baseApps.filter(a => {
       if (filterStatus !== 'all' && a.status !== filterStatus) return false;
       if (filterType && a.serviceType && a.serviceType.toLowerCase() !== filterType) return false;
@@ -419,14 +574,19 @@ export function initMyApplications() {
     if (sortBy === 'status') filtered.sort((a,b) => a.status.localeCompare(b.status));
     if (sortBy === 'sla') filtered.sort((a,b) => checkSLA(a).daysLeft - checkSLA(b).daysLeft);
 
+    const totalItems = filtered.length;
+    const paginated = filtered;
+
     const visibleCount = document.getElementById('visibleCount');
-    if (visibleCount) visibleCount.textContent = filtered.length;
+    if (visibleCount) visibleCount.textContent = totalItems;
+    const visibleCountTotal = document.getElementById('visibleCountTotal');
+    if (visibleCountTotal) visibleCountTotal.textContent = totalItems;
 
     if (currentView === 'table' && tbody) {
       document.getElementById('tableView').style.display = 'block';
       document.getElementById('cardView').style.display = 'none';
 
-      tbody.innerHTML = filtered.map(a => {
+      tbody.innerHTML = paginated.map(a => {
         const clsMap = { 'approved': 'badge-success', 'rejected': 'badge-danger', 'query': 'badge-warning', 'draft': 'badge-neutral', 'under-review': 'badge-info', 'completed': 'badge-success' };
         const statusClass = clsMap[a.status] || 'badge-info';
         const statusLabel = a.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -466,7 +626,7 @@ export function initMyApplications() {
     else if (currentView === 'card' && cardGrid) {
       document.getElementById('tableView').style.display = 'none';
       document.getElementById('cardView').style.display = 'block';
-      cardGrid.innerHTML = filtered.map(a => {
+      cardGrid.innerHTML = paginated.map(a => {
         const clsMap = { 'approved': 'badge-success', 'rejected': 'badge-danger', 'query': 'badge-warning', 'draft': 'badge-neutral', 'under-review': 'badge-info', 'completed': 'badge-success' };
         const statusLabel = a.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
         return `
@@ -486,10 +646,10 @@ export function initMyApplications() {
       }).join('');
     }
     
-    // Update stats
-    const setT = (id, val) => { const el = document.querySelector(id) || document.getElementById(id); if (el) el.textContent = val; };
+    // Update stats — include all in-progress statuses in "Under Review" count
+    const IN_PROGRESS = ['under-review', 'query', 'officer-approved', 'supervisor-review'];
     setT('.chip-all .summary-chip-val', baseApps.length);
-    setT('.chip-pending .summary-chip-val', baseApps.filter(a => a.status === 'under-review' || a.status === 'query').length);
+    setT('.chip-pending .summary-chip-val', baseApps.filter(a => IN_PROGRESS.includes(a.status)).length);
     setT('.chip-approved .summary-chip-val', baseApps.filter(a => a.status === 'approved' || a.status === 'completed').length);
     setT('.chip-rejected .summary-chip-val', baseApps.filter(a => a.status === 'rejected').length);
     setT('.chip-draft .summary-chip-val', baseApps.filter(a => a.status === 'draft').length);
@@ -503,6 +663,15 @@ export function initMyApplications() {
     filterStatus = status;
     document.querySelectorAll('.summary-chip').forEach(c => c.classList.remove('active-filter'));
     if (el) el.classList.add('active-filter');
+    
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'" + status + "'")) {
+        b.classList.add('active');
+      } else {
+        b.classList.remove('active');
+      }
+    });
+
     renderView();
   };
   
@@ -510,6 +679,15 @@ export function initMyApplications() {
     filterStatus = status;
     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     if (el) el.classList.add('active');
+    
+    document.querySelectorAll('.summary-chip').forEach(c => {
+      if (c.getAttribute('onclick') && c.getAttribute('onclick').includes("'" + status + "'")) {
+        c.classList.add('active-filter');
+      } else {
+        c.classList.remove('active-filter');
+      }
+    });
+
     renderView();
   };
 
@@ -614,30 +792,48 @@ export function initTrackApplication() {
       slaFill.className = `sla-fill ${slaCls}`; 
     }
 
-    // Stage bar
-    const statuses = ['new', 'under-review', 'verified', 'approved'];
-    let currIdx = statuses.indexOf(app.status);
-    if(currIdx === -1 && app.status === 'query') currIdx = 1;
-    if(currIdx === -1 && app.status === 'rejected') currIdx = 0;
-    
+    // Stage bar — maps all real statuses to progress steps
+    // Steps: Submitted → Officer Verified → Supervisor Review → Approved/Rejected
+    const STATUS_STEP = {
+      'under-review':       1,
+      'query':              1,
+      'officer-approved':   2,
+      'supervisor-review':  3,
+      'approved':           4,
+      'rejected':           -1,
+    };
+    let currStep = STATUS_STEP[app.status] ?? 0;
+
     const stages = [
-      { label: 'Application\nSubmitted', status: currIdx >= 0 ? 'done' : 'active' },
-      { label: 'Documents\nVerified', status: currIdx >= 1 ? 'done' : (currIdx === 0 ? 'active' : '') },
-      { label: 'Under\nProcessing', status: currIdx >= 2 ? 'done' : (currIdx === 1 ? 'active' : '') },
-      { label: 'Final\nApproval', status: currIdx >= 3 ? 'done' : (currIdx === 2 ? 'active' : '') },
-      { label: 'Service\nCompleted', status: app.status === 'approved' ? 'done' : '' },
+      { label: 'Application\nSubmitted',  step: 1 },
+      { label: 'Officer\nVerified',        step: 2 },
+      { label: 'Supervisor\nReview',       step: 3 },
+      { label: 'Service\nCompleted',       step: 4 },
     ];
 
     const stageBar = document.getElementById('stageBar');
     if (stageBar) {
-      stageBar.innerHTML = stages.map(s => `
-        <div class="stage-node ${s.status}">
+      stageBar.innerHTML = stages.map(s => {
+        let stStatus;
+        if (app.status === 'rejected') {
+          stStatus = s.step === 1 ? 'done' : '';
+        } else if (currStep >= s.step) {
+          stStatus = 'done';
+        } else if (currStep === s.step - 1) {
+          stStatus = 'active';
+        } else {
+          stStatus = '';
+        }
+
+        return `
+        <div class="stage-node ${stStatus}">
           <div class="stage-circle">
-            ${s.status === 'done' ? '<svg width="16" height="16" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : s.status === 'active' ? '<svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '○'}
+            ${stStatus === 'done' ? '<svg width="16" height="16" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : stStatus === 'active' ? '<svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '○'}
           </div>
           <div class="stage-label">${s.label.replace('\n', '<br>')}</div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     // Action alert (query)
@@ -766,10 +962,88 @@ export function initTrackApplication() {
 
   window.submitQueryResponse = function() {
     const modal = document.getElementById('queryModal');
+    const responseText = document.getElementById('queryResponseText')?.value?.trim()
+                      || document.getElementById('citizenResponseText')?.value?.trim()
+                      || 'Citizen uploaded requested documents.';
+
+    // ── 1. Find the current application being tracked ──
+    // appId comes from the URL (track-application.html?id=APP-XXXX)
+    const currentAppId = getQueryParam('id') || (() => {
+      const apps = getApplications().filter(a => a.citizenId === session.id);
+      return apps.find(a => a.status === 'query')?.id;
+    })();
+
+    if (currentAppId) {
+      // ── 2. Update master app: save response text + change status back to under-review ──
+      updateMasterApp(
+        currentAppId,
+        'under-review',
+        'Citizen Responded to Query',
+        responseText,
+        session.name
+      );
+
+      // Also save citizenResponse on the master app itself (visible in officer review)
+      const allApps = getApplications();
+      const masterIdx = allApps.findIndex(a => a.id === currentAppId);
+      if (masterIdx !== -1) {
+        allApps[masterIdx].citizenResponse = responseText;
+        setApplications(allApps);
+      }
+
+      // ── 3. Restore officer queue entry to 'review' status so it reappears ──
+      const queue = getOfficerQueue();
+      const qIdx = queue.findIndex(q => q.id === currentAppId);
+      if (qIdx !== -1) {
+        queue[qIdx].status = 'review';
+        queue[qIdx].citizenResponse = responseText;
+        queue[qIdx].history = queue[qIdx].history || [];
+        queue[qIdx].history.push({
+          label: 'Citizen Responded',
+          ts: new Date().toLocaleString('en-IN'),
+          detail: responseText,
+          dot: 'review',
+        });
+        setOfficerQueue(queue);
+      }
+
+      // ── 4. Update officer_queries: mark as responded ──
+      const queries = getOfficerQueries();
+      const qryIdx = queries.findIndex(q => q.id === currentAppId);
+      if (qryIdx !== -1) {
+        queries[qryIdx].responded = true;
+        queries[qryIdx].citizenResponse = responseText;
+        setOfficerQueries(queries);
+      }
+
+      // ── 5. Notify officer ──
+      const masterApp = getApplications().find(a => a.id === currentAppId);
+      const officerId = masterApp?.officerId;
+      const serviceName = masterApp?.serviceName || currentAppId;
+      notifyOfficer(
+        officerId,
+        '💬 Citizen Responded to Query',
+        `${session.name} has responded to your query on ${serviceName} (${currentAppId}). Review and proceed.`,
+        currentAppId
+      );
+
+      // ── 6. Audit trail ──
+      addAuditEntry(
+        'Citizen Query Response',
+        `${session.name} responded to officer query on ${serviceName} (${currentAppId}): "${responseText}"`
+      );
+    }
+
+    // ── Close modal + hide alert ──
     if (modal) modal.classList.remove('active');
-    if (window.showToast) window.showToast('Response submitted successfully! Officer has been notified.', 'success');
+    if (window.showToast) window.showToast('Response submitted! Officer has been notified and your application is back under review.', 'success');
     const alertBox = document.getElementById('actionAlert');
     if (alertBox) alertBox.style.display = 'none';
+
+    // ── Reload the application detail to show updated status ──
+    if (currentAppId) {
+      setTimeout(() => loadApplication(currentAppId), 800);
+    }
   };
 
   function setTC(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
@@ -990,13 +1264,46 @@ export function initReviewApplication() {
   };
 
   function buildServiceFields(a) {
-      const base = [{k:'Service Type', v:a.service}, {k:'Purpose', v:a.purpose||'—'}];
-      if (a.income) base.push({k:'Annual Income (₹)', v:'₹'+a.income}, {k:'Occupation', v:a.occupation||'—'});
-      if (a.community) base.push({k:'Community/Caste', v:a.community}, {k:'Category', v:a.category||'—'}, {k:'Religion', v:a.religion||'—'});
-      if (a.duration) base.push({k:'Duration of Stay', v:a.duration+' years'}, {k:'Residence Type', v:a.residenceType||'—'});
-      if (a.recordType) base.push({k:'Record Type', v:a.recordType}, {k:'Incorrect Name', v:a.incorrect||'—'}, {k:'Correct Name', v:a.correct||'—'}, {k:'Reason', v:a.reason||'—'});
+      // First try to pull from master app (for newly submitted apps)
+      const masterApp = getApplications().find(ap => ap.id === a.id);
+      // Merge: queue entry fields take priority, fall back to master app
+      const merged = { ...masterApp, ...a };
+
+      const base = [{k:'Service Type', v: merged.service || merged.serviceName || '—'}];
+
+      // Personal details visible to officer
+      if (merged.guardianName) base.push({k:'Father / Husband Name', v: merged.guardianName});
+      const addr = merged.address || [merged.street, merged.village, merged.mandal, merged.district, merged.state, merged.pincode].filter(Boolean).join(', ');
+      if (addr) base.push({k:'Full Address', v: addr});
+
+      // Purpose / service-specific info
+      if (merged.purpose) base.push({k:'Purpose', v: merged.purpose});
+      else if (masterApp?.remarks) base.push({k:'Purpose / Remarks', v: masterApp.remarks});
+
+      // Service-specific details — all service types
+      if (merged.income) base.push({k:'Annual Income (₹)', v:'₹'+merged.income}, {k:'Occupation', v:merged.occupation||'—'}, {k:'Income Source', v:merged.incomeSource||'—'});
+      if (merged.community) base.push({k:'Community/Caste', v:merged.community}, {k:'Category', v:merged.category||'—'}, {k:'Religion', v:merged.religion||'—'});
+      if (merged.duration) base.push({k:'Duration of Stay', v:merged.duration+' years'}, {k:'Residence Type', v:merged.residenceType||'—'});
+      if (merged.recordType) base.push({k:'Record Type', v:merged.recordType}, {k:'Record No.', v:merged.recordNo||'—'}, {k:'Incorrect Name', v:merged.incorrect||'—'}, {k:'Correct Name', v:merged.correct||'—'}, {k:'Reason', v:merged.reason||'—'});
+      if (merged.eventName) base.push({k:'Event Name', v:merged.eventName}, {k:'Event Type', v:merged.eventType||'—'}, {k:'Event Date', v:merged.eventDate||'—'}, {k:'Duration', v:merged.eventDuration ? merged.eventDuration+' hrs' : '—'}, {k:'Venue', v:merged.venueAddress||'—'}, {k:'Expected Attendance', v:merged.attendance||'—'});
+      if (merged.businessName) base.push({k:'Business Name', v:merged.businessName}, {k:'Business Type', v:merged.businessType||'—'}, {k:'Business Address', v:merged.businessAddress||'—'}, {k:'Ownership Type', v:merged.ownershipType||'—'});
+      if (merged.landHolding) base.push({k:'Land Holding (acres)', v:merged.landHolding}, {k:'Survey No.', v:merged.surveyNo||'—'}, {k:'Bank Account', v:merged.bankAccount||'—'}, {k:'IFSC Code', v:merged.ifsc||'—'});
+      if (merged.courseName) base.push({k:'Course Name', v:merged.courseName}, {k:'Institution', v:merged.institution||'—'}, {k:'Admission Year', v:merged.admissionYear||'—'}, {k:'Annual Tuition Fee', v:merged.tuitionFee ? '₹'+merged.tuitionFee : '—'});
+
+      // Documents info from master app
+      if (masterApp?.documents?.length) {
+        base.push({k:'Documents Submitted', v: masterApp.documents.map(d=>d.name).join(', ')});
+      }
+
+      // Payment info from master app
+      if (masterApp) {
+        base.push({k:'Fee Paid', v: masterApp.fee > 0 ? '₹'+masterApp.fee+' ('+masterApp.paymentMethod+')' : 'Free'});
+        base.push({k:'Submitted On', v: masterApp.submittedDate ? new Date(masterApp.submittedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : a.submitted || '—'});
+      }
+
       return base;
   }
+
 
   window.renderChecklist = function(a) {
       if (!a.checklist) return;
@@ -1087,41 +1394,74 @@ export function initReviewApplication() {
 
   window.finalSubmit = function() {
       window.closeModal('confirmModal');
+      const a = myApps[currentIdx];
+      if (!a) return;
+
       const msgs = {
-          approve: 'Application approved! Certificate queued for issuance. Citizen notified via SMS.',
+          approve: 'Application approved! Sent to Supervisor for final approval. Citizen notified.',
           query: 'Query sent to citizen via SMS and portal notification.',
           reject: 'Application rejected. Citizen notified with reason provided.',
       };
       window.showToast(msgs[currentDecision], currentDecision==='approve'?'success':currentDecision==='reject'?'warning':'info');
-      // Update the application's actual status so it's not deleted from mock data but hidden from queue
-      if (myApps[currentIdx]) {
-          myApps[currentIdx].status = currentDecision; // 'approve', 'reject', 'query'
-          
-          officerQueue = getOfficerQueue();
-          const index = officerQueue.findIndex(a => a.id === myApps[currentIdx].id);
-          if (index > -1) {
-              officerQueue[index] = myApps[currentIdx];
-              setOfficerQueue(officerQueue);
-          }
 
-          // If approved or rejected, remove this app from officer queries list
-          // so the "Awaiting Citizen" counter and Queries Sent tab update on dashboard
-          if (currentDecision === 'approve' || currentDecision === 'reject') {
-              const appId = myApps[currentIdx].id;
-              const queries = getOfficerQueries();
-              const updatedQueries = queries.filter(q => q.id !== appId);
-              setOfficerQueries(updatedQueries);
+      // ── Update officer queue status ──
+      a.status = currentDecision;
+      officerQueue = getOfficerQueue();
+      const index = officerQueue.findIndex(q => q.id === a.id);
+      if (index > -1) { officerQueue[index] = a; setOfficerQueue(officerQueue); }
+
+      // ── Lookup master app for citizenId ──
+      const allApps = getApplications();
+      const masterApp = allApps.find(ap => ap.id === a.id);
+      const citizenId = masterApp?.citizenId || null;
+      const serviceName = a.service || masterApp?.serviceName || '';
+      const rejectReason = document.getElementById('rejectReason')?.value || 'Reason not specified';
+      const queryText = document.getElementById('queryText')?.value?.trim() || '';
+      const supervisorId = masterApp?.supervisorId || getSupervisorByDept(serviceName);
+
+      if (currentDecision === 'approve') {
+          // ── FIX 2: Officer → Supervisor (non-Event Permission) ──
+          if (isOfficerFinalService(serviceName)) {
+              // Event Permission: Officer decision is FINAL
+              updateMasterApp(a.id, 'approved', 'Officer Approved (Final)', `${session.name} issued final approval for ${serviceName}.`, session.name);
+              notifyCitizen(citizenId, '✅ Application Approved!', `Your ${serviceName} (${a.id}) has been approved. Certificate issued.`, 'success', a.id);
+              addAuditEntry('Officer Final Approval', `${session.name} gave final approval for ${serviceName} (${a.id}) — Event Permission service.`);
+          } else {
+              // All other services → Supervisor final approval
+              updateMasterApp(a.id, 'officer-approved', 'Officer Approved', `Approved by ${session.name}. Awaiting Supervisor final approval.`, session.name);
+              pushToSuperApprovals(a, session, masterApp);
+              notifyCitizen(citizenId, 'Application Approved by Officer', `Your ${serviceName} (${a.id}) was approved by the officer. Supervisor review is next.`, 'info', a.id);
+              notifySupervisor(supervisorId, 'Application Awaiting Final Approval', `${serviceName} (${a.id}) approved by ${session.name}. Your final approval needed.`, 'info', `supervisor/supervisor-review.html?id=${a.id}&mode=final`);
+              addAuditEntry('Officer Approved → Supervisor', `${session.name} approved ${serviceName} (${a.id}). Sent to Supervisor (${supervisorId}) for final approval.`);
           }
+          // Remove from queries if any
+          const updatedQueries = getOfficerQueries().filter(q => q.id !== a.id);
+          setOfficerQueries(updatedQueries);
+
+      } else if (currentDecision === 'reject') {
+          // ── FIX 3: Officer → Citizen (rejection sync) ──
+          updateMasterApp(a.id, 'rejected', 'Application Rejected', `Rejected by ${session.name}: ${rejectReason}`, session.name);
+          notifyCitizen(citizenId, 'Application Rejected', `Your ${serviceName} (${a.id}) was rejected. Reason: ${rejectReason}. You may raise a grievance.`, 'error', a.id);
+          addAuditEntry('Officer Rejected', `${session.name} rejected ${serviceName} (${a.id}). Reason: ${rejectReason}`);
+          const updatedQueries = getOfficerQueries().filter(q => q.id !== a.id);
+          setOfficerQueries(updatedQueries);
+
+      } else if (currentDecision === 'query') {
+          // ── FIX 4: Officer → Citizen (query sync) ──
+          updateMasterApp(a.id, 'query', 'Query Raised', `${session.name}: ${queryText}`, session.name);
+          pushOfficerQuery(a, queryText);
+          notifyCitizen(citizenId, '⚠️ Action Required — Query', `Officer raised a query on your ${serviceName} (${a.id}): ${queryText}. Please respond within 3 days.`, 'warning', a.id);
+          addAuditEntry('Officer Query Raised', `${session.name} raised a query on ${serviceName} (${a.id}): ${queryText}`);
       }
 
-      // Re-filter the active queue to exclude the newly processed application
+      // ── Re-filter the active queue ──
       officerQueue = getOfficerQueue();
-      myApps = officerQueue.filter(a => ['new', 'review', 'urgent', 'breach'].includes(a.status));
+      myApps = officerQueue.filter(q => ['new', 'review', 'urgent', 'breach'].includes(q.status));
 
       // Auto-advance to next, or refresh view if none left
       setTimeout(() => {
           if (myApps.length === 0) {
-              window.loadApp(0); // Will trigger the empty state view
+              window.loadApp(0);
           } else {
               let nextIdx = currentIdx >= myApps.length ? myApps.length - 1 : currentIdx;
               window.loadApp(nextIdx);
@@ -1139,7 +1479,24 @@ export function initReviewApplication() {
   /* ── URL param support ── */
   const searchParams = new URLSearchParams(window.location.search);
   const urlId = searchParams.get('id');
-  const startIdx = urlId ? Math.max(0, myApps.findIndex(a => a.id === urlId)) : 0;
+  let startIdx = 0;
+  
+  if (urlId) {
+      // Look in filtered pending list first
+      const pendingIdx = myApps.findIndex(a => a.id === urlId);
+      if (pendingIdx !== -1) {
+          startIdx = pendingIdx;
+      } else {
+          // Look in full officer queue (could be already approved/rejected)
+          const fullApp = officerQueue.find(a => a.id === urlId);
+          if (fullApp) {
+              // Add it to myApps temporarily if it's missing (so it can be loaded)
+              myApps.push(fullApp);
+              startIdx = myApps.length - 1;
+          }
+      }
+  }
+  
   window.loadApp(startIdx);
 
   const action = searchParams.get('action');
