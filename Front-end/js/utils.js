@@ -262,6 +262,8 @@ export function checkStrength(pw) {
  * @param {HTMLInputElement} input
  */
 export function nextOtp(input) {
+  // First, restrict to number only (redundant with global listener but needed for smooth focus transitions)
+  input.value = input.value.replace(/[^0-9]/g, '');
   if (input.value.length === 1) {
     const next = input.nextElementSibling;
     if (next && next.tagName === 'INPUT') next.focus();
@@ -491,8 +493,9 @@ export function initEventDelegation() {
         el.value = el.value.replace(/[^0-9/]/g, '');
       }
 
-      // Restrict Pincode: Max 6 digits
+      // Restrict Pincode: Max 6 digits AND numbers only
       if (idStr.includes('pincode') || idStr === 'pin') {
+        el.value = el.value.replace(/[^0-9]/g, '');
         if (el.value.length > 6) el.value = el.value.slice(0, 6);
       }
 
@@ -516,4 +519,3 @@ export function initEventDelegation() {
   // ── Global click handlers ──
   setupGlobalClickHandlers();
 }
-
