@@ -232,7 +232,7 @@
                         <div class="form-group">
                             <label class="form-label" for="pincode">PIN Code <span class="required">*</span></label>
                             <input type="text" id="pincode" class="form-input" placeholder="500001" maxlength="6"
-                                required />
+                                oninput="this.value=this.value.replace(/[^0-9]/g,'')" required />
                         </div>
                     </div>
 
