@@ -21,7 +21,7 @@ const MOCK_USERS = [
   { id: 'ADM-001', name: 'Super User', role: 'super_user', title: 'Super User', email: 'superuser@gov.in', phone: '9876543299', aadhaar: '895421678001', joined: '01 Jan 2020', status: 'Active', dept: 'IT Admin', jurisdiction: 'All', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' }
 ];
 
-const MOCK_PENDING_OFFICERS = [
+const MOCK_PENDING_OFFICERS = [ 
   { id: 'EMP-039', name: 'Vijay Teja', title: 'VRO', dept: 'Revenue Department', jurisdiction: 'Malkajgiri', applied: '24 Jan 2025', docs: ['Employee ID', 'Appointment Order'], email: 'v.teja@gov.in', phone: '9876549901', services: ['Income Certificate'] },
   { id: 'EMP-040', name: 'Lakshmi Devi', title: 'Welfare Officer', dept: 'Welfare Department', jurisdiction: 'Warangal', applied: '25 Jan 2025', docs: ['Employee ID', 'Training Certificate'], email: 'l.devi@gov.in', phone: '9876549902', services: ['Welfare / Subsidy Scheme'] },
   { id: 'EMP-041', name: 'Arjun Reddy', title: 'RI', dept: 'Revenue Department', jurisdiction: 'Karimnagar', applied: '26 Jan 2025', docs: ['Employee ID', 'Appointment Order', 'NOC'], email: 'a.reddy@gov.in', phone: '9876549903', services: ['Caste Certificate'] },

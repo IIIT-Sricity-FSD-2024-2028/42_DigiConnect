@@ -519,3 +519,4 @@ export function initEventDelegation() {
   // ── Global click handlers ──
   setupGlobalClickHandlers();
 }
+

@@ -404,6 +404,8 @@ export function initGrievanceDetail() {
   renderNotifPanel();
 
   const grvId = getQueryParam('id');
+  const requestedTab = getQueryParam('tab');
+
   const grievances = getGrievances();
   const grievance = grvId ? grievances.find(g => g.id === grvId) : grievances.find(g => !['resolved','rejected','escalated-resolved','escalated'].includes(g.status));
 
@@ -682,7 +684,13 @@ export function initGrievanceDetail() {
     
     if (currentMaxStep === 3) currentActiveTab = 'investigate';
     if (currentMaxStep === 4) currentActiveTab = 'resolve';
+
+    // Override if specific tab requested
+    if (requestedTab && stepValues[requestedTab]) {
+      currentActiveTab = requestedTab;
+    }
   }
+
 
   window.updateWorkflowVisuals = function() {
     document.querySelectorAll('.detail-tab-btn').forEach(b => {

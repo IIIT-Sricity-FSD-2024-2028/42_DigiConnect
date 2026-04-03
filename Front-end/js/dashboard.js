@@ -1104,27 +1104,8 @@ export function initGrievanceDashboard() {
   };
 
   window.openDetail = function (id) {
-    // ── FIX 4: Transition grievance from 'open' (new) to 'investigating' on first open ──
-    const allG = getGrievances();
-    const gIdx = allG.findIndex(x => x.id === id);
-    if (gIdx !== -1 && allG[gIdx].status === 'open') {
-      allG[gIdx].status = 'investigating';
-      allG[gIdx].lastUpdated = new Date().toISOString().split('T')[0];
-      allG[gIdx].history = allG[gIdx].history || [];
-      allG[gIdx].history.push({
-        action: 'Under Investigation',
-        date: new Date().toISOString(),
-        actor: session.name,
-        note: `${session.name} (Grievance Officer) started reviewing the grievance.`,
-      });
-      setGrievances(allG);
-      // Update the in-memory row badge immediately
-      const rowBadge = document.querySelector(`[data-testid="griev-row-${id}"] .badge`);
-      if (rowBadge) {
-        rowBadge.className = 'badge badge-warning';
-        rowBadge.textContent = 'Investigating';
-      }
-    }
+    // Status transition removed: Let the detail workflow handle it through the Review/Categorize steps.
+
     window.location.href = `grievance-detail.html?id=${id}`;
   };
 
