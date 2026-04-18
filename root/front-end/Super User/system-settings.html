@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Settings – DigiConnect Super User</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+    <style>
+        .settings-tabs { display:flex; gap:0; border-bottom:2px solid var(--color-border); margin-bottom:var(--space-xl); }
+        .settings-tab { padding:10px 20px; font-size:0.875rem; font-weight:600; color:var(--color-text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
+        .settings-tab.active { color:var(--navy-700); border-bottom-color:var(--navy-700); }
+        .settings-tab:hover:not(.active) { color:var(--navy-500); }
+        .settings-section { display:none; }
+        .settings-section.active { display:block; }
+        .settings-group { background:#fff; border:1px solid var(--color-border); border-radius:var(--radius-lg); margin-bottom:var(--space-lg); overflow:hidden; }
+        .settings-group-header { padding:var(--space-md) var(--space-lg); background:var(--slate-50); border-bottom:1px solid var(--color-border); display:flex; align-items:center; gap:10px; }
+        .settings-group-title { font-size:0.9375rem; font-weight:700; color:var(--navy-900); }
+        .settings-group-desc { font-size:0.8rem; color:var(--color-text-muted); margin-top:2px; }
+        .settings-row { display:flex; align-items:center; justify-content:space-between; padding:var(--space-md) var(--space-lg); border-bottom:1px solid var(--slate-100); gap:var(--space-lg); flex-wrap:wrap; }
+        .settings-row:last-child { border-bottom:none; }
+        .settings-row-label { font-size:0.875rem; font-weight:600; color:var(--navy-900); }
+        .settings-row-desc { font-size:0.8rem; color:var(--color-text-muted); margin-top:2px; }
+        .toggle-switch { position:relative; width:44px; height:24px; flex-shrink:0; }
+        .toggle-switch input { opacity:0; width:0; height:0; position:absolute; }
+        .toggle-slider { position:absolute; inset:0; background:var(--slate-300); border-radius:12px; cursor:pointer; transition:0.2s; }
+        .toggle-slider:before { content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:0.2s; }
+        .toggle-switch input:checked + .toggle-slider { background:var(--navy-600); }
+        .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
+        .danger-zone { border:1px solid var(--red-300); border-radius:var(--radius-lg); padding:var(--space-lg); background:#fff9f9; }
+        .danger-zone-title { font-size:0.9375rem; font-weight:700; color:var(--red-600); margin-bottom:var(--space-sm); }
+        .danger-action { display:flex; align-items:center; justify-content:space-between; padding:var(--space-md) 0; border-bottom:1px solid var(--red-100); flex-wrap:wrap; gap:var(--space-md); }
+        .danger-action:last-child { border-bottom:none; padding-bottom:0; }
+    </style>
+</head>
+
+<body data-page="system-settings">
+    <div class="app-layout">
+
+        <!-- ===================== SIDEBAR ===================== -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- ===================== TOPBAR ===================== -->
+        <header class="topbar"></header>
+
+        <!-- ===================== MAIN CONTENT ===================== -->
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">System Settings</h1>
+                <p class="page-subtitle">Configure platform-wide settings, SLA defaults, notifications, security policies, and maintenance options.</p>
+            </div>
+
+            <!-- Settings Tabs -->
+            <div class="settings-tabs">
+                <div class="settings-tab active" onclick="switchTab('general',this)">General</div>
+                <div class="settings-tab" onclick="switchTab('sla',this)">SLA &amp; Escalation</div>
+                <div class="settings-tab" onclick="switchTab('notifications',this)">Notifications</div>
+                <div class="settings-tab" onclick="switchTab('security',this)">Security</div>
+                <div class="settings-tab" onclick="switchTab('maintenance',this)">Maintenance</div>
+            </div>
+
+            <!-- ── TAB: GENERAL ── -->
+            <div class="settings-section active" id="tab-general">
+
+                <!-- Platform Info -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        <div>
+                            <div class="settings-group-title">Platform Information</div>
+                            <div class="settings-group-desc">Basic details about the DigiConnect deployment.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Platform Name</div><div class="settings-row-desc">Displayed across all pages and emails.</div></div>
+                        <input type="text" class="form-input" id="platformName" value="Unified Citizen Service Delivery Platform" style="max-width:340px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Platform Short Name</div><div class="settings-row-desc">Used in compact UI elements.</div></div>
+                        <input type="text" class="form-input" id="platformShort" value="DigiConnect" style="max-width:160px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Support Email</div><div class="settings-row-desc">Citizens contact this for help.</div></div>
+                        <input type="email" class="form-input" id="supportEmail" value="support@DigiConnect.gov.in" style="max-width:260px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Default Language</div><div class="settings-row-desc">Platform default for new users.</div></div>
+                        <select class="form-input" id="defaultLang" style="max-width:200px;">
+                            <option selected>English</option>
+                            <option>Telugu</option>
+                            <option>Hindi</option>
+                            <option>Tamil</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Timezone</div><div class="settings-row-desc">Used for all timestamps and SLA calculations.</div></div>
+                        <select class="form-input" id="timezone" style="max-width:260px;">
+                            <option selected>Asia/Kolkata (IST, UTC+5:30)</option>
+                            <option>UTC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Registration Settings -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                        <div>
+                            <div class="settings-group-title">Citizen Registration</div>
+                            <div class="settings-group-desc">Control who can register and how.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Allow Open Registration</div><div class="settings-row-desc">Allow any citizen to create an account without invite.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="openReg" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Require Email Verification</div><div class="settings-row-desc">Citizens must verify their email before accessing services.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="emailVerify" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Require Aadhaar Linking</div><div class="settings-row-desc">Citizens must link Aadhaar to apply for services.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="aadhaarLink" /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Max Applications per Citizen</div><div class="settings-row-desc">Maximum concurrent active applications per citizen.</div></div>
+                        <input type="number" class="form-input" id="maxApps" value="10" min="1" max="50" style="max-width:100px;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TAB: SLA & ESCALATION ── -->
+            <div class="settings-section" id="tab-sla">
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--amber-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            <div class="settings-group-title">Default SLA Timelines</div>
+                            <div class="settings-group-desc">Default processing time limits per service category (in working days). These can be overridden per service in Manage Services.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Certificate Services (Officer Review)</div><div class="settings-row-desc">Income, Caste, Residence, Marriage certificates.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="slaCert" value="7" min="1" max="30" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days</span></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Welfare / Scholarship</div><div class="settings-row-desc">Subsidy, welfare schemes, scholarship applications.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="slaWelfare" value="14" min="1" max="60" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days</span></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Event / Permission Services</div><div class="settings-row-desc">Public event permissions and vendor authorizations.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="slaPermission" value="3" min="1" max="15" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days</span></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Record Correction</div><div class="settings-row-desc">Name, DOB, address correction requests.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="slaCorrection" value="10" min="1" max="30" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days</span></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Grievance Resolution</div><div class="settings-row-desc">Time allowed for Grievance Officer to resolve complaints.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="slaGrievance" value="5" min="1" max="20" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days</span></div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--red-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        <div>
+                            <div class="settings-group-title">Escalation Rules</div>
+                            <div class="settings-group-desc">Configure automatic escalation triggers.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Auto-Escalate on SLA Breach</div><div class="settings-row-desc">Automatically move applications to Supervisor when SLA is exceeded.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="autoEscalate" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Send Reminder Before Breach</div><div class="settings-row-desc">Notify assigned officer N days before SLA deadline.</div></div>
+                        <div style="display:flex;align-items:center;gap:8px;"><input type="number" class="form-input" id="reminderDays" value="2" min="1" max="5" style="max-width:80px;" /><span style="font-size:0.85rem;color:var(--color-text-muted);">days before</span></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Max Query Rounds</div><div class="settings-row-desc">Max times an officer can raise a query on a single application before it auto-escalates.</div></div>
+                        <input type="number" class="form-input" id="maxQueryRounds" value="3" min="1" max="10" style="max-width:80px;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TAB: NOTIFICATIONS ── -->
+            <div class="settings-section" id="tab-notifications">
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        <div>
+                            <div class="settings-group-title">Notification Channels</div>
+                            <div class="settings-group-desc">Choose how users receive system notifications.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">In-App Notifications</div><div class="settings-row-desc">Show notifications in the dashboard bell icon.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="notifInApp" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Email Notifications</div><div class="settings-row-desc">Send transactional emails on key application events.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="notifEmail" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">SMS Notifications</div><div class="settings-row-desc">Send SMS alerts for approvals, rejections, and SLA warnings.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="notifSms" /><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        <div>
+                            <div class="settings-group-title">Notification Events</div>
+                            <div class="settings-group-desc">Select which events trigger notifications to citizens and officers.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Application Submitted</div><div class="settings-row-desc">Notify citizen when application is received.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="evtSubmit" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Query Raised by Officer</div><div class="settings-row-desc">Notify citizen when officer requests more info.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="evtQuery" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Application Approved / Rejected</div><div class="settings-row-desc">Notify citizen of final decision.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="evtDecision" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">SLA Breach Escalation</div><div class="settings-row-desc">Notify supervisor and citizen when application is escalated.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="evtSla" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Grievance Status Update</div><div class="settings-row-desc">Notify citizen on every grievance status change.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="evtGrievance" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TAB: SECURITY ── -->
+            <div class="settings-section" id="tab-security">
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                        <div>
+                            <div class="settings-group-title">Authentication &amp; Access</div>
+                            <div class="settings-group-desc">Control login behaviour and session policies.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Session Timeout (minutes)</div><div class="settings-row-desc">Auto-logout inactive users after this duration.</div></div>
+                        <input type="number" class="form-input" id="sessionTimeout" value="30" min="5" max="120" style="max-width:100px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Max Login Attempts</div><div class="settings-row-desc">Lock account after this many consecutive failed logins.</div></div>
+                        <input type="number" class="form-input" id="maxLoginAttempts" value="5" min="3" max="10" style="max-width:100px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Account Lockout Duration (minutes)</div><div class="settings-row-desc">How long a locked account stays locked.</div></div>
+                        <input type="number" class="form-input" id="lockoutDuration" value="15" min="5" max="60" style="max-width:100px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Force Password Reset on First Login</div><div class="settings-row-desc">Officers must change their system-assigned password on first login.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="forcePassReset" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Two-Factor Authentication (2FA)</div><div class="settings-row-desc">Require OTP for all officer and supervisor logins.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="twoFactor" /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Minimum Password Length</div><div class="settings-row-desc">Applies to all user roles on password creation/reset.</div></div>
+                        <input type="number" class="form-input" id="minPassLength" value="8" min="6" max="20" style="max-width:100px;" />
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--navy-600)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <div>
+                            <div class="settings-group-title">Audit &amp; Logging</div>
+                            <div class="settings-group-desc">Control what gets logged in the audit trail.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Log All Login Events</div><div class="settings-row-desc">Record every login and logout across all roles.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="logLogins" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Log Configuration Changes</div><div class="settings-row-desc">Record when services or workflows are modified.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="logConfig" checked /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Audit Log Retention (days)</div><div class="settings-row-desc">How long audit logs are retained before archiving.</div></div>
+                        <input type="number" class="form-input" id="logRetention" value="365" min="30" max="1825" style="max-width:100px;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TAB: MAINTENANCE ── -->
+            <div class="settings-section" id="tab-maintenance">
+
+                <!-- System Status -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--green-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <div>
+                            <div class="settings-group-title">System Status</div>
+                            <div class="settings-group-desc">Current operational status of platform modules.</div>
+                        </div>
+                    </div>
+                    <div id="statusRows"></div>
+                </div>
+
+                <!-- Maintenance Mode -->
+                <div class="settings-group">
+                    <div class="settings-group-header">
+                        <svg width="18" height="18" fill="none" stroke="var(--amber-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <div>
+                            <div class="settings-group-title">Maintenance Mode</div>
+                            <div class="settings-group-desc">Take the platform offline for scheduled maintenance. Citizens will see a maintenance page.</div>
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Enable Maintenance Mode</div><div class="settings-row-desc">Only Super Users can access the platform while this is on.</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="maintenanceMode" onchange="handleMaintenanceToggle(this)" /><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Maintenance Message</div><div class="settings-row-desc">Shown to citizens during maintenance window.</div></div>
+                        <input type="text" class="form-input" id="maintenanceMsg" value="The platform is undergoing scheduled maintenance. We will be back shortly." style="max-width:400px;" />
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-row-label">Scheduled Maintenance Window</div><div class="settings-row-desc">Planned start and end time for maintenance.</div></div>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                            <input type="datetime-local" class="form-input" id="maintStart" style="width:auto;" />
+                            <span style="color:var(--color-text-muted);font-size:0.8rem;">to</span>
+                            <input type="datetime-local" class="form-input" id="maintEnd" style="width:auto;" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="danger-zone">
+                    <div class="danger-zone-title">⚠ Danger Zone</div>
+                    <p style="font-size:0.8125rem;color:var(--slate-600);margin-bottom:var(--space-md);">These actions are irreversible. Proceed with extreme caution.</p>
+
+                    <div class="danger-action">
+                        <div>
+                            <div class="settings-row-label">Clear All Draft Applications</div>
+                            <div class="settings-row-desc">Permanently delete all applications in DRAFT status that are older than 30 days.</div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDanger('Clear all stale draft applications? This cannot be undone.','Drafts cleared successfully.')">Clear Drafts</button>
+                    </div>
+
+                    <div class="danger-action">
+                        <div>
+                            <div class="settings-row-label">Archive Closed Applications</div>
+                            <div class="settings-row-desc">Move all CLOSED applications older than 1 year to the archive database.</div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDanger('Archive all closed applications older than 1 year?','Archive completed successfully.')">Archive Now</button>
+                    </div>
+
+                    <div class="danger-action">
+                        <div>
+                            <div class="settings-row-label">Reset SLA Counters</div>
+                            <div class="settings-row-desc">Reset all active SLA timers. Use only after a system-wide maintenance window.</div>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDanger('Reset ALL active SLA counters? This affects live applications.','SLA counters reset.')">Reset SLA</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <span class="modal-title">Confirm Action</span>
+                <button class="btn-icon" onclick="closeModal('confirmModal')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMsg" style="font-size:0.875rem;color:var(--slate-700);"></p>
+                <p style="font-size:0.8rem;color:var(--red-600);margin-top:8px;font-weight:600;">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('confirmModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    
+
+    <script type="module" src="../js/crud.js"></script>
+</body>
+</html>

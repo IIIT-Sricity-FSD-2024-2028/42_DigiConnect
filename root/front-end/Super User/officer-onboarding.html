@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Officer Onboarding – DigiConnect Super User</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+</head>
+
+<body data-page="officer-onboarding">
+    <div class="app-layout">
+
+        <!-- ===================== SIDEBAR ===================== -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- ===================== TOPBAR ===================== -->
+        <header class="topbar"></header>
+
+        <!-- ===================== MAIN CONTENT ===================== -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:var(--space-md);">
+                <div>
+                    <h1 class="page-title">Officer Management</h1>
+                    <p class="page-subtitle">Manage officer onboarding, roles, and service assignments across all departments.</p>
+                </div>
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right: 6px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Add Officer
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:var(--space-xl);">
+                <div class="stat-card">
+                    <div class="stat-card-inner">
+                        <div><div class="stat-label">Total Officers</div><div class="stat-value" id="oo-total">41</div></div>
+                        <div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+                    </div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-card-inner">
+                        <div><div class="stat-label">Active</div><div class="stat-value" id="oo-active" style="color:var(--green-500);">38</div></div>
+                        <div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-inner">
+                        <div><div class="stat-label">Suspended</div><div class="stat-value" id="oo-suspended">0</div></div>
+                        <div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg></div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Filters -->
+            <div class="card" style="margin-bottom:var(--space-lg);">
+                <div class="card-body" style="padding:var(--space-md) var(--space-lg);">
+                    <div style="display:flex;gap:var(--space-md);flex-wrap:wrap;align-items:center;">
+                        <div style="position:relative;flex:1;min-width:200px;">
+                            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            <input type="text" class="form-input" placeholder="Search officers by name or role…" style="padding-left:38px;" oninput="filterOfficers(this.value)" />
+                        </div>
+                        <select class="form-input" style="width:auto;padding:10px 36px 10px 12px;" onchange="filterByRole(this.value)">
+                            <option value="">All Roles</option>
+                            <option>VRO</option><option>RI</option><option>MRO</option>
+                            <option>Welfare Officer</option><option>Supervisor</option><option>Grievance Officer</option>
+                        </select>
+                        <select class="form-input" style="width:auto;padding:10px 36px 10px 12px;" onchange="filterByStatus(this.value)">
+                            <option value="">All Status</option>
+                            <option>Active</option><option>Pending</option><option>Suspended</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Active Officers Table -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">All Officers</span>
+                    <button class="btn btn-outline btn-sm" onclick="showToast('Report exported!','success')">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export
+                    </button>
+                </div>
+                <div class="table-wrapper" style="border:none;border-radius:0;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Officer</th><th>Role</th><th>Department</th>
+                                <th>Services Assigned</th><th>Active Cases</th>
+                                <th>SLA Rate</th><th>Status</th><th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="officersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Officer Modal -->
+    <div class="modal-overlay" id="addOfficerModal">
+        <div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto;">
+            <div class="modal-header">
+                <span class="modal-title" id="officerModalTitle">Add New Officer</span>
+                <button class="btn-icon" onclick="closeModal('addOfficerModal')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label">First Name <span class="required">*</span></label><input type="text" class="form-input" id="ofFirstName" placeholder="First name" /></div>
+                    <div class="form-group"><label class="form-label">Last Name <span class="required">*</span></label><input type="text" class="form-input" id="ofLastName" placeholder="Last name" /></div>
+                    <div class="form-group"><label class="form-label">Employee ID <span class="required">*</span></label><input type="text" class="form-input" id="ofEmpId" placeholder="e.g. EMP-12345" style="font-family:var(--font-mono);" /></div>
+                    <div class="form-group">
+                        <label class="form-label">Role <span class="required">*</span></label>
+                        <select class="form-input" id="ofRole">
+                            <option value="">Select role</option>
+                            <option value="VRO">VRO (Village Revenue Officer)</option>
+                            <option value="RI">RI (Revenue Inspector)</option>
+                            <option value="MRO">MRO (Mandal Revenue Officer)</option>
+                            <option value="Welfare Officer">Welfare Officer</option>
+                            <option value="Supervisor">Supervisor</option>
+                            <option value="Grievance Officer">Grievance Officer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Department <span class="required">*</span></label>
+                        <select class="form-input" id="ofDept">
+                            <option value="">Select department</option>
+                            <option value="Revenue Department">Revenue Department</option>
+                            <option value="Welfare Department">Welfare Department</option>
+                            <option value="Municipal Corporation">Municipal Corporation</option>
+                            <option value="Rural Development">Rural Development</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="form-label">Jurisdiction / Mandal <span class="required">*</span></label><input type="text" class="form-input" id="ofJurisdiction" placeholder="e.g. Secunderabad Mandal" /></div>
+                    <div class="form-group"><label class="form-label">Mobile <span class="required">*</span></label><input type="tel" class="form-input" id="ofPhone" placeholder="+91 98765 43210" /></div>
+                    <div class="form-group"><label class="form-label">Official Email <span class="required">*</span></label><input type="email" class="form-input" id="ofEmail" placeholder="officer@gov.in" /></div>
+                    <div class="form-group col-span-full">
+                        <label class="form-label">Services to Assign <span class="required">*</span></label>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;" id="serviceAssignGrid"></div>
+                    </div>
+                    <div class="form-group col-span-full">
+                        <label class="form-label">Max Cases per Day</label>
+                        <input type="number" class="form-input" value="35" min="5" max="100" />
+                        <div class="form-hint">Maximum number of applications this officer can handle simultaneously.</div>
+                    </div>
+                    <div class="form-group col-span-full">
+                        <label class="form-label">Upload ID Proof <span class="required">*</span></label>
+                        <div class="upload-zone compact" style="text-align:center;cursor:pointer;padding:var(--space-md);" onclick="document.getElementById('idProofUpload').click()">
+                            <input type="file" id="idProofUpload" style="display:none" accept=".pdf,.png,.jpg,.jpeg" onchange="if(this.files[0]) showToast('File selected: ' + this.files[0].name, 'info')">
+                            <svg width="22" height="22" fill="none" stroke="var(--slate-400)" stroke-width="2" viewBox="0 0 24 24" style="margin-bottom:6px;"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                            <div style="font-size:0.8rem;color:var(--color-text-muted);">Upload Government ID / Employee Certificate</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('addOfficerModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveOfficer()">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Add & Send Credentials
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Officer Details Modal -->
+    <div class="modal-overlay" id="viewOfficerModal">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <span class="modal-title">Officer Details</span>
+                <button class="btn-icon" onclick="closeModal('viewOfficerModal')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body" id="viewOfficerBody"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('viewOfficerModal')">Close</button>
+                <button class="btn btn-danger" onclick="closeModal('viewOfficerModal');showToast('Officer suspended.','warning')">Suspend Officer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    
+
+    <script type="module" src="../js/crud.js"></script>
+</body>
+</html>

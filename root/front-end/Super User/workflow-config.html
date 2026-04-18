@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workflow Configuration – DigiConnect Super User</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+    <style>
+        .workflow-card {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            background: #fff;
+            margin-bottom: var(--space-md);
+            transition: box-shadow 0.2s;
+        }
+        .workflow-card:hover { box-shadow: var(--shadow-md); }
+        .workflow-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-md); }
+        .stage-block {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-wrap: wrap;
+            margin-top: var(--space-md);
+        }
+        .stage-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .stage-pill {
+            background: var(--navy-50);
+            border: 1.5px solid var(--navy-200);
+            border-radius: var(--radius-md);
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--navy-700);
+            text-align: center;
+            min-width: 130px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .stage-pill:hover { background: var(--navy-100); border-color: var(--navy-400); }
+        .stage-pill.supervisor { background: var(--amber-50); border-color: var(--amber-300); color: var(--amber-700); }
+        .stage-pill.grievance { background: #fdf4ff; border-color: #d8b4fe; color: #7c3aed; }
+        .stage-role { font-size: 0.67rem; color: var(--color-text-muted); margin-top: 3px; font-weight: 500; }
+        .stage-days { font-size: 0.67rem; color: var(--color-text-muted); font-family: var(--font-mono); }
+        .stage-arrow {
+            width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--slate-400);
+            font-size: 1rem;
+            flex-shrink: 0;
+            margin-top: -14px;
+        }
+        .edit-stages-form { display: none; margin-top: var(--space-lg); border-top: 1px solid var(--color-border); padding-top: var(--space-lg); }
+        .edit-stages-form.open { display: block; }
+    </style>
+</head>
+
+<body data-page="workflow-config">
+    <div class="app-layout">
+
+        <!-- ===================== SIDEBAR ===================== -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- ===================== TOPBAR ===================== -->
+        <header class="topbar"></header>
+
+        <!-- ===================== MAIN ===================== -->
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Workflow Configuration</h1>
+                    <p class="page-subtitle">Define and manage the processing stages for each service. Stages control the Officer → Supervisor workflow path.</p>
+                </div>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="alert alert-info" style="margin-bottom:var(--space-lg);">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div>Each service follows a sequential workflow: <strong>Submission → Officer Review → Supervisor Decision</strong>. You can configure custom stages, responsible roles, and SLA per stage below.</div>
+            </div>
+
+            <!-- Service Filter -->
+            <div class="card" style="margin-bottom:var(--space-lg);">
+                <div class="card-body" style="padding:var(--space-md) var(--space-lg);">
+                    <div style="display:flex;gap:var(--space-md);align-items:center;flex-wrap:wrap;">
+                        <div style="position:relative;flex:1;min-width:200px;">
+                            <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate-400);" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            <input type="text" class="form-input" placeholder="Search service workflows…" style="padding-left:38px;" oninput="filterWorkflows(this.value)" />
+                        </div>
+                        <select class="form-input" style="width:auto;padding:10px 36px 10px 12px;" onchange="filterByDept(this.value)">
+                            <option value="">All Departments</option>
+                            <option>Revenue Department</option>
+                            <option>Welfare Department</option>
+                            <option>Municipal Corporation</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow Cards -->
+            <div id="workflowContainer"></div>
+
+        </main>
+    </div>
+
+    <!-- Edit Workflow Stage Modal -->
+    <div class="modal-overlay" id="editStageModal">
+        <div class="modal" style="max-width:560px;">
+            <div class="modal-header">
+                <span class="modal-title">Edit Stage</span>
+                <button class="btn-icon" onclick="closeModal('editStageModal')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group col-span-full">
+                        <label class="form-label">Stage Name <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="editStageName" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Responsible Role <span class="required">*</span></label>
+                        <select class="form-input" id="editStageRole">
+                            <option>Department Officer (VRO)</option>
+                            <option>Department Officer (RI)</option>
+                            <option>Department Supervisor (MRO)</option>
+                            <option>Welfare Officer</option>
+                            <option>Grievance Officer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SLA (Days) <span class="required">*</span></label>
+                        <input type="number" class="form-input" id="editStageDays" min="1" max="30" />
+                    </div>
+                    <div class="form-group col-span-full">
+                        <label class="form-label">Actions at this Stage</label>
+                        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                            <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--navy-600);" /> Approve / Recommend</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--navy-600);" /> Reject with Justification</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;cursor:pointer;"><input type="checkbox" checked style="accent-color:var(--navy-600);" /> Raise Query to Citizen</label>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;cursor:pointer;"><input type="checkbox" style="accent-color:var(--navy-600);" /> Escalate to Supervisor</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('editStageModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveStage()">Save Stage</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    
+
+    <script type="module" src="../js/crud.js"></script>
+</body>
+</html>

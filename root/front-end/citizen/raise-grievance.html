@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raise Grievance – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+</head>
+
+<body data-page="raise-grievance">
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <main class="main-content">
+            <div class="page-header"
+                style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                <div>
+                    <h1 class="page-title">Raise a Grievance</h1>
+                    <p class="page-subtitle">Submit a complaint about delays, rejections, misconduct, or any issue
+                        related to your service applications.</p>
+                </div>
+                <a href="my-grievances.html" class="btn btn-outline btn-sm">View My Grievances</a>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 320px;gap:var(--space-xl);align-items:start;">
+
+                <!-- Form -->
+                <div>
+                    <!-- Stepper -->
+                    <div class="stepper" id="grievStepper" style="margin-bottom:var(--space-xl);">
+                        <div class="stepper-step active" data-step="1">
+                            <div class="stepper-circle">1</div>
+                            <div class="stepper-label">Grievance Type</div>
+                        </div>
+                        <div class="stepper-step" data-step="2">
+                            <div class="stepper-circle">2</div>
+                            <div class="stepper-label">Details</div>
+                        </div>
+                        <div class="stepper-step" data-step="3">
+                            <div class="stepper-circle">3</div>
+                            <div class="stepper-label">Evidence</div>
+                        </div>
+                        <div class="stepper-step" data-step="4">
+                            <div class="stepper-circle">4</div>
+                            <div class="stepper-label">Confirmation</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Type -->
+                    <div id="gStep1">
+                        <div class="form-section">
+                            <div class="form-section-header"><span class="form-section-number">01</span><span
+                                    class="form-section-title">What is your grievance about?</span>
+                                <p class="form-section-desc">Select the category that best describes your complaint.</p>
+                            </div>
+                            <div class="form-section-body">
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);"
+                                    id="grievCatGrid">
+                                    <div class="grievance-cat-card" data-cat="delay" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--amber-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="var(--amber-600)"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Delay in
+                                            Service</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Application stuck
+                                            or SLA exceeded without resolution.</div>
+                                    </div>
+                                    <div class="grievance-cat-card" data-cat="rejection" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--red-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="var(--red-500)"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Wrongful
+                                            Rejection</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Application
+                                            rejected without valid reason or due process.</div>
+                                    </div>
+                                    <div class="grievance-cat-card" data-cat="misconduct" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--purple-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="#6b21a8" stroke-width="2"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Officer
+                                            Misconduct</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Rude behaviour,
+                                            bribery, harassment or unprofessional conduct.</div>
+                                    </div>
+                                    <div class="grievance-cat-card" data-cat="technical" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--navy-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="var(--navy-600)"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Technical
+                                            Issue</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Portal errors,
+                                            payment issues, or document upload failures.</div>
+                                    </div>
+                                    <div class="grievance-cat-card" data-cat="wrong-info" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--green-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="var(--green-600)"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Wrong
+                                            Information Issued</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Certificate or
+                                            document contains incorrect data or errors.</div>
+                                    </div>
+                                    <div class="grievance-cat-card" data-cat="other" onclick="selectGrievCat(this)"
+                                        style="padding:var(--space-lg);border:2px solid var(--color-border);border-radius:var(--radius-lg);cursor:pointer;transition:all 0.15s;">
+                                        <div
+                                            style="width:44px;height:44px;background:var(--slate-100);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-sm);">
+                                            <svg width="22" height="22" fill="none" stroke="var(--slate-500)"
+                                                stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                            </svg></div>
+                                        <div style="font-weight:700;color:var(--navy-900);margin-bottom:4px;">Other
+                                            Issue</div>
+                                        <div style="font-size:0.8rem;color:var(--color-text-muted);">Any other grievance
+                                            not covered by the above categories.</div>
+                                    </div>
+                                </div>
+                                <div id="catError" class="form-error" style="display:none;margin-top:var(--space-sm);">
+                                    Please select a grievance category to continue.</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;margin-top:var(--space-lg);">
+                            <button class="btn btn-primary" onclick="gNextStep(2)">Continue →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Details -->
+                    <div id="gStep2" style="display:none;">
+                        <div class="form-section">
+                            <div class="form-section-header"><span class="form-section-number">02</span><span
+                                    class="form-section-title">Grievance Details</span>
+                                <p class="form-section-desc">Provide complete details to help the grievance officer
+                                    investigate effectively.</p>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">Related Application ID</label>
+                                        <div class="input-wrapper">
+                                            <svg class="input-icon" width="16" height="16" fill="none"
+                                                stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            <input type="text" class="form-input has-icon" id="gAppId"
+                                                placeholder="e.g. APP-2489" style="font-family:var(--font-mono);" />
+                                        </div>
+                                        <div class="form-hint">Leave blank if not related to a specific application.
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Department / Service <span
+                                                class="required">*</span></label>
+                                        <select class="form-input" id="gDept">
+                                            <option value="">Select department</option>
+                                            <option>Revenue Department</option>
+                                            <option>Welfare Department</option>
+                                            <option>Municipal Corporation</option>
+                                            <option>Rural Development</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-span-full">
+                                        <label class="form-label">Grievance Title <span
+                                                class="required">*</span></label>
+                                        <input type="text" class="form-input" id="gTitle"
+                                            placeholder="Brief title, e.g. 'Caste Certificate delayed beyond SLA for 10 days'"
+                                            maxlength="120"
+                                            oninput="document.getElementById('gTitleCount').textContent=this.value.length" />
+                                        <div class="form-hint" style="display:flex;justify-content:space-between;">
+                                            <span>Be specific and concise.</span><span><span
+                                                    id="gTitleCount">0</span>/120</span></div>
+                                    </div>
+                                    <div class="form-group col-span-full">
+                                        <label class="form-label">Detailed Description <span
+                                                class="required">*</span></label>
+                                        <textarea class="form-input" id="gDesc" rows="5"
+                                            placeholder="Describe the issue in detail. Include:&#10;• What happened and when&#10;• Officer name (if applicable)&#10;• Previous attempts to resolve (if any)&#10;• Impact on you"
+                                            maxlength="1000"
+                                            oninput="document.getElementById('gDescCount').textContent=this.value.length"></textarea>
+                                        <div class="form-hint" style="display:flex;justify-content:space-between;">
+                                            <span>Minimum 50 characters.</span><span><span
+                                                    id="gDescCount">0</span>/1000</span></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Priority <span class="required">*</span></label>
+                                        <select class="form-input" id="gPriority">
+                                            <option value="normal">Normal</option>
+                                            <option value="high">High – Affecting livelihood/health</option>
+                                            <option value="urgent">Urgent – Critical / Emergency</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Preferred Resolution</label>
+                                        <select class="form-input">
+                                            <option>Process my application immediately</option>
+                                            <option>Re-examine my application</option>
+                                            <option>Action against officer</option>
+                                            <option>Issue corrected document</option>
+                                            <option>Refund of fee</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group col-span-full">
+                                        <label class="form-label">Names of Involved Officers (if known)</label>
+                                        <input type="text" class="form-input"
+                                            placeholder="e.g. Suresh Reddy (VRO), Anita Sharma (RI)" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);">
+                            <button class="btn btn-outline" onclick="gNextStep(1)">← Back</button>
+                            <button class="btn btn-primary" onclick="gNextStep(3)">Continue to Evidence →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Evidence -->
+                    <div id="gStep3" style="display:none;">
+                        <div class="form-section">
+                            <div class="form-section-header"><span class="form-section-number">03</span><span
+                                    class="form-section-title">Supporting Evidence (Optional)</span>
+                                <p class="form-section-desc">Attach any documents, screenshots, or other evidence that
+                                    supports your grievance.</p>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="upload-zone"
+                                    style="text-align:center;cursor:pointer;margin-bottom:var(--space-lg);"
+                                    onclick="addEvidenceFile()">
+                                    <svg width="36" height="36" fill="none" stroke="var(--slate-300)" stroke-width="2"
+                                        viewBox="0 0 24 24" style="margin-bottom:var(--space-sm);">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <div
+                                        style="font-size:0.9375rem;font-weight:600;color:var(--slate-600);margin-bottom:4px;">
+                                        Click to attach files</div>
+                                    <div style="font-size:0.8rem;color:var(--color-text-muted);">Screenshots, documents,
+                                        receipts · PDF, JPG, PNG · Max 10MB each · Up to 5 files</div>
+                                </div>
+                                <div id="evidenceFiles" style="display:flex;flex-direction:column;gap:var(--space-sm);">
+                                </div>
+
+                                <div style="margin-top:var(--space-xl);">
+                                    <div
+                                        style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:var(--space-sm);">
+                                        Consent & Declaration</div>
+                                    <div style="display:flex;flex-direction:column;gap:var(--space-sm);">
+                                        <label
+                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent1"
+                                                style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I declare that the information provided in this grievance is true and
+                                                accurate to the best of my knowledge.</span>
+                                        </label>
+                                        <label
+                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent2"
+                                                style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I understand that filing a false grievance may result in action being
+                                                taken against me.</span>
+                                        </label>
+                                        <label
+                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent3"
+                                                style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I consent to my grievance details being shared with the concerned
+                                                department for investigation.</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);">
+                            <button class="btn btn-outline" onclick="gNextStep(2)">← Back</button>
+                            <button class="btn btn-primary" onclick="submitGrievance()" id="gSubmitBtn">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                                Submit Grievance
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Confirmation -->
+                    <div id="gStep4" style="display:none;">
+                        <div style="text-align:center;padding:var(--space-3xl) var(--space-xl);">
+                            <div
+                                style="width:80px;height:80px;background:var(--green-100);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-xl);">
+                                <svg width="40" height="40" fill="none" stroke="var(--green-500)" stroke-width="2.5"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h2
+                                style="font-size:1.5rem;font-weight:800;color:var(--navy-900);margin-bottom:var(--space-sm);">
+                                Grievance Filed Successfully!</h2>
+                            <p style="color:var(--color-text-muted);max-width:480px;margin:0 auto var(--space-xl);">Your
+                                grievance has been received and assigned to the Grievance Redressal Officer. You will be
+                                notified at every stage of the investigation.</p>
+                            <div class="review-card" style="max-width:400px;margin:0 auto var(--space-xl);">
+                                <div class="review-grid">
+                                    <div class="review-item"><span class="review-key">Grievance ID</span><span
+                                            class="review-value"
+                                            style="font-family:var(--font-mono);color:var(--navy-600);font-weight:700;"
+                                            id="newGrvId">GRV-051</span></div>
+                                    <div class="review-item"><span class="review-key">Category</span><span id="confCat"
+                                            class="review-value">—</span></div>
+                                    <div class="review-item"><span class="review-key">Related App</span><span
+                                            id="confApp" class="review-value">—</span></div>
+                                    <div class="review-item"><span class="review-key">Priority</span><span
+                                            id="confPriority" class="review-value">—</span></div>
+                                    <div class="review-item"><span class="review-key">Filed On</span><span
+                                            id="confFiled" class="review-value">—</span></div>
+                                    <div class="review-item"><span class="review-key">Expected Resolution</span><span
+                                            class="review-value">Within 7 working days</span></div>
+                                    <div class="review-item"><span class="review-key">Status</span><span><span
+                                                class="badge badge-info">Filed</span></span></div>
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:var(--space-md);justify-content:center;flex-wrap:wrap;">
+                                <button class="btn btn-outline"
+                                    onclick="showToast('Acknowledgement sent to your mobile!','success')">Get SMS
+                                    Acknowledgement</button>
+                                <a href="my-grievances.html" class="btn btn-primary">Track Grievance</a>
+                                <a href="citizen-dashboard.html" class="btn btn-ghost">Back to Dashboard</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Help Sidebar -->
+                <div id="gSidebar">
+                    <div class="card" style="margin-bottom:var(--space-md);">
+                        <div class="card-header"><span class="card-title" style="font-size:0.8rem;">How the Process
+                                Works</span></div>
+                        <div class="card-body" style="padding:var(--space-md);">
+                            <div class="timeline" style="--timeline-dot-size:28px;">
+                                <div class="timeline-item">
+                                    <div class="timeline-dot info" style="font-size:0.65rem;font-weight:800;">1</div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-label" style="font-size:0.8125rem;">You file the grievance
+                                        </div>
+                                        <div style="font-size:0.75rem;color:var(--color-text-muted);">With details and
+                                            evidence.</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-dot"
+                                        style="font-size:0.65rem;font-weight:800;background:var(--slate-200);color:var(--slate-500);">
+                                        2</div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-label" style="font-size:0.8125rem;">Assigned to Officer
+                                        </div>
+                                        <div style="font-size:0.75rem;color:var(--color-text-muted);">Within 24 hours of
+                                            filing.</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-dot"
+                                        style="font-size:0.65rem;font-weight:800;background:var(--slate-200);color:var(--slate-500);">
+                                        3</div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-label" style="font-size:0.8125rem;">Investigation</div>
+                                        <div style="font-size:0.75rem;color:var(--color-text-muted);">Officer reviews
+                                            the complaint and contacts the department.</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-item">
+                                    <div class="timeline-dot"
+                                        style="font-size:0.65rem;font-weight:800;background:var(--slate-200);color:var(--slate-500);">
+                                        4</div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-label" style="font-size:0.8125rem;">Resolution & Closure
+                                        </div>
+                                        <div style="font-size:0.75rem;color:var(--color-text-muted);">Action taken
+                                            within 7 working days.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-bottom:var(--space-md);">
+                        <div class="card-header"><span class="card-title" style="font-size:0.8rem;">Grievance SLA</span>
+                        </div>
+                        <div class="card-body" style="padding:var(--space-md);">
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span
+                                        style="color:var(--color-text-muted);">Normal Priority</span><span
+                                        style="font-weight:700;color:var(--navy-900);">7 working days</span></div>
+                                <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span
+                                        style="color:var(--color-text-muted);">High Priority</span><span
+                                        style="font-weight:700;color:var(--amber-600);">3 working days</span></div>
+                                <div style="display:flex;justify-content:space-between;font-size:0.8rem;"><span
+                                        style="color:var(--color-text-muted);">Urgent / Emergency</span><span
+                                        style="font-weight:700;color:var(--red-500);">24 hours</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info" style="font-size:0.8rem;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        For immediate help, call the Grievance Helpline: <strong>1800-XXX-XXXX</strong> (Toll-free,
+                        9AM–6PM)
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="toast-container"></div>
+
+    
+
+    <script type="module" src="../js/grievance.js"></script>
+</body>
+
+</html>

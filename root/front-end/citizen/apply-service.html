@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apply for Service – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+</head>
+
+<body data-page="apply-service">
+    <div class="app-layout">
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- Step 0: Service Selection (shown first) -->
+            <div id="stepServiceSelect">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Choose a Service</h1>
+                        <p class="page-subtitle">Select the government service you'd like to apply for.</p>
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div style="max-width:480px;margin-bottom:var(--space-xl);position:relative;">
+                    <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--slate-400);"
+                        width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input id="serviceSearch" type="text" class="form-input"
+                        placeholder="Search services e.g. Income, Caste, Permission…"
+                        style="padding-left:44px;font-size:0.9375rem;" oninput="filterServiceCards(this.value)" />
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="tabs" style="margin-bottom:var(--space-xl);">
+                    <button class="tab-btn active" onclick="filterCategory('all',this)">All Services</button>
+                    <button class="tab-btn" onclick="filterCategory('Certificate',this)">Certificates</button>
+                    <button class="tab-btn" onclick="filterCategory('Welfare',this)">Welfare & Subsidies</button>
+                    <button class="tab-btn" onclick="filterCategory('Permission',this)">Permissions</button>
+                    <button class="tab-btn" onclick="filterCategory('Correction',this)">Record Corrections</button>
+                </div>
+
+                <div id="serviceCardsGrid"
+                    style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                </div>
+            </div>
+
+            <!-- Steps 1–4: Application Form (hidden until service selected) -->
+            <div id="applicationForm" style="display:none;">
+
+                <!-- Selected Service Banner -->
+                <div
+                    style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-xl);">
+                    <div style="display:flex;align-items:center;gap:var(--space-md);">
+                        <div class="service-card-icon" id="selectedSvcIcon"
+                            style="width:48px;height:48px;background:var(--navy-100);">
+                            <svg width="22" height="22" fill="none" stroke="var(--navy-600)" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size:1.125rem;font-weight:800;color:var(--navy-900);" id="selectedSvcName">
+                                Income Certificate</div>
+                            <div style="font-size:0.8125rem;color:var(--color-text-muted);">
+                                <span id="selectedSvcDept">Revenue Department</span>
+                                &nbsp;·&nbsp; SLA: <strong id="selectedSvcSla">7 days</strong>
+                                &nbsp;·&nbsp; Fee: <strong id="selectedSvcFee">₹50</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="goBack()">← Choose Different Service</button>
+                </div>
+
+                <!-- Stepper -->
+                <div class="form-stepper" id="formStepper">
+                    <div class="form-step active" id="fstep1">
+                        <div class="form-step-circle">1</div>
+                        <div class="form-step-label">Personal Details</div>
+                    </div>
+                    <div class="form-step" id="fstep2">
+                        <div class="form-step-circle">2</div>
+                        <div class="form-step-label">Documents</div>
+                    </div>
+                    <div class="form-step" id="fstep3">
+                        <div class="form-step-circle">3</div>
+                        <div class="form-step-label">Declaration</div>
+                    </div>
+                    <div class="form-step" id="fstep4">
+                        <div class="form-step-circle">4</div>
+                        <div class="form-step-label">Payment & Submit</div>
+                    </div>
+                </div>
+
+                <!-- STEP 1: Personal Details -->
+                <div id="formStep1">
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">1</div>
+                            <div>
+                                <div class="form-section-title">Applicant Information</div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="alert alert-info" style="margin-bottom:var(--space-lg);">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Fields marked with * are mandatory.
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">First Name <span class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter your first name" id="f_firstName" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Last Name <span class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter your last name" id="f_lastName" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Aadhaar Number <span class="required">*</span></label>
+                                    <div class="input-wrapper">
+                                        <svg class="input-icon" width="16" height="16" fill="none" stroke="currentColor"
+                                            stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                        </svg>
+                                        <input type="text" class="form-input has-icon" placeholder="12 digit Aadhaar number"
+                                            id="f_aadhaar" maxlength="12" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Date of Birth <span class="required">*</span></label>
+                                    <input type="date" class="form-input" id="f_dob" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Gender <span class="required">*</span></label>
+                                    <select class="form-input" id="f_gender">
+                                        <option value="">Select gender</option>
+                                        <option>Male</option>
+                                        <option>Female</option>
+                                        <option>Transgender</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Father / Husband Name <span
+                                            class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter name" id="f_guardianName" maxlength="80"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Mobile Number <span class="required">*</span></label>
+                                    <input type="tel" class="form-input" placeholder="10 digit mobile number" id="f_mobile" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email Address</label>
+                                    <input type="email" class="form-input" placeholder="Enter your email address" id="f_email" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">2</div>
+                            <div>
+                                <div class="form-section-title">Residential Address</div>
+                                <div class="form-section-subtitle">Provide your current residential address for
+                                    verification.</div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="form-grid">
+                                <div class="form-group col-span-full">
+                                    <label class="form-label">Door No / Street / Locality <span
+                                            class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter full block/street details" id="f_street" maxlength="150"
+                                        oninput="this.value=this.value.replace(/[^a-zA-Z0-9\s,\-#/.]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">State <span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="f_state" placeholder="Enter State" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">District <span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="districtSelect" placeholder="Enter District" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Mandal / Taluk <span class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter Mandal/Taluk" id="f_mandal" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z\s]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Village / Ward <span class="required">*</span></label>
+                                    <input type="text" class="form-input" placeholder="Enter Village/Ward" id="f_village" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-z0-9\s\-]/g,'')" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">PIN Code <span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="f_pincode" placeholder="6 digit PIN code" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g, '')" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service-specific fields -->
+                    <div class="form-section" id="serviceSpecificSection">
+                        <div class="form-section-header">
+                            <div class="form-section-number">3</div>
+                            <div>
+                                <div class="form-section-title" id="specificTitle">Service-Specific Information</div>
+                                <div class="form-section-subtitle">Additional information required for this service.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-section-body" id="specificBody">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:flex-end;margin-top:var(--space-xl);">
+                        <button class="btn btn-primary" onclick="nextStep(2)">
+                            Continue to Documents
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Documents -->
+                <div id="formStep2" style="display:none;">
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">1</div>
+                            <div>
+                                <div class="form-section-title">Upload Required Documents</div>
+                                <div class="form-section-subtitle">Upload clear, readable copies. Accepted formats: PDF,
+                                    JPG, PNG (max 2 MB each).</div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div id="docUploadList" style="display:flex;flex-direction:column;gap:var(--space-lg);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">2</div>
+                            <div>
+                                <div class="form-section-title">Additional Documents (Optional)</div>
+                                <div class="form-section-subtitle">Upload any other supporting documents you feel are
+                                    relevant.</div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="upload-zone" id="additionalDropzone" ondragover="handleDragOver(event)"
+                                ondrop="handleDrop(event,'additionalDropzone')"
+                                onclick="document.getElementById('additionalFileInput').click()">
+                                <div class="upload-zone-icon">
+                                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                </div>
+                                <div class="upload-zone-title">Drop files here or click to browse</div>
+                                <div class="upload-zone-hint">PDF, JPG, PNG up to 2 MB each</div>
+                                <input type="file" id="additionalFileInput" multiple accept=".pdf,.jpg,.jpeg,.png"
+                                    style="display:none;" onchange="handleFileSelect(this,'additionalDropzone')" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;margin-top:var(--space-xl);">
+                        <button class="btn btn-outline" onclick="nextStep(1)">← Back</button>
+                        <button class="btn btn-primary" onclick="nextStep(3)">
+                            Continue to Declaration
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Declaration -->
+                <div id="formStep3" style="display:none;">
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">1</div>
+                            <div>
+                                <div class="form-section-title">Review Your Application</div>
+                                <div class="form-section-subtitle">Please verify all details before final submission.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div
+                                style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-lg);margin-bottom:var(--space-lg);">
+                                <div class="review-card">
+                                    <div class="review-card-title">Personal Information</div>
+                                    <div class="review-row"><span class="review-label">Full Name</span><span
+                                            class="review-value" id="rev_name">Ravi Kumar</span></div>
+                                    <div class="review-row"><span class="review-label">Aadhaar No.</span><span
+                                            class="review-value" id="rev_aadhaar">7823 4512 9087</span></div>
+                                    <div class="review-row"><span class="review-label">Date of Birth</span><span
+                                            class="review-value" id="rev_dob">15 Jun 1990</span></div>
+                                    <div class="review-row"><span class="review-label">Gender</span><span
+                                            class="review-value" id="rev_gender">Male</span></div>
+                                    <div class="review-row"><span class="review-label">Mobile</span><span
+                                            class="review-value" id="rev_mobile">98765 43210</span></div>
+                                </div>
+                                <div class="review-card">
+                                    <div class="review-card-title">Address Details</div>
+                                    <div class="review-row"><span class="review-label">Street</span><span
+                                            class="review-value" id="rev_street">12-3-456, Saroornagar Colony</span></div>
+                                    <div class="review-row"><span class="review-label">District</span><span
+                                            class="review-value" id="rev_district">Hyderabad</span></div>
+                                    <div class="review-row"><span class="review-label">State</span><span
+                                            class="review-value" id="rev_state">Telangana</span></div>
+                                    <div class="review-row"><span class="review-label">PIN Code</span><span
+                                            class="review-value" id="rev_pincode">500035</span></div>
+                                </div>
+                            </div>
+                            <div class="review-card" style="margin-bottom:var(--space-lg);">
+                                <div class="review-card-title">Service Details</div>
+                                <div class="review-row"><span class="review-label">Service Applied For</span><span
+                                        class="review-value" id="rev_svc"
+                                        style="font-weight:700;color:var(--navy-800);">Income Certificate</span></div>
+                                <div class="review-row"><span class="review-label">Department</span><span
+                                        class="review-value" id="rev_dept">Revenue Department</span></div>
+                                <div class="review-row"><span class="review-label">SLA Period</span><span
+                                        class="review-value" id="rev_sla">7 Working Days</span></div>
+                                <div class="review-row"><span class="review-label">Application Fee</span><span
+                                        class="review-value" id="rev_fee">₹50</span></div>
+                                <div class="review-row"><span class="review-label">Documents Uploaded</span><span
+                                        class="review-value" id="rev_docs">3 documents</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-header">
+                            <div class="form-section-number">2</div>
+                            <div>
+                                <div class="form-section-title">Declaration</div>
+                                <div class="form-section-subtitle">Read and accept the terms before submitting.</div>
+                            </div>
+                        </div>
+                        <div class="form-section-body">
+                            <div
+                                style="background:var(--slate-50);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-lg);font-size:0.875rem;line-height:1.8;color:var(--slate-700);margin-bottom:var(--space-lg);max-height:160px;overflow-y:auto;">
+                                I, the undersigned, hereby declare that all the information provided in this application
+                                is true, correct, and complete to the best of my knowledge and belief. I understand that
+                                if any information provided is found to be false or incorrect, my application shall be
+                                rejected, and I shall be liable for action as per the applicable laws. I also consent to
+                                the verification of my Aadhaar details and the documents submitted herewith by the
+                                concerned department authorities.
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:var(--space-md);">
+                                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+                                    <input type="checkbox" id="decl1"
+                                        style="margin-top:3px;accent-color:var(--navy-600);width:16px;height:16px;flex-shrink:0;" />
+                                    <span style="font-size:0.875rem;color:var(--slate-700);">I declare that the
+                                        information provided is true and accurate to the best of my knowledge.</span>
+                                </label>
+                                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+                                    <input type="checkbox" id="decl2"
+                                        style="margin-top:3px;accent-color:var(--navy-600);width:16px;height:16px;flex-shrink:0;" />
+                                    <span style="font-size:0.875rem;color:var(--slate-700);">I consent to field
+                                        verification if required by the department officer.</span>
+                                </label>
+                                <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+                                    <input type="checkbox" id="decl3"
+                                        style="margin-top:3px;accent-color:var(--navy-600);width:16px;height:16px;flex-shrink:0;" />
+                                    <span style="font-size:0.875rem;color:var(--slate-700);">I agree to the <a href="#"
+                                            style="color:var(--navy-600);font-weight:600;">Terms & Conditions</a> and <a
+                                            href="#" style="color:var(--navy-600);font-weight:600;">Privacy Policy</a>
+                                        of DigiConnect.</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;margin-top:var(--space-xl);">
+                        <button class="btn btn-outline" onclick="nextStep(2)">← Back</button>
+                        <button class="btn btn-primary" onclick="validateDecl()">
+                            Proceed to Payment
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Payment & Submit -->
+                <div id="formStep4" style="display:none;">
+                    <div style="display:grid;grid-template-columns:1fr 360px;gap:var(--space-xl);align-items:start;">
+
+                        <!-- Payment Form -->
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <div class="form-section-number">
+                                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="form-section-title">Payment Method</div>
+                                    <div class="form-section-subtitle">Choose how you'd like to pay the application fee.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-section-body">
+
+                                <!-- Payment Method Tabs -->
+                                <div
+                                    style="display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-sm);margin-bottom:var(--space-xl);">
+                                    <div class="payment-method-card active" id="pm_upi" onclick="selectPayment('upi')">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        <span>UPI</span>
+                                    </div>
+                                    <div class="payment-method-card" id="pm_card" onclick="selectPayment('card')">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                        </svg>
+                                        <span>Card</span>
+                                    </div>
+                                    <div class="payment-method-card" id="pm_netbanking"
+                                        onclick="selectPayment('netbanking')">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                                        </svg>
+                                        <span>Net Banking</span>
+                                    </div>
+                                    <div class="payment-method-card" id="pm_free" onclick="selectPayment('free')">
+                                        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Free / Waived</span>
+                                    </div>
+                                </div>
+
+                                <!-- UPI Form -->
+                                <div id="upiForm">
+                                    <div class="form-group">
+                                        <label class="form-label">UPI ID <span class="required">*</span></label>
+                                        <div class="input-wrapper">
+                                            <svg class="input-icon" width="16" height="16" fill="none"
+                                                stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                                            </svg>
+                                            <input type="text" class="form-input has-icon" placeholder="yourname@upi"
+                                                id="upiId" />
+                                        </div>
+                                    </div>
+                                    <div
+                                        style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:var(--space-md);">
+                                        <button class="btn btn-outline btn-sm"
+                                            onclick="document.getElementById('upiId').value='@phonepe'">PhonePe</button>
+                                        <button class="btn btn-outline btn-sm"
+                                            onclick="document.getElementById('upiId').value='@gpay'">Google Pay</button>
+                                        <button class="btn btn-outline btn-sm"
+                                            onclick="document.getElementById('upiId').value='@paytm'">Paytm</button>
+                                    </div>
+                                </div>
+
+                                <!-- Card Form (hidden) -->
+                                <div id="cardForm" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="form-label">Card Number</label>
+                                        <input type="text" class="form-input" placeholder="1234 5678 9012 3456"
+                                            maxlength="19" oninput="formatCard(this)" />
+                                    </div>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label">Expiry (MM/YY)</label>
+                                            <input type="text" class="form-input" placeholder="MM/YY" maxlength="5" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">CVV</label>
+                                            <input type="password" class="form-input" placeholder="•••" maxlength="3" />
+                                        </div>
+                                        <div class="form-group col-span-full">
+                                            <label class="form-label">Name on Card</label>
+                                            <input type="text" class="form-input" placeholder="As printed on card" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Net Banking (hidden) -->
+                                <div id="netbankingForm" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="form-label">Select Bank</label>
+                                        <select class="form-input">
+                                            <option value="">-- Select your bank --</option>
+                                            <option>State Bank of India</option>
+                                            <option>HDFC Bank</option>
+                                            <option>ICICI Bank</option>
+                                            <option>Axis Bank</option>
+                                            <option>Bank of Baroda</option>
+                                            <option>Punjab National Bank</option>
+                                            <option>Canara Bank</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Free -->
+                                <div id="freeForm" style="display:none;">
+                                    <div class="alert alert-success">
+                                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        This service is free of charge for eligible applicants. No payment required.
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Payment Summary -->
+                        <div>
+                            <div class="payment-summary">
+                                <div class="payment-summary-title">Payment Summary</div>
+                                <div class="payment-summary-row">
+                                    <span>Application Fee</span>
+                                    <span id="ps_fee">₹50.00</span>
+                                </div>
+                                <div class="payment-summary-row">
+                                    <span>Processing Charge</span>
+                                    <span>₹5.00</span>
+                                </div>
+                                <div class="payment-summary-row">
+                                    <span>GST (18%)</span>
+                                    <span>₹9.90</span>
+                                </div>
+                                <div class="payment-summary-divider"></div>
+                                <div class="payment-summary-total">
+                                    <span>Total Payable</span>
+                                    <span id="ps_total">₹64.90</span>
+                                </div>
+                                <div
+                                    style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--navy-50);border-radius:var(--radius-md);border:1px solid var(--navy-100);">
+                                    <div
+                                        style="font-size:0.75rem;font-weight:600;color:var(--navy-600);margin-bottom:6px;">
+                                        Application Reference</div>
+                                    <div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:700;color:var(--navy-900);"
+                                        id="appRefId">APP-2501</div>
+                                    <div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:2px;">Save
+                                        this for tracking</div>
+                                </div>
+                                <div
+                                    style="margin-top:var(--space-md);display:flex;gap:4px;align-items:center;font-size:0.75rem;color:var(--color-text-muted);">
+                                    <svg width="12" height="12" fill="none" stroke="var(--green-500)" stroke-width="2.5"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                    Secured by 256-bit SSL encryption
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;justify-content:space-between;margin-top:var(--space-xl);">
+                        <button class="btn btn-outline" onclick="nextStep(3)">← Back</button>
+                        <button class="btn btn-primary" id="submitBtn" onclick="submitApplication()"
+                            style="min-width:180px;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Pay & Submit Application
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SUCCESS SCREEN -->
+                <div id="successScreen" style="display:none;">
+                    <div style="text-align:center;padding:var(--space-xl) var(--space-lg);">
+                        <div
+                            style="width:80px;height:80px;background:var(--green-100);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-xl);">
+                            <svg width="40" height="40" fill="none" stroke="var(--green-500)" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h2
+                            style="font-size:1.5rem;font-weight:800;color:var(--navy-900);margin-bottom:var(--space-sm);">
+                            Application Submitted Successfully!</h2>
+                        <p
+                            style="color:var(--color-text-muted);margin-bottom:var(--space-xl);max-width:480px;margin-left:auto;margin-right:auto;">
+                            Your application has been received and assigned to the concerned department. You'll receive
+                            SMS and email updates at each stage.</p>
+                        <div
+                            style="background:var(--navy-50);border:2px solid var(--navy-200);border-radius:var(--radius-lg);padding:var(--space-xl);display:inline-block;margin-bottom:var(--space-xl);">
+                            <div
+                                style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--navy-500);margin-bottom:4px;">
+                                Application ID</div>
+                            <div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--navy-900);"
+                                id="successAppId">APP-2501</div>
+                            <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:4px;">Expected
+                                completion: <strong>7 working days</strong></div>
+                        </div>
+                        <div style="display:flex;gap:var(--space-md);justify-content:center;flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="window.location.href='track-application.html'">
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                Track Application
+                            </button>
+                            <button class="btn btn-outline" onclick="window.location.href='apply-service.html'">Apply
+                                for Another Service</button>
+                            <button class="btn btn-ghost" onclick="window.location.href='citizen-dashboard.html'">Go to
+                                Dashboard</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /applicationForm -->
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <style>
+        .payment-method-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 8px;
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            background: var(--color-bg);
+        }
+
+        .payment-method-card:hover {
+            border-color: var(--navy-300);
+            color: var(--navy-600);
+        }
+
+        .payment-method-card.active {
+            border-color: var(--navy-600);
+            background: var(--navy-50);
+            color: var(--navy-700);
+        }
+
+        .review-card {
+            background: var(--slate-50);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+        }
+
+        .review-card-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--navy-500);
+            margin-bottom: var(--space-md);
+        }
+
+        .review-row {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-md);
+            padding: 6px 0;
+            border-bottom: 1px solid var(--slate-100);
+            font-size: 0.8125rem;
+        }
+
+        .review-row:last-child {
+            border-bottom: none;
+        }
+
+        .review-label {
+            color: var(--color-text-muted);
+        }
+
+        .review-value {
+            font-weight: 600;
+            color: var(--navy-900);
+            text-align: right;
+        }
+
+        .payment-summary {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .payment-summary-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy-900);
+            margin-bottom: var(--space-lg);
+        }
+
+        .payment-summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            color: var(--slate-700);
+            margin-bottom: var(--space-sm);
+        }
+
+        .payment-summary-divider {
+            border-top: 2px solid var(--navy-200);
+            margin: var(--space-md) 0;
+        }
+
+        .payment-summary-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--navy-900);
+        }
+
+        .upload-slot {
+            border: 1.5px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-md) var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            transition: all 0.2s;
+        }
+
+        .upload-slot:hover {
+            border-color: var(--navy-400);
+            background: var(--navy-50);
+        }
+
+        .upload-slot.uploaded {
+            border-color: var(--green-400);
+            border-style: solid;
+            background: var(--green-50);
+        }
+
+        .upload-slot-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-sm);
+            background: var(--slate-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .upload-slot.uploaded .upload-slot-icon {
+            background: var(--green-100);
+            color: var(--green-600);
+        }
+
+        .form-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: var(--space-xl);
+        }
+
+        .form-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            position: relative;
+        }
+
+        .form-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 17px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--color-border);
+            z-index: 0;
+        }
+
+        .form-step.active:not(:last-child)::after,
+        .form-step.completed:not(:last-child)::after {
+            background: var(--navy-600);
+        }
+
+        .form-step-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid var(--color-border);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--color-text-muted);
+            z-index: 1;
+        }
+
+        .form-step.active .form-step-circle {
+            border-color: var(--navy-600);
+            background: var(--navy-600);
+            color: white;
+        }
+
+        .form-step.completed .form-step-circle {
+            border-color: var(--green-500);
+            background: var(--green-500);
+            color: white;
+        }
+
+        .form-step-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--color-text-muted);
+            text-align: center;
+        }
+
+        .form-step.active .form-step-label {
+            color: var(--navy-700);
+        }
+
+        .form-step.completed .form-step-label {
+            color: var(--green-600);
+        }
+    </style>
+
+
+
+    <script type="module" src="../js/application.js"></script>
+</body>
+
+</html>

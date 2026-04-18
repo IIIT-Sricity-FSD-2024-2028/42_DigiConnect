@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Grievance History – DigiConnect</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../css/dashboard.css"/>
+  <style>
+    .filter-btn{padding:6px 16px;border-radius:var(--radius-full);font-size:0.8rem;font-weight:600;border:1.5px solid var(--color-border);background:var(--color-surface);color:var(--color-text-muted);cursor:pointer;transition:all var(--transition-fast);}
+    .filter-btn.active,.filter-btn:hover{border-color:var(--navy-500);background:var(--navy-50);color:var(--navy-700);}
+    .history-table-row{cursor:pointer;}
+    .history-table-row:hover td{background:var(--navy-50);}
+    .category-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;letter-spacing:0.03em;}
+    .cat-delay{background:var(--orange-100);color:#9a3412;}
+    .cat-rejection{background:var(--red-100);color:#991b1b;}
+    .cat-payment{background:var(--amber-100);color:#92400e;}
+    .cat-misconduct{background:var(--purple-100);color:#6b21a8;}
+    .grievance-id{font-family:var(--font-mono);font-size:0.8rem;color:var(--navy-600);font-weight:600;}
+    .search-box{position:relative;flex:1;min-width:220px;}
+    .search-box-input{width:100%;padding:9px 14px 9px 38px;border:1.5px solid var(--color-border);border-radius:var(--radius-md);font-size:0.875rem;background:var(--slate-50);outline:none;transition:all var(--transition-fast);}
+    .search-box-input:focus{border-color:var(--navy-400);background:var(--color-surface);box-shadow:0 0 0 3px rgba(37,87,160,0.1);}
+    .search-box svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--slate-400);width:16px;height:16px;}
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-md);margin-bottom:var(--space-xl);}
+    .summary-chip{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-md);text-align:center;box-shadow:var(--shadow-xs);cursor:pointer;transition:all var(--transition-fast);}
+    .summary-chip:hover{border-color:var(--navy-300);box-shadow:var(--shadow-sm);}
+    .summary-chip-val{font-size:1.75rem;font-weight:800;color:var(--navy-900);line-height:1;margin-bottom:4px;}
+    .summary-chip-label{font-size:0.7rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--color-text-muted);}
+    .summary-chip-status{font-size:0.62rem;font-weight:700;letter-spacing:0.04em;font-family:var(--font-mono);margin-top:3px;opacity:0.7;}
+    .summary-chip.resolved .summary-chip-val{color:#166534;}
+    .summary-chip.rejected .summary-chip-val{color:var(--slate-600);}
+    .summary-chip.escalated-resolved .summary-chip-val{color:var(--amber-600);}
+    .summary-chip.avg-days .summary-chip-val{color:var(--navy-600);}
+    .res-outcome{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;}
+    @media(max-width:1024px){.summary-strip{grid-template-columns:repeat(2,1fr);}}
+  </style>
+</head>
+<body data-page="grievance-history">
+<div id="toast-container"></div>
+<div class="app-layout">
+
+  <aside class="sidebar" id="sidebar"></aside>
+  <header class="topbar"></header>
+
+  <main class="main-content">
+
+    <div class="page-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:var(--space-md);">
+        <div>
+          <h1 class="page-title">Grievance History</h1>
+          <p class="page-subtitle">Archive of closed grievances — resolved, rejected, and escalated cases. Use this page to review past decisions and outcomes.</p>
+        </div>
+        <div style="display:flex;gap:var(--space-sm);">
+          <a href="grievance-dashboard.html" class="btn btn-outline btn-sm">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+            Back to Queue
+          </a>
+          <button class="btn btn-primary btn-sm" onclick="window.showToast&&window.showToast('Exporting history to CSV…','info')">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SRS Lifecycle Info -->
+    <div class="alert alert-info" style="margin-bottom:var(--space-lg);font-size:0.8125rem;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div><strong>SRS Lifecycle:</strong> This page shows all grievances that have reached terminal states — <strong>GRIEVANCE_RESOLVED</strong>, <strong>GRIEVANCE_REJECTED</strong>, or <strong>GRIEVANCE_ESCALATED → CLOSED</strong>. Active cases are in the Dashboard.</div>
+    </div>
+
+    <!-- Summary Strip -->
+    <div class="summary-strip">
+      <div class="summary-chip resolved" onclick="window.filterTable('resolved',this)" style="border-color:var(--green-200);">
+        <div class="summary-chip-val" id="countResolved">0</div>
+        <div class="summary-chip-label">Resolved</div>
+        <div class="summary-chip-status">GRIEVANCE_RESOLVED</div>
+      </div>
+      <div class="summary-chip rejected" onclick="window.filterTable('rejected',this)">
+        <div class="summary-chip-val" id="countRejected">0</div>
+        <div class="summary-chip-label">Rejected</div>
+        <div class="summary-chip-status">GRIEVANCE_REJECTED</div>
+      </div>
+      <div class="summary-chip escalated-resolved" onclick="window.filterTable('escalated-resolved',this)">
+        <div class="summary-chip-val" id="countEscResolved">0</div>
+        <div class="summary-chip-label">Escalated &amp; Closed</div>
+        <div class="summary-chip-status">ESCALATED → CLOSED</div>
+      </div>
+      <div class="summary-chip avg-days">
+        <div class="summary-chip-val" id="avgDays">—</div>
+        <div class="summary-chip-label">Avg. Days to Resolve</div>
+        <div class="summary-chip-status">THIS YEAR</div>
+      </div>
+    </div>
+
+    <!-- Main Table Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Closed Grievances Archive
+        </span>
+        <div style="display:flex;align-items:center;gap:var(--space-sm);flex-wrap:wrap;">
+          <button class="filter-btn active" data-filter="all" onclick="window.filterTable('all',this)">All</button>
+          <button class="filter-btn" data-filter="resolved" onclick="window.filterTable('resolved',this)">Resolved</button>
+          <button class="filter-btn" data-filter="rejected" onclick="window.filterTable('rejected',this)">Rejected</button>
+          <button class="filter-btn" data-filter="escalated-resolved" onclick="window.filterTable('escalated-resolved',this)">Escalated &amp; Closed</button>
+        </div>
+      </div>
+
+      <div class="card-body" style="padding-bottom:0;">
+        <div style="display:flex;align-items:center;gap:var(--space-md);margin-bottom:var(--space-lg);flex-wrap:wrap;">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="search-box-input" id="tableSearch" placeholder="Search by ID, citizen, or subject…" oninput="window.searchTable&&window.searchTable(this.value)"/>
+          </div>
+          <select class="form-select" style="width:160px;" onchange="window.filterByCategory&&window.filterByCategory(this.value)">
+            <option value="">All Categories</option>
+            <option value="delay">Service Delay</option>
+            <option value="rejection">App. Rejection</option>
+            <option value="payment">Payment Issue</option>
+            <option value="misconduct">Officer Misconduct</option>
+          </select>
+          <select class="form-select" style="width:160px;" onchange="window.filterByDateRange&&window.filterByDateRange(this.value)">
+            <option value="all">All Time</option>
+            <option value="thismonth">This Month</option>
+            <option value="last3months">Last 3 Months</option>
+            <option value="thisyear">This Year</option>
+          </select>
+          <select class="form-select" style="width:160px;" onchange="window.sortTable&&window.sortTable(this.value)">
+            <option value="date_desc">Newest First</option>
+            <option value="date_asc">Oldest First</option>
+            <option value="days_asc">Fastest Resolved</option>
+            <option value="days_desc">Slowest Resolved</option>
+          </select>
+        </div>
+
+        <!-- Table meta -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md);">
+          <div style="font-size:0.8125rem;color:var(--color-text-muted);">Showing <span id="shownCount" style="font-weight:700;color:var(--navy-700);">—</span> of <span id="totalCount" style="font-weight:700;color:var(--navy-700);">—</span> records</div>
+          <div style="display:flex;align-items:center;gap:var(--space-sm);">
+            <label style="font-size:0.8rem;color:var(--color-text-muted);">Per page:</label>
+            <select class="form-select" style="width:80px;padding:5px 28px 5px 10px;" onchange="window.changePageSize&&window.changePageSize(parseInt(this.value))">
+              <option value="10">10</option><option value="25">25</option><option value="50">50</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper" style="border:none;border-radius:0;">
+        <table class="table" id="historyTable">
+          <thead>
+            <tr>
+              <th>Grievance ID</th>
+              <th>Citizen Name</th>
+              <th>Subject</th>
+              <th>Category</th>
+              <th>Final Outcome</th>
+              <th>Closed On</th>
+              <th>Days Taken</th>
+              <th>Resolved By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <tr><td colspan="9" style="text-align:center;padding:var(--space-xl);color:var(--color-text-muted);">Loading history…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="card-footer" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-sm);">
+        <span style="font-size:0.8125rem;color:var(--color-text-muted);">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></span>
+        <div style="display:flex;gap:var(--space-xs);">
+          <button class="btn btn-outline btn-sm" id="prevBtn" onclick="window.changePage&&window.changePage(-1)">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg> Prev
+          </button>
+          <button class="btn btn-outline btn-sm" id="nextBtn" onclick="window.changePage&&window.changePage(1)">
+            Next <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- History Detail Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modalGrvId">—</span>
+      <button class="btn-icon" onclick="window.closeModal('historyModal')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" id="modalBody" style="max-height:520px;overflow-y:auto;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="window.closeModal('historyModal')">Close</button>
+      <button class="btn btn-primary" onclick="window.showToast&&window.showToast('Opening printable view…','info')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print Record
+      </button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initGrievanceHistory } from '../js/grievance.js';
+  import { showToast } from '../js/utils.js';
+  window.showToast = showToast;
+  document.addEventListener('DOMContentLoaded', initGrievanceHistory);
+</script>
+</body>
+</html>
