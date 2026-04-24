@@ -37,4 +37,5 @@ export interface Application {
   slaDate: string;
   timeline: TimelineEntry[];
   documents: Document[];
+  citizenResponse?: string;
 }
