@@ -5,6 +5,8 @@ export interface Document {
   type: string;
   date: string;
   status: string;
+  size?: string;
+  icon?: string;
 }
 
 export interface TimelineEntry {
@@ -21,12 +23,15 @@ export interface Application {
   serviceType: string; // certificate, welfare, permission
   citizenId: string;
   citizenName: string;
+  jurisdiction: string;
+  parentAppId?: string;
   officerId: string;
   officerName: string;
   dept: string;
-  status: AppStatus;
+  status: AppStatus | string;
   remarks: string;
   fee: number;
+  paymentMethod?: string;
   paymentStatus: string;
   submittedDate: string;
   slaDate: string;

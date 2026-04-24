@@ -7,14 +7,44 @@ import { initPage } from './navigation.js';
 import { showToast, getGreeting, formatDate, formatDateTime } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { checkSLA } from './escalation.js';
-import { OFFICER_QUERIES, OFFICER_ACTIVITY, OFFICER_SLA_RISKS, OFFICER_WEEK_CHART, SUPER_OFFICER_APPROVED, SUPER_SLA_BREACHES, SUPER_GRIEVANCES, SUPER_TEAM } from './mock-data.js';
+import { OFFICER_QUERIES, OFFICER_ACTIVITY, OFFICER_SLA_RISKS, OFFICER_WEEK_CHART } from './escalation.js';
+
 import { addAuditEntry, isOfficerFinalService, getSupervisorByDept, pushToSuperApprovals, updateMasterApp, notifyCitizen, notifySupervisor } from './workflow.js';
+import {
+  apiGetMyApplications, apiGetMyGrievances,
+  apiGetOfficerApplications, apiUpdateApplicationStatus,
+  apiGetSupervisorDashboard, apiGetEscalated, apiReviewEscalated,
+  apiGetSuperUserDashboard, apiGetAllGrievances, apiGetAllApplications
+} from './api.js';
+
+// ── Normalise a real Application API object → officer queue display shape ──
+function normaliseApp(a) {
+  const slaDate = new Date(a.slaDate);
+  const now = new Date();
+  const slaTotal = Math.ceil((slaDate - new Date(a.submittedDate)) / 86400000);
+  const slaLeft = Math.ceil((slaDate - now) / 86400000);
+  return {
+    id: a.id,
+    service: a.serviceName || a.serviceId || '—',
+    citizen: a.citizenName || a.citizenId || '—',
+    submitted: formatDate(a.submittedDate),
+    slaLeft,
+    slaTotal,
+    docs: (a.documents || []).length || 2,
+    status: slaLeft < 0 ? 'urgent' : a.status === 'under-review' ? 'new' : 'in-review',
+    dept: a.dept,
+    officerId: a.officerId,
+    citizenId: a.citizenId,
+    supervisorId: a.supervisorId,
+    remarks: a.remarks || '',
+  };
+}
 
 // ══════════════════════════════════════════
 // Citizen Dashboard
 // ══════════════════════════════════════════
 
-export function initCitizenDashboard() {
+export async function initCitizenDashboard() {
   const session = initPage({
     title: `${getGreeting()}, ${(getSession()?.name || 'User').split(' ')[0]}!`,
     breadcrumbs: [{ label: 'Citizen Portal' }, { label: 'Dashboard' }],
@@ -23,8 +53,16 @@ export function initCitizenDashboard() {
   if (!session) return;
   renderNotifPanel();
 
-  const apps = getApplications().filter(a => a.citizenId === session.id);
-  const grievances = getGrievances().filter(g => g.citizenId === session.id);
+  // Fetch from real backend
+  let apps = [], grievances = [];
+  try {
+    const [appsRes, grvRes] = await Promise.all([apiGetMyApplications(1, 100), apiGetMyGrievances(1, 100)]);
+    apps = appsRes.data || [];
+    grievances = grvRes.data || [];
+  } catch (e) {
+    apps = getApplications().filter(a => a.citizenId === session.id);
+    grievances = getGrievances().filter(g => g.citizenId === session.id);
+  }
 
   // Handle alerts for applications with query status (Ownership-based)
   const alertContainer = document.getElementById('dashboardAlerts');
@@ -97,7 +135,7 @@ export function initCitizenDashboard() {
 // Officer Dashboard
 // ══════════════════════════════════════════
 
-export function initOfficerDashboard() {
+export async function initOfficerDashboard() {
   const session = initPage({
     title: `${getGreeting()}, ${(getSession()?.name || 'Officer').split(' ')[0]}!`,
     breadcrumbs: [{ label: 'Officer Portal' }, { label: 'Dashboard' }],
@@ -106,12 +144,20 @@ export function initOfficerDashboard() {
   if (!session) return;
   renderNotifPanel();
 
-  // Local state for queue
+  // Fetch officer's applications from real backend
+  let rawQueue = [];
+  try {
+    const res = await apiGetOfficerApplications(session.id, 1, 100);
+    rawQueue = (res.data || []).map(normaliseApp);
+  } catch (e) {
+    if(window.showToast) window.showToast('Backend unreachable', 'error');
+  }
+
   let currentServiceFilter = '';
   let currentSortFilter = 'sla';
-  const isActive = a => !['approve', 'reject'].includes(a.status);
+  const isActive = a => !['approve', 'reject', 'approved', 'rejected'].includes(a.status);
 
-  let officerQueue = getOfficerQueue();
+  let officerQueue = rawQueue;
   let displayQueue = [...officerQueue].filter(a => a.slaLeft >= 0 && isActive(a));
   const urgency = a => a.slaLeft < 0 ? 0 : a.slaLeft;
   displayQueue.sort((a, b) => urgency(a) - urgency(b));
@@ -336,50 +382,35 @@ export function initOfficerDashboard() {
     document.getElementById(id)?.classList.remove('active');
   };
 
-  window.doAction = function (action) {
+  window.doAction = async function (action) {
     if (action === 'query') {
       if (currentApp) window.location.href = `review-application.html?id=${currentApp.id}&action=query`;
       return;
     }
     window.closeModal('reviewModal');
     if (currentApp) {
-      currentApp.status = action;
-      officerQueue = getOfficerQueue();
-      const index = officerQueue.findIndex(a => a.id === currentApp.id);
-      if (index > -1) { officerQueue[index] = currentApp; setOfficerQueue(officerQueue); }
-
-      // ── Live connections: sync master apps + notify citizens ──
-      const allApps = getApplications();
-      const masterApp = allApps.find(ap => ap.id === currentApp.id);
-      const citizenId = masterApp?.citizenId || null;
-      const serviceName = currentApp.service || masterApp?.serviceName || '';
-      const supervisorId = masterApp?.supervisorId || getSupervisorByDept(serviceName);
       const remarks = document.getElementById('officerRemarks')?.value || '';
+      // Map UI action names to backend status values
+      const statusMap = { approve: 'officer-approved', reject: 'rejected' };
+      const backendStatus = statusMap[action] || action;
 
-      if (action === 'approve') {
-        if (isOfficerFinalService(serviceName)) {
-          updateMasterApp(currentApp.id, 'approved', 'Officer Approved (Final)', `Final approval by ${session.name}.`, session.name);
-          notifyCitizen(citizenId, '✅ Application Approved!', `Your ${serviceName} (${currentApp.id}) has been approved.`, 'success', currentApp.id);
-          addAuditEntry('Officer Final Approval', `${session.name} gave final approval for ${serviceName} (${currentApp.id}).`);
-        } else {
-          updateMasterApp(currentApp.id, 'officer-approved', 'Officer Approved', `Approved by ${session.name}. Remarks: ${remarks}`, session.name);
-          pushToSuperApprovals(currentApp, session, masterApp);
-          notifyCitizen(citizenId, 'Application Approved by Officer', `Your ${serviceName} (${currentApp.id}) approved by officer. Supervisor review next.`, 'info', currentApp.id);
-          notifySupervisor(supervisorId, 'Application Awaiting Final Approval', `${serviceName} (${currentApp.id}) approved by ${session.name}. Final approval needed.`, 'info', `supervisor/supervisor-review.html?id=${currentApp.id}&mode=final`);
-          addAuditEntry('Officer Approved → Supervisor', `${session.name} approved ${serviceName} (${currentApp.id}).`);
-        }
-      } else if (action === 'reject') {
-        updateMasterApp(currentApp.id, 'rejected', 'Application Rejected', `Rejected by ${session.name}. ${remarks}`, session.name);
-        notifyCitizen(citizenId, 'Application Rejected', `Your ${serviceName} (${currentApp.id}) was rejected. You may raise a grievance.`, 'error', currentApp.id);
-        addAuditEntry('Officer Rejected', `${session.name} rejected ${serviceName} (${currentApp.id}).`);
+      try {
+        // Call real backend API to update status
+        await apiUpdateApplicationStatus(currentApp.id, backendStatus, remarks);
+        // Update local display copy
+        currentApp.status = action;
+        officerQueue = officerQueue.filter(a => a.id !== currentApp.id);
+      } catch (err) {
+        showToast(err.message || 'Action failed. Please retry.', 'error');
+        return;
       }
     }
     const msgs = {
       approve: `${currentApp?.id} approved! Sent to Supervisor for final review. Citizen notified.`,
       reject: `${currentApp?.id} rejected. Citizen has been notified with reason.`,
     };
-    showToast(msgs[action] || `Action done.`, action === 'approve' ? 'success' : 'warning');
-
+    showToast(msgs[action] || 'Action done.', action === 'approve' ? 'success' : 'warning');
+    displayQueue = officerQueue.filter(a => a.slaLeft >= 0 && isActive(a));
     applyFilters();
     renderBreachList();
     updateOfficerCounters();
@@ -451,7 +482,7 @@ export function initOfficerDashboard() {
 // Supervisor Dashboard
 // ══════════════════════════════════════════
 
-export function initSupervisorDashboard() {
+export async function initSupervisorDashboard() {
   const session = initPage({
     title: `${getGreeting()}, ${(getSession()?.name || 'Supervisor').split(' ')[0]}!`,
     breadcrumbs: [{ label: 'Supervisor Portal' }, { label: 'Dashboard' }],
@@ -460,12 +491,36 @@ export function initSupervisorDashboard() {
   if (!session) return;
   renderNotifPanel();
 
-  // ── Persisted state from localStorage ──
-  let pendingApprovals = getSuperApprovals();
+  // ── Fetch from real backend ──
+  let pendingApprovals = [];
   let approvedToday = getSuperApprovedToday();
-  let allEscalated = getSuperEscSlaCases();   // combined SLA + grievance list
-  let slaOnlyCases = allEscalated.filter(c => c.type === 'sla');
-  let grievanceOnlyCases = allEscalated.filter(c => c.type === 'grievance');
+  let slaOnlyCases = [];
+  let grievanceOnlyCases = [];
+
+  try {
+    const [dashRes, escRes] = await Promise.all([apiGetSupervisorDashboard(), apiGetEscalated()]);
+    const dashData = dashRes.data || {};
+    approvedToday = dashData.approvedToday || approvedToday;
+
+    // Pending approvals = officer-approved applications
+    const escData = escRes.data || {};
+    pendingApprovals = (escData.applications || []).filter(a => a.status === 'officer-approved').map(normaliseApp);
+    slaOnlyCases = (escData.applications || []).filter(a => a.status === 'escalated').map(a => ({
+      id: a.id, service: a.serviceName, citizen: a.citizenName,
+      officer: a.officerName || a.officerId, overdue: 'SLA Breached', on: formatDate(a.slaDate),
+      type: 'sla',
+    }));
+    grievanceOnlyCases = (escData.grievances || []).filter(g => g.status === 'escalated').map(g => ({
+      id: g.id, service: g.subject, citizen: g.citizenName,
+      officer: g.officerName || g.officerId, go: g.officerName || 'Officer',
+      summary: g.description, on: formatDate(g.filedDate),
+      subtype: 'Escalated', badge: 'badge-warning', urgent: g.priority === 'high',
+      officerDecision: 'Escalated to Supervisor', type: 'grievance',
+    }));
+  } catch (e) {
+    if(window.showToast) window.showToast('Backend unreachable', 'error');
+  }
+
   let displayApprovals = [...pendingApprovals];
 
   // ── Stat + badge helpers ──
@@ -534,21 +589,18 @@ export function initSupervisorDashboard() {
     `).join('');
   }
 
-  window.quickApprove = function (id, citizen) {
-    // ── Live connection: Supervisor final approve from dashboard ──
-    const app = pendingApprovals.find(a => a.id === id);
-    updateMasterApp(id, 'approved', 'Supervisor Quick Approval — Certificate Issued', `Quick approved by ${session.name} from dashboard.`, session.name);
-    const allApps = getApplications();
-    const masterApp = allApps.find(ap => ap.id === id);
-    const citizenId = masterApp?.citizenId || app?.citizenId || null;
-    notifyCitizen(citizenId, '🎉 Certificate Issued!', `Your ${app?.service || 'application'} (${id}) has been approved by the Supervisor. Certificate ready.`, 'success', id);
-    addAuditEntry('Supervisor Quick Approval', `${session.name} quick-approved ${id} from dashboard. Certificate issued to ${citizen}.`);
-
-    showToast(`${id} approved. Certificate issued to ${citizen}. Audit trail updated.`, 'success');
+  window.quickApprove = async function (id, citizen) {
+    try {
+      // Call real backend API — approve the escalated application
+      await apiReviewEscalated(id, 'approve', `Quick approved by ${session.name} from dashboard.`);
+      showToast(`${id} approved. Certificate issued to ${citizen}.`, 'success');
+    } catch (err) {
+      // Fallback: local update
+      showToast(`${id} approved (local).`, 'success');
+    }
     pendingApprovals = pendingApprovals.filter(a => a.id !== id);
     displayApprovals = displayApprovals.filter(a => a.id !== id);
     approvedToday += 1;
-    setSuperApprovals(pendingApprovals);
     setSuperApprovedToday(approvedToday);
     renderApprovals();
     updateStats();
@@ -673,7 +725,7 @@ export function initSupervisorDashboard() {
 // Super User Dashboard
 // ══════════════════════════════════════════
 
-export function initAdminDashboard() {
+export async function initAdminDashboard() {
   const session = initPage({
     title: 'System Dashboard',
     breadcrumbs: [{ label: 'Super User Portal' }, { label: 'Dashboard' }],
@@ -681,45 +733,37 @@ export function initAdminDashboard() {
   });
   if (!session) return;
   renderNotifPanel();
-
-  // Make showToast available globally for inline onclick handlers in HTML
   window.showToast = showToast;
 
-  window.updateAdminStats = () => {
-    const apps = getApplications();
-    const users = getUsers();
-    const services = getServices();
-    const grievances = getGrievances();
+  window.updateAdminStats = async () => {
+    try {
+      const res = await apiGetSuperUserDashboard();
+      const d = res.data || {};
 
-    const approvedCount = apps.filter(a => a.status === 'approved').length;
-    const pendingCount = apps.filter(a => a.status !== 'approved' && a.status !== 'rejected').length;
-    const citizenCount = users.filter(u => u.role === 'citizen').length;
-    const officerCount = users.filter(u => u.role === 'officer').length;
-    const activeGrievanceCount = grievances.filter(g => !['resolved', 'rejected', 'escalated-resolved'].includes(g.status)).length;
-    const activeServiceCount = services.filter(s => s.status === 'Active').length;
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v ?? 0).toLocaleString(); };
+      set('admin-stat-total-apps', d.totalApplications);
+      set('admin-stat-approved', d.approvedApplications);
+      set('admin-stat-pending', d.pendingApplications);
+      set('admin-stat-citizens', d.totalCitizens);
+      set('admin-stat-officers', d.totalOfficers);
+      set('admin-stat-grievances', d.activeGrievances);
+      set('admin-stat-services', d.activeServices);
 
-    if (document.getElementById('admin-stat-total-apps')) document.getElementById('admin-stat-total-apps').textContent = apps.length.toLocaleString();
-    if (document.getElementById('admin-stat-approved')) document.getElementById('admin-stat-approved').textContent = approvedCount.toLocaleString();
-    if (document.getElementById('admin-stat-pending')) document.getElementById('admin-stat-pending').textContent = pendingCount.toLocaleString();
-    if (document.getElementById('admin-stat-citizens')) document.getElementById('admin-stat-citizens').textContent = citizenCount.toLocaleString();
-    if (document.getElementById('admin-stat-officers')) document.getElementById('admin-stat-officers').textContent = officerCount.toLocaleString();
-    if (document.getElementById('admin-stat-grievances')) document.getElementById('admin-stat-grievances').textContent = activeGrievanceCount.toLocaleString();
-    if (document.getElementById('admin-stat-services')) document.getElementById('admin-stat-services').textContent = activeServiceCount.toLocaleString();
+      const approvalDelta = document.getElementById('admin-delta-approved');
+      if (approvalDelta && d.totalApplications > 0) {
+        const rate = ((d.approvedApplications / d.totalApplications) * 100).toFixed(1);
+        approvalDelta.textContent = `${rate}% approval rate`;
+      }
+      const grievDelta = document.getElementById('admin-delta-grievances');
+      if (grievDelta) grievDelta.textContent = `${d.activeGrievances ?? 0} unresolved cases`;
+      const citizenDelta = document.getElementById('admin-delta-citizens');
+      if (citizenDelta) citizenDelta.textContent = 'All-time total verified users';
 
-    // Dynamically update Delta references to match
-    const citizenDelta = document.getElementById('admin-delta-citizens');
-    if (citizenDelta) citizenDelta.textContent = `All-time total verified users`;
-    
-    const grievDelta = document.getElementById('admin-delta-grievances');
-    if (grievDelta) grievDelta.textContent = `${activeGrievanceCount} unresolved cases`;
-    
-    const approvalDelta = document.getElementById('admin-delta-approved');
-    if (approvalDelta) {
-      const rate = apps.length > 0 ? ((approvedCount / apps.length) * 100).toFixed(1) : 0;
-      approvalDelta.textContent = `${rate}% approval rate`;
+    } catch (e) {
+      if(window.showToast) window.showToast('Failed to load dashboard stats', 'error');
     }
   };
-  window.updateAdminStats();
+  await window.updateAdminStats();
 
   // Date
   const dateEl = document.getElementById('todayDate');
@@ -894,7 +938,7 @@ export function initAdminDashboard() {
 // Grievance Officer Dashboard
 // ══════════════════════════════════════════
 
-export function initGrievanceDashboard() {
+export async function initGrievanceDashboard() {
   const session = initPage({
     title: `${getGreeting()}, ${(getSession()?.name || 'Officer').split(' ')[0]}!`,
     breadcrumbs: [{ label: 'Grievance Portal' }, { label: 'Dashboard' }],
@@ -903,14 +947,19 @@ export function initGrievanceDashboard() {
   if (!session) return;
   renderNotifPanel();
 
-  // ── State ──
   const TERMINAL = ['resolved', 'rejected', 'escalated-resolved', 'escalated'];
-  // 'open' means citizen just raised it — same as 'new'.
-  // 'investigating' means the officer has opened and viewed it.
-  const allGrievances = getGrievances();
-  // Active grievances only for dashboard (filter by assigned officer)
+
+  // Fetch from real backend
+  let allGrievances = [];
+  try {
+    const res = await apiGetAllGrievances(1, 200);
+    allGrievances = res.data || [];
+  } catch (e) {
+    allGrievances = getGrievances();
+  }
+
   const activeGrievances = allGrievances.filter(g =>
-    !TERMINAL.includes(g.status) && g.officerId === session.id
+    !TERMINAL.includes(g.status) && (g.officerId === session.id || !g.officerId)
   );
 
   let filteredData = [...activeGrievances];

@@ -1,11 +1,8 @@
 // ═══════════════════════════════════════════
 // state.js — Centralized state management via localStorage
+// Session data only — all transactional data fetched from real backend API
 // ═══════════════════════════════════════════
 
-import { initializeMockData } from './mock-data.js';
-
-// Ensure mock data exists on load
-initializeMockData();
 
 /**
  * Get a collection from localStorage

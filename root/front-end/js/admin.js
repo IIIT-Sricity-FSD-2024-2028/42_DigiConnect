@@ -2,6 +2,7 @@
 // crud.js — Generic CRUD operations + Admin page initializers
 // ═══════════════════════════════════════════
 
+import { apiGetAllUsers, apiCreateUser, apiUpdateUser, apiDeleteUser, apiGetAllServices, apiCreateService, apiUpdateService, apiToggleService, apiGetAuditLogs, apiGetSettings, apiUpdateSettings, apiGetWorkflowConfig, apiOnboardOfficer, apiGetPendingOfficers, apiApproveOfficer, apiRejectOfficer } from './api.js';
 import { getCollection, setCollection, getUsers, setUsers, getServices, setServices, getApplications, getGrievances, getAuditLogs, setAuditLogs, getSession, getPendingOfficers, setPendingOfficers, getSettings, setSettings } from './state.js';
 import { initPage } from './navigation.js';
 import { addAuditEntry } from './workflow.js';
@@ -20,11 +21,11 @@ export function deleteItem(collectionKey, id) { const items = getCollection(coll
 export function filterItems(collectionKey, pred) { return getCollection(collectionKey).filter(pred); }
 
 // Manage Users
-export function initManageUsers() {
+export async function initManageUsers() {
   const session = initPage({ title: 'Manage Users', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Manage Users' }], requiredRole: 'super_user' });
   if (!session) return;
   const tbody = document.getElementById('usersTableBody');
-  let users = getUsers();
+  let users = await apiGetAllUsers();
   let currentTab = 'all';
   let searchTerm = '';
 
@@ -101,7 +102,7 @@ export function initManageUsers() {
     document.getElementById('addUserModalTitle').textContent = 'Add New User';
     window.openModal('addUserModal');
   };
-  window.saveUser = () => {
+  window.saveUser = async () => {
     const name = document.getElementById('uName').value.trim();
     const email = document.getElementById('uEmail').value.trim();
     const role = document.getElementById('uRole').value.toLowerCase();
@@ -111,12 +112,12 @@ export function initManageUsers() {
     if (editModeUserId) {
       const u = users.find(u => u.id === editModeUserId);
       Object.assign(u, {name, email, role, phone, status});
-      setUsers(users);
+      await apiUpdateUser(editModeUserId, {name, email, role, phone, status});
       addAuditEntry('User Updated', `Updated user ${name}`);
       if(window.showToast) window.showToast('User updated','success');
     } else {
-      users.push({ id: generateId('USR'), name, email, role, phone, status, password: 'password123' });
-      setUsers(users);
+      const newU = await apiCreateUser({ name, email, role, phone, status, password: 'password123' });
+      users.push(newU);
       addAuditEntry('User Created', `Created user ${name}`);
       if(window.showToast) window.showToast('User created','success');
     }
@@ -127,10 +128,10 @@ export function initManageUsers() {
 
   let deleteCandidate = null;
   window.confirmDelete = (id) => { deleteCandidate = id; const u = users.find(u=>u.id===id); if(document.getElementById('deleteUserName')) document.getElementById('deleteUserName').textContent = u?.name || 'User'; window.openModal('deleteUserModal'); };
-  window.confirmDeleteUser = () => {
+  window.confirmDeleteUser = async () => {
     if(deleteCandidate) {
-      deleteItem('users', deleteCandidate);
-      users = getUsers();
+      await apiDeleteUser(deleteCandidate);
+      users = await apiGetAllUsers();
       addAuditEntry('User Deleted', `Deleted user ${deleteCandidate}`);
       if(window.showToast) window.showToast('User deleted','success');
       window.closeModal('deleteUserModal');
@@ -140,7 +141,7 @@ export function initManageUsers() {
   };
 
   window.updateUsersStats = () => {
-      const uList = getUsers();
+      const uList = users;
       if(document.getElementById('mu-total')) document.getElementById('mu-total').textContent = uList.length.toLocaleString();
       if(document.getElementById('mu-citizens')) document.getElementById('mu-citizens').textContent = uList.filter(u => u.role === 'citizen').length.toLocaleString();
       if(document.getElementById('mu-officers')) document.getElementById('mu-officers').textContent = uList.filter(u => u.role === 'officer').length.toLocaleString();
@@ -157,14 +158,14 @@ export function initManageUsers() {
 }
 
 // Manage Services
-export function initManageServices() {
+export async function initManageServices() {
   const session = initPage({ title: 'Manage Services', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Manage Services' }], requiredRole: 'super_user' });
   if (!session) return;
   
   let currentView = 'grid';
   let currentModalStep = 1;
   const totalModalSteps = 4;
-  let allServices = getServices();
+  let allServices = await apiGetAllServices();
   let filteredServices = [...allServices];
 
   window.renderGrid = () => {
@@ -313,7 +314,7 @@ export function initManageServices() {
       }
   };
 
-  window.modalStep = (dir) => {
+  window.modalStep = async (dir) => {
       if (dir === 1 && currentModalStep === 1) {
           const name = document.getElementById('svcName').value.trim();
           const cat = document.getElementById('svcCategory').value;
@@ -354,8 +355,11 @@ export function initManageServices() {
               });
           }
           
-          // Persist changes to local storage via state.js
-          if(typeof setServices === 'function') setServices(allServices);
+          if (currentEditServiceId) {
+             await apiUpdateService(currentEditServiceId, allServices.find(s => s.id === currentEditServiceId));
+          } else {
+             await apiCreateService(allServices[allServices.length - 1]);
+          }
 
           // Force local filter arrays to mimic new data
           filteredServices = [...allServices];
@@ -394,13 +398,13 @@ export function initManageServices() {
       document.getElementById('deleteModal').classList.add('active'); 
   };
   
-  window.confirmDeactivate = () => { 
+  window.confirmDeactivate = async () => { 
       document.getElementById('deleteModal').classList.remove('active'); 
       if (!serviceToDeactivate) return;
       const sIndex = allServices.findIndex(x => x.id === serviceToDeactivate);
       if(sIndex !== -1) {
           allServices[sIndex].status = 'Inactive';
-          if(typeof setServices === 'function') setServices(allServices);
+          await apiToggleService(serviceToDeactivate);
           filteredServices = [...allServices];
           window.renderGrid();
           window.renderList();
@@ -409,11 +413,11 @@ export function initManageServices() {
       serviceToDeactivate = null;
   };
   
-  window.activateService = (id) => { 
+  window.activateService = async (id) => { 
       const sIndex = allServices.findIndex(x => x.id === id);
       if(sIndex !== -1) {
           allServices[sIndex].status = 'Active';
-          if(typeof setServices === 'function') setServices(allServices);
+          await apiToggleService(id);
           filteredServices = [...allServices];
           window.renderGrid();
           window.renderList();
@@ -427,7 +431,7 @@ export function initManageServices() {
 }
 
 // Workflow Config
-export function initWorkflowConfig() {
+export async function initWorkflowConfig() {
   const session = initPage({ title: 'Workflow Configuration', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Workflow Config' }], requiredRole: 'super_user' });
   if (!session) return;
   
@@ -480,7 +484,7 @@ export function initWorkflowConfig() {
           ]
       },
   ];
-  const allServicesData = getServices();
+  const allServicesData = await apiGetAllServices();
   WORKFLOWS.forEach(w => {
       const dbSvc = allServicesData.find(s => s.name === w.service);
       if (dbSvc) w.status = dbSvc.status;
@@ -664,13 +668,30 @@ export function initWorkflowConfig() {
 }
 
 // Officer Onboarding
-export function initOfficerOnboarding() {
+export async function initOfficerOnboarding() {
   const session = initPage({ title: 'Officer Onboarding', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Officer Onboarding' }], requiredRole: 'super_user' });
   if (!session) return;
   
   const SERVICES_LIST = ['Income Certificate','Caste Certificate','Residence Certificate','Welfare Scheme','Scholarship','Event Permission','Record Correction'];
   
-  let OFFICERS = getUsers().filter(u => ['officer', 'supervisor', 'grievance'].includes(u.role));
+  let _allU = await apiGetAllUsers(); 
+  let OFFICERS = _allU.filter(u => ['officer', 'supervisor', 'grievance'].includes(u.role));
+  
+  try {
+    const pendingRes = await apiGetPendingOfficers();
+    if (pendingRes && pendingRes.data) {
+      // API returns pending officers. We ensure their status is 'Pending'
+      const pOfficers = pendingRes.data.map(po => ({ ...po, status: 'Pending', cases: 0, sla: 100 }));
+      // Filter out any that might already exist to prevent duplicates
+      const existingIds = new Set(OFFICERS.map(o => o.id));
+      pOfficers.forEach(po => {
+        if (!existingIds.has(po.id)) OFFICERS.push(po);
+      });
+    }
+  } catch (e) {
+    console.warn("Could not fetch pending officers:", e);
+  }
+
   let filteredOfficers = [...OFFICERS];
 
   const serviceGrid = document.getElementById('serviceAssignGrid');
@@ -717,6 +738,10 @@ export function initOfficerOnboarding() {
                       <button class="btn-icon" title="Edit" onclick="${isSuspended ? `showToast('Cannot edit a suspended officer.','error')` : `openAddModal('${o.id}')`}" ${isSuspended ? 'style="opacity:0.4;cursor:not-allowed;"' : ''}><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
                       
                       ${isSuspended ? `<button class="btn-icon" title="Restore" onclick="restoreOfficer('${o.id}')" style="color:var(--green-600);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>` 
+                      : o.status === 'Pending' ? `
+                        <button class="btn-icon" title="Approve" onclick="window.approvePendingOfficer('${o.id}')" style="color:var(--green-600);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
+                        <button class="btn-icon" title="Reject" onclick="window.rejectPendingOfficer('${o.id}')" style="color:var(--red-500);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+                      ` 
                       : `<button class="btn-icon" title="Suspend" onclick="suspendOfficer('${o.id}')" style="color:var(--red-500);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></button>`}
                   </div>
               </td>
@@ -856,6 +881,33 @@ export function initOfficerOnboarding() {
       }
   };
 
+  window.approvePendingOfficer = async (id) => {
+      try {
+          await apiApproveOfficer(id);
+          const o = OFFICERS.find(x => x.id === id);
+          if (o) o.status = 'Active';
+          filteredOfficers = [...OFFICERS];
+          window.renderOfficersTable();
+          if(window.updateOfficerStats) window.updateOfficerStats();
+          if(window.showToast) window.showToast(`Pending officer approved successfully.`, 'success');
+      } catch (err) {
+          if(window.showToast) window.showToast(err.message || 'Failed to approve officer.', 'error');
+      }
+  };
+
+  window.rejectPendingOfficer = async (id) => {
+      try {
+          await apiRejectOfficer(id);
+          OFFICERS = OFFICERS.filter(x => x.id !== id);
+          filteredOfficers = [...OFFICERS];
+          window.renderOfficersTable();
+          if(window.updateOfficerStats) window.updateOfficerStats();
+          if(window.showToast) window.showToast(`Pending officer rejected.`, 'info');
+      } catch (err) {
+          if(window.showToast) window.showToast(err.message || 'Failed to reject officer.', 'error');
+      }
+  };
+
   window.viewOfficerDocs = (name) => { if(window.showToast) window.showToast(`Opening documents for ${name}…`,'info'); }
 
 
@@ -955,7 +1007,7 @@ export function initOfficerOnboarding() {
 }
 
 // Audit Logs
-export function initAuditLogs() {
+export async function initAuditLogs() {
   const session = initPage({ title: 'Audit Logs', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Audit Logs' }], requiredRole: 'super_user' });
   if (!session) return;
   
@@ -1082,7 +1134,7 @@ export function initAuditLogs() {
 }
 
 // System Settings
-export function initSystemSettings() {
+export async function initSystemSettings() {
   const session = initPage({ title: 'System Settings', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'System Settings' }], requiredRole: 'super_user' });
   if (!session) return;
   
@@ -1105,7 +1157,7 @@ export function initSystemSettings() {
 
   // ── LIVE SYNC: Load Settings ──
   window.loadSettings = () => {
-      const settings = getSettings();
+      const settings = await apiGetSettings();
       if (!settings.general) return;
       
       const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
@@ -1188,7 +1240,7 @@ export function initSystemSettings() {
       }
   };
 
-  window.saveAllSettings = () => {
+  window.saveAllSettings = async () => {
       const getVal = (id) => document.getElementById(id)?.value?.trim();
       const getCheck = (id) => document.getElementById(id)?.checked;
 
@@ -1225,9 +1277,18 @@ export function initSystemSettings() {
           }
       };
       
-      setSettings(newSettings);
-      if(window.showToast) window.showToast('All system settings saved and synchronized!', 'success');
-      addAuditEntry('Settings Updated', 'Full system configuration update by Super User');
+      try {
+          await apiUpdateSettings(newSettings);
+          
+          if (typeof setSettings === 'function') {
+              setSettings(newSettings);
+          }
+          
+          if(window.showToast) window.showToast('All system settings saved and synchronized!', 'success');
+          addAuditEntry('Settings Updated', 'Full system configuration update by Super User');
+      } catch (err) {
+          if(window.showToast) window.showToast(err.message || 'Failed to update system settings.', 'error');
+      }
   };
 
   window.confirmDanger = (msg, successMsg) => {

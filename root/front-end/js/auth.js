@@ -7,6 +7,7 @@ import { showToast, generateId, initEventDelegation, togglePassword, checkStreng
 import { getRoleDashboardPath, getLoginRedirectMap, getRoleConfig } from './role-manager.js';
 import { initPage } from './navigation.js';
 import { renderNotifPanel } from './notifications.js';
+import { apiRequestOtp, apiRegister, apiLogin } from './api.js';
 
 /**
  * Attempt login with email and password
@@ -15,49 +16,49 @@ import { renderNotifPanel } from './notifications.js';
  * @param {string} selectedRole - Role selected on login form
  * @returns {object} { success, message, user }
  */
-export function login(email, password, selectedRole) {
-  const users = getUsers();
-  const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+export async function login(email, password, selectedRole) {
+  try {
+    const res = await apiLogin(email, password);
+    const user = res.data;
 
-  if (!user) {
-    return { success: false, message: 'Invalid credentials. Please check your email and password.' };
+    // Map selectedRole from form to stored role
+    const roleMap = {
+      'citizen': 'citizen',
+      'officer': 'officer',
+      'supervisor': 'supervisor',
+      'grievance': 'grievance',
+      'super_user': 'super_user',
+      'admin': 'super_user',
+      'super_admin': 'super_admin',
+    };
+
+    const mappedRole = roleMap[selectedRole] || selectedRole;
+
+    // Check if user role matches selected role (admin can also be super_admin)
+    if (user.role !== mappedRole && !(mappedRole === 'super_user' && user.role === 'super_admin')) {
+      throw new Error(`This account is not registered as ${selectedRole}. Please select the correct role.`);
+    }
+
+    // Create session
+    const session = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role === 'super_admin' ? 'super_user' : user.role,
+      actualRole: user.role,
+      phone: user.phone,
+      loginTime: new Date().toISOString(),
+    };
+
+    setSession(session);
+
+    // Log audit
+    // addAuditLog('User Login', user.email, user.role, `${user.name} logged in as ${user.role}.`);
+
+    return { success: true, message: 'Login successful.', user: session };
+  } catch (err) {
+    throw new Error(err.message || 'Invalid credentials. Please check your email and password.');
   }
-
-  // Map selectedRole from form to stored role
-  const roleMap = {
-    'citizen': 'citizen',
-    'officer': 'officer',
-    'supervisor': 'supervisor',
-    'grievance': 'grievance',
-    'super_user': 'super_user',
-    'admin': 'super_user',
-    'super_admin': 'super_admin',
-  };
-
-  const mappedRole = roleMap[selectedRole] || selectedRole;
-
-  // Check if user role matches selected role (admin can also be super_admin)
-  if (user.role !== mappedRole && !(mappedRole === 'super_user' && user.role === 'super_admin')) {
-    return { success: false, message: `This account is not registered as ${selectedRole}. Please select the correct role.` };
-  }
-
-  // Create session
-  const session = {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role === 'super_admin' ? 'super_user' : user.role,
-    actualRole: user.role,
-    phone: user.phone,
-    loginTime: new Date().toISOString(),
-  };
-
-  setSession(session);
-
-  // Log audit
-  addAuditLog('User Login', user.email, user.role, `${user.name} logged in as ${user.role}.`);
-
-  return { success: true, message: 'Login successful.', user: session };
 }
 
 /**
@@ -130,28 +131,24 @@ export function logout() {
  * @param {string} newPassword
  * @returns {object} { success, message }
  */
-export function changePassword(currentPassword, newPassword) {
+export async function changePassword(currentPassword, newPassword) {
   const session = getSession();
   if (!session) return { success: false, message: 'Not logged in.' };
-
-  const users = getUsers();
-  const userIdx = users.findIndex(u => u.id === session.id);
-  if (userIdx === -1) return { success: false, message: 'User not found.' };
-
-  if (users[userIdx].password !== currentPassword) {
-    return { success: false, message: 'Current password is incorrect.' };
-  }
 
   if (newPassword.length < 8) {
     return { success: false, message: 'New password must be at least 8 characters.' };
   }
 
-  users[userIdx].password = newPassword;
-  setUsers(users);
-
-  addAuditLog('Password Changed', session.email, session.role, `${session.name} changed password.`);
-
-  return { success: true, message: 'Password updated successfully!' };
+  try {
+    // Dynamically import apiChangePassword to avoid circular deps if any
+    const { apiChangePassword } = await import('./api.js');
+    await apiChangePassword(session.id, currentPassword, newPassword);
+    
+    // addAuditLog('Password Changed', session.email, session.role, `${session.name} changed password.`);
+    return { success: true, message: 'Password updated successfully!' };
+  } catch (err) {
+    return { success: false, message: err.message || 'Failed to update password.' };
+  }
 }
 
 /**
@@ -264,15 +261,17 @@ export function initLoginPage() {
       if (spinner) spinner.style.display = 'flex';
       if (btnText) btnText.textContent = 'Signing in...';
 
-      setTimeout(() => {
-        const result = login(emailInput, passwordInput, selectedRole);
-        if (result.success) {
-          const redirectMap = getLoginRedirectMap();
-          const dest = redirectMap[result.user.role] || 'citizen/citizen-dashboard.html';
-          window.location.href = dest;
-        } else {
+      setTimeout(async () => {
+        try {
+          const result = await login(emailInput, passwordInput, selectedRole);
+          if (result.success) {
+            const redirectMap = getLoginRedirectMap();
+            const dest = redirectMap[result.user.role] || 'citizen/citizen-dashboard.html';
+            window.location.href = dest;
+          }
+        } catch (err) {
           if (errBox) { errBox.style.display = 'flex'; }
-          if (errMsg) errMsg.textContent = result.message;
+          if (errMsg) errMsg.textContent = err.message;
           btn.disabled = false;
           if (spinner) spinner.style.display = 'none';
           if (btnText) btnText.textContent = 'Sign In';
@@ -531,9 +530,9 @@ export function initRegisterPage() {
 
   const regBtn = document.getElementById('registerBtn');
   if (regBtn) {
-    regBtn.addEventListener('click', () => {
+    regBtn.addEventListener('click', async () => {
       if (window.validateForm && !window.validateForm('#step3')) return;
-      
+
       const uname = document.getElementById('username')?.value?.trim();
       const pw = document.getElementById('newPassword')?.value;
       const cpw = document.getElementById('confirmPassword')?.value;
@@ -541,6 +540,8 @@ export function initRegisterPage() {
       const secA = document.getElementById('securityAnswer')?.value?.trim();
       const terms = document.getElementById('agreeTerms')?.checked;
       const dataConsent = document.getElementById('agreeData')?.checked;
+      const phone = document.getElementById('phone')?.value?.trim() || '';
+      const aadhaar = document.getElementById('aadhaar')?.value?.trim() || '';
 
       if (!uname || uname.length < 3) { showToast('Username must be at least 3 characters.', 'warning'); return; }
       if (!pw || pw.length < 8) { showToast('Password must be at least 8 characters.', 'warning'); return; }
@@ -553,42 +554,57 @@ export function initRegisterPage() {
       const bt = document.getElementById('registerBtnText');
       regBtn.disabled = true;
       if (sp) sp.style.display = 'flex';
-      if (bt) bt.textContent = 'Creating...';
+      if (bt) bt.textContent = 'Requesting OTP...';
 
-      setTimeout(() => {
-        const result = register({
-          firstName: document.getElementById('firstName')?.value?.trim(),
-          lastName: document.getElementById('lastName')?.value?.trim(),
-          email: document.getElementById('email')?.value?.trim() || '',
-          phone: document.getElementById('phone')?.value?.trim() || '',
+      try {
+        // Step 1: Request OTP from backend simulator
+        const otpRes = await apiRequestOtp(phone, aadhaar);
+        const otp = otpRes.otp;
+        showToast(`Simulation: OTP ${otp} sent to your mobile ${phone}`, 'info');
+
+        if (bt) bt.textContent = 'Creating Account...';
+
+        // Step 2: Register with the backend (includes OTP verification)
+        const result = await apiRegister({
+          name: `${document.getElementById('firstName')?.value?.trim()} ${document.getElementById('lastName')?.value?.trim()}`,
+          email: document.getElementById('email')?.value?.trim() || `${uname}@digiconnect.gov.in`,
+          phone,
+          aadhaar,
+          role: 'citizen',
+          jurisdiction: document.getElementById('district')?.value?.trim() || 'Hyderabad',
           password: pw,
-          aadhaar: document.getElementById('aadhaar')?.value?.trim(),
-          dob: document.getElementById('dob')?.value,
-          gender: document.getElementById('gender')?.value,
-          state: document.getElementById('state')?.value,
-          district: document.getElementById('district')?.value?.trim(),
-          pincode: document.getElementById('pincode')?.value?.trim(),
-          address: document.getElementById('address')?.value?.trim(),
-          username: uname,
           securityQuestion: secQ,
           securityAnswer: secA,
+          otp,
         });
 
-        if (result.success) {
-          document.getElementById('step3').style.display = 'none';
-          document.getElementById('successScreen').style.display = 'block';
-          for (let i = 1; i <= 3; i++) {
-            const pill = document.getElementById('pill-' + i);
-            if (pill) pill.style.background = 'var(--green-500)';
-          }
-          showToast('Account created successfully!', 'success');
-        } else {
-          showToast(result.message, 'error');
-          regBtn.disabled = false;
-          if (sp) sp.style.display = 'none';
-          if (bt) bt.textContent = 'Create Account';
+        // Store session from returned user data
+        const newUser = result.data;
+        const session = {
+          id: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+          role: 'citizen',
+          actualRole: 'citizen',
+          phone: newUser.phone,
+          loginTime: new Date().toISOString(),
+        };
+        setSession(session);
+
+        document.getElementById('step3').style.display = 'none';
+        document.getElementById('successScreen').style.display = 'block';
+        for (let i = 1; i <= 3; i++) {
+          const pill = document.getElementById('pill-' + i);
+          if (pill) pill.style.background = 'var(--green-500)';
         }
-      }, 1500);
+        showToast('Account created and Aadhaar OTP verified!', 'success');
+
+      } catch (err) {
+        showToast(err.message || 'Registration failed. Please try again.', 'error');
+        regBtn.disabled = false;
+        if (sp) sp.style.display = 'none';
+        if (bt) bt.textContent = 'Create Account';
+      }
     });
   }
 
@@ -739,14 +755,14 @@ export function initProfilePage() {
   // ── Password update (security tab) ──
   const updatePwBtn = document.getElementById('updatePasswordBtn');
   if (updatePwBtn) {
-    updatePwBtn.addEventListener('click', () => {
+    updatePwBtn.addEventListener('click', async () => {
       const curr = document.getElementById('secCurrPw')?.value?.trim();
       const newPw = document.getElementById('secNewPw')?.value?.trim();
       const confirm = document.getElementById('secConfirmPw')?.value?.trim();
       if (!curr) { showToast('Enter your current password.', 'error'); return; }
       if (!newPw || newPw.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
       if (newPw !== confirm) { showToast('Passwords do not match.', 'error'); return; }
-      const result = changePassword(curr, newPw);
+      const result = await changePassword(curr, newPw);
       showToast(result.message, result.success ? 'success' : 'error');
       if (result.success) { document.getElementById('secCurrPw').value = ''; document.getElementById('secNewPw').value = ''; document.getElementById('secConfirmPw').value = ''; }
     });
@@ -755,14 +771,14 @@ export function initProfilePage() {
   // ── Password update (modal) ──
   const modalPwBtn = document.getElementById('updatePasswordModalBtn');
   if (modalPwBtn) {
-    modalPwBtn.addEventListener('click', () => {
+    modalPwBtn.addEventListener('click', async () => {
       const curr = document.getElementById('modalCurrPw')?.value?.trim();
       const newPw = document.getElementById('modalNewPw')?.value?.trim();
       const confirm = document.getElementById('modalConfirmPw')?.value?.trim();
       if (!curr) { showToast('Enter your current password.', 'error'); return; }
       if (!newPw || newPw.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
       if (newPw !== confirm) { showToast('Passwords do not match.', 'error'); return; }
-      const result = changePassword(curr, newPw);
+      const result = await changePassword(curr, newPw);
       if (result.success) { closeModal('changePasswordModal'); document.getElementById('modalCurrPw').value = ''; document.getElementById('modalNewPw').value = ''; document.getElementById('modalConfirmPw').value = ''; }
       showToast(result.message, result.success ? 'success' : 'error');
     });

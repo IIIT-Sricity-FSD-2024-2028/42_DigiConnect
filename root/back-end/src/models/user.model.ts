@@ -6,11 +6,17 @@ export interface User {
   email: string;
   phone: string;
   aadhaar: string; // raw 12-digit
-  role: Role;
+  role: Role | string;
   title?: string; // VRO, RI, MRO etc.
   dept?: string;
   jurisdiction?: string;
-  status: 'Active' | 'Suspended' | 'Pending';
+  status: 'Active' | 'Suspended' | 'Pending' | string;
   services?: string[]; // services officer handles
-  joinedDate: string;
+  joinedDate?: string;
+  joined?: string;
+  password?: string;
+  securityQuestion?: string;
+  securityAnswer?: string;
+  cases?: number;
+  sla?: number;
 }

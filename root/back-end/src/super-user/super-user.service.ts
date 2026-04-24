@@ -6,9 +6,31 @@ import { generateId } from '../utils/helpers';
 @Injectable()
 export class SuperUserService {
   getDashboardStats() {
+    const totalCitizens = db.users.filter(u => u.role === 'citizen').length;
+    const totalOfficers = db.users.filter(u => u.role === 'officer' || u.role === 'grievance').length;
+    const totalApplications = db.applications.length;
+    const approvedApplications = db.applications.filter(a => a.status === 'approved').length;
+    const pendingApplications = db.applications.filter(
+      a => !['approved', 'rejected'].includes(a.status),
+    ).length;
+    const activeGrievances = db.grievances.filter(
+      g => !['resolved', 'rejected', 'escalated-resolved'].includes(g.status),
+    ).length;
+    const activeServices = db.services.filter(s => s.status === 'Active').length;
+
     return {
+      // Core system metrics
       totalUsers: db.users.length,
-      activeServices: db.services.filter(s => s.status === 'Active').length,
+      totalCitizens,
+      totalOfficers,
+      // Application metrics
+      totalApplications,
+      approvedApplications,
+      pendingApplications,
+      // Grievance metrics
+      activeGrievances,
+      // Service metrics
+      activeServices,
       pendingOfficers: db.pendingOfficers.length,
       systemStatus: db.settings.maintenanceMode ? 'Maintenance' : 'Online',
     };

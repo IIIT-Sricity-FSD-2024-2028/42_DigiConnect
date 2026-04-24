@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { db } from '../data/store';
 import { User } from '../models/user.model';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -8,6 +8,7 @@ import { Role } from '../models/enums';
 
 @Injectable()
 export class UsersService {
+  private otpCache = new Map<string, string>();
   findAll(): User[] {
     return db.users;
   }
@@ -16,6 +17,29 @@ export class UsersService {
     const user = db.users.find(u => u.id === id);
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  findOfficerByRole(role: string): User | undefined {
+    return db.users.find(u => u.role === role);
+  }
+
+  findEligibleOfficers(dept: string, jurisdiction?: string): User[] {
+    return db.users.filter(u => 
+      u.role === 'officer' && 
+      u.dept === dept &&
+      (!jurisdiction || u.jurisdiction === jurisdiction || u.jurisdiction === 'All Mandals' || u.jurisdiction === 'All' || !u.jurisdiction)
+    );
+  }
+
+  findFallbackOfficers(dept?: string): User[] {
+    if (dept) {
+      return db.users.filter(u => u.role === 'officer' && u.dept === dept);
+    }
+    return db.users.filter(u => u.role === 'officer');
+  }
+
+  findAllOfficers(): User[] {
+    return db.users.filter(u => u.role === 'officer');
   }
 
   create(createUserDto: CreateUserDto): User {
@@ -50,9 +74,36 @@ export class UsersService {
     return user;
   }
 
+  requestOtp(phone: string, aadhaar: string): string {
+    // Generate a random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    this.otpCache.set(phone, otp);
+    return otp;
+  }
+
   register(createUserDto: CreateUserDto): User {
+    if (createUserDto.role === Role.CITIZEN || !createUserDto.role) {
+      if (!createUserDto.otp) {
+        throw new BadRequestException('Aadhaar OTP is required for citizen registration.');
+      }
+      const cachedOtp = this.otpCache.get(createUserDto.phone);
+      if (cachedOtp !== createUserDto.otp) {
+        throw new BadRequestException('Invalid Aadhaar OTP. Registration denied.');
+      }
+      // OTP verified successfully. Remove from cache to prevent reuse.
+      this.otpCache.delete(createUserDto.phone);
+    }
+    
     createUserDto.role = Role.CITIZEN; // Force role citizen for public register
     return this.create(createUserDto);
+  }
+
+  login(loginDto: any): User {
+    const user = db.users.find(u => u.email.toLowerCase() === loginDto.email.toLowerCase() && u.password === loginDto.password);
+    if (!user) {
+      throw new BadRequestException('Invalid credentials');
+    }
+    return user;
   }
 
   remove(id: string): void {

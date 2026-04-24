@@ -13,6 +13,7 @@ export enum AppStatus {
   REJECTED = 'rejected',
   ESCALATED = 'escalated',
   QUERY = 'query',
+  PENDING_EXTERNAL_VERIFICATION = 'pending_external_verification',
   COMPLETED = 'completed',
 }
 

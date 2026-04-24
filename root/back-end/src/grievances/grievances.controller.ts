@@ -32,11 +32,12 @@ export class GrievancesController {
   @Roles(Role.OFFICER, Role.SUPERVISOR, Role.SUPER_USER, Role.GRIEVANCE)
   @ApiOperation({ summary: 'Get all grievances (paginated)' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: false })
   @ApiResponse({ status: 200, description: 'List of all grievances' })
-  findAll(@Query('page') page: string = '1', @Query('limit') limit: string = '10') {
+  findAll(@Query('page') page: string = '1', @Query('limit') limit: string = '10', @Headers('x-user-id') userId: string) {
     return {
       success: true,
-      ...this.grievancesService.findAll(+page, +limit),
+      ...this.grievancesService.findAll(+page, +limit, userId),
       message: 'OK'
     };
   }
@@ -84,6 +85,26 @@ export class GrievancesController {
     return {
       success: true,
       data: this.grievancesService.updateStatus(id, updateGrievanceDto, userId || 'Grievance Officer'),
+      message: 'OK'
+    };
+  }
+
+  @Patch(':id/reply')
+  @UseGuards(RolesGuard)
+  @Roles(Role.CITIZEN)
+  @ApiOperation({ summary: 'Reply to a grievance' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
+  @ApiBody({ schema: { type: 'object', properties: { reply: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Reply added successfully' })
+  addReply(
+    @Param('id') id: string,
+    @Body('reply') reply: string,
+    @Headers('x-user-id') userId: string
+  ) {
+    return {
+      success: true,
+      data: this.grievancesService.addReply(id, reply, userId),
       message: 'OK'
     };
   }

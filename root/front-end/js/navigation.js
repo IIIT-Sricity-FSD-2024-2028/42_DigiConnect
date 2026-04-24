@@ -2,7 +2,7 @@
 // navigation.js — Dynamic sidebar, topbar, breadcrumb builder
 // ═══════════════════════════════════════════
 
-import { getSession, getCurrentRole, getCurrentUserName, getSettings, getUsers } from './state.js';
+import { getSession, getCurrentRole, getCurrentUserName, getUsers } from './state.js';
 import { getRoleConfig, svgIcons } from './role-manager.js';
 import { getInitials, toggleSidebar, setupGlobalClickHandlers, initEventDelegation, showToast } from './utils.js';
 import { logout } from './auth.js';
@@ -88,7 +88,7 @@ export function buildSidebar(role) {
         </svg>
       </a>
       <div class="sidebar-brand-text">
-        <div class="sidebar-brand-name">${getSettings().general?.platformName || 'DigiConnect'}</div>
+        <div class="sidebar-brand-name">DigiConnect Telangana</div>
         <div class="sidebar-brand-sub" data-testid="sidebar-portal-label">${config.portalLabel}</div>
       </div>
     </div>
@@ -250,33 +250,13 @@ export function initPage(options = {}) {
     }
 
     // ── LIVE SYNC: Check User Status (Suspended/Active) ──
-    const liveUser = getUsers().find(u => u.id === session.id);
-    if (liveUser && liveUser.status === 'Suspended') {
-      logout();
-      window.location.href = getBasePath() + 'login.html?reason=suspended';
-      return null;
-    }
+    // Handled by backend API on subsequent requests
 
     // ── LIVE SYNC: Check Maintenance Mode ──
-    const settings = getSettings();
-    if (settings.maintenance?.enabled && session.role !== 'super_user') {
-      // Redirect to a maintenance view or show overlay
-      document.body.innerHTML = `
-        <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:var(--font-sans); background:linear-gradient(135deg, var(--navy-900), var(--navy-700)); color:white;">
-          <div style="font-size:4rem; margin-bottom:20px;">🛠️</div>
-          <h1 style="font-size:2rem; margin-bottom:10px;">Platform Under Maintenance</h1>
-          <p style="max-width:500px; opacity:0.9; margin-bottom:30px;">${settings.maintenance.message || 'System is undergoing scheduled maintenance. Please try again later.'}</p>
-          <button onclick="window.location.reload()" class="btn btn-primary" style="background:white; color:var(--navy-900);">Check Again</button>
-        </div>
-      `;
-      return null;
-    }
+    // Maintenance mode checked by backend
   }
 
-  const settings = getSettings();
-  if (settings.general?.platformName) {
-      document.title = `${options.title || 'Dashboard'} | ${settings.general.platformName}`;
-  }
+  document.title = `${options.title || 'Dashboard'} | DigiConnect Telangana`;
 
   const role = session ? session.role : 'citizen';
   const config = getRoleConfig(role);

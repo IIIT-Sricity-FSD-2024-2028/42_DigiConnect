@@ -11,16 +11,21 @@ export interface Grievance {
   id: string; // 'GRV-XXX'
   citizenId: string;
   citizenName: string;
+  jurisdiction: string;
   officerId: string;
   officerName: string;
-  category: 'delay' | 'rejection' | 'payment' | 'misconduct';
+  category: 'delay' | 'rejection' | 'payment' | 'misconduct' | string;
   subject: string;
   description: string;
   relatedAppId: string;
-  status: GrievanceStatus;
-  priority: 'low' | 'medium' | 'high';
-  slaStatus: 'safe' | 'warn' | 'breach';
+  status: GrievanceStatus | string;
+  priority: 'low' | 'medium' | 'high' | string;
+  slaStatus: 'safe' | 'warn' | 'breach' | string;
   filedDate: string;
   lastUpdated: string;
+  closedDate?: string;
+  daysTaken?: number;
+  resolvedBy?: string;
+  resolutionNote?: string;
   history: HistoryEntry[];
 }

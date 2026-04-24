@@ -5,12 +5,13 @@
 import { getSession, getGrievances, setGrievances, getAuditLogs, setAuditLogs, getUsers, getApplications, setApplications } from './state.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, getQueryParam, openModal, closeModal } from './utils.js';
-import { renderNotifPanel, addNotification } from './notifications.js';
+import { renderNotifPanel } from './notifications.js';
 import {
   addAuditEntry, assignGrievanceOfficer, getSupervisorByDept,
   pushToEscalatedCases, pushToSuperApprovals, updateMasterApp,
   notifyCitizen, notifySupervisor, notifyGrievanceOfficer
 } from './workflow.js';
+import { apiRaiseGrievance, apiGetMyGrievances, apiGetAllGrievances, apiUpdateGrievanceStatus } from './api.js';
 
 // ── Shared helpers ──
 function setTextContent(id, value) {
@@ -153,9 +154,8 @@ export function initRaiseGrievance() {
     input.click();
   };
 
-  window.submitGrievance = () => {
+  window.submitGrievance = async () => {
     if (window.validateForm && !window.validateForm('#gStep' + currentStep)) return;
-    // Check consent checkboxes
     const c1 = document.getElementById('consent1')?.checked;
     const c2 = document.getElementById('consent2')?.checked;
     const c3 = document.getElementById('consent3')?.checked;
@@ -170,53 +170,43 @@ export function initRaiseGrievance() {
       submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;"></div> Submitting...';
     }
 
-    setTimeout(() => {
+    try {
       const subject = document.getElementById('gTitle')?.value?.trim();
       const description = document.getElementById('gDesc')?.value?.trim();
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
       const priority = document.getElementById('gPriority')?.value || 'medium';
 
-      // ── FIX 6: Dynamic Grievance Officer Assignment (least-load) ──
-      const { officerId, officerName } = assignGrievanceOfficer();
-
-      const grievances = getGrievances();
-      const newGrievance = {
-        id: generateId('GRV'),
-        citizenId: session.id, citizenName: session.name,
-        officerId, officerName,
+      // Submit to real backend API
+      const result = await apiRaiseGrievance({
+        citizenId: session.id,
         category: selectedCategory || 'delay',
-        subject, description,
+        subject,
+        description,
         relatedAppId: relatedApp || null,
-        status: 'open', priority: priority, slaStatus: 'safe',
-        filedDate: new Date().toISOString().split('T')[0],
-        lastUpdated: new Date().toISOString().split('T')[0],
-        history: [
-          { action: 'Grievance Filed', date: new Date().toISOString(), actor: session.name, note: `Complaint: ${subject}` },
-          { action: 'Assigned to Officer', date: new Date().toISOString(), actor: 'System', note: `Assigned to ${officerName} (Grievance Officer).` },
-        ],
-      };
-      grievances.push(newGrievance);
-      setGrievances(grievances);
+        priority,
+      });
 
-      // ── Audit + Notifications ──
-      addAuditEntry('Grievance Filed', `${session.name} filed grievance ${newGrievance.id}: ${subject}. Assigned to ${officerName}.`);
-      notifyGrievanceOfficer(officerId, 'New Grievance Assigned', `Grievance ${newGrievance.id} from ${session.name} assigned to you.`, newGrievance.id);
-      addNotification({ userId: session.id, title: 'Grievance Submitted', message: `Your grievance ${newGrievance.id} has been filed and assigned to ${officerName}.`, type: 'success', link: `citizen/my-grievances.html?id=${newGrievance.id}` });
+      const newGrievance = result.data;
 
       window.gNextStep(4);
-      
       const tc = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
       tc('newGrvId', newGrievance.id);
       tc('confCat', getCatLabel(selectedCategory));
       tc('confApp', relatedApp || '—');
       tc('confPriority', priority.charAt(0).toUpperCase() + priority.slice(1));
       tc('confFiled', formatDate(newGrievance.filedDate));
-      
+
       const sb = document.getElementById('gSidebar');
       if (sb) sb.style.display = 'none';
-
       if(window.showToast) window.showToast('Grievance submitted successfully!', 'success');
-    }, 1200);
+
+    } catch (err) {
+      showToast(err.message || 'Submission failed. Please try again.', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Grievance';
+      }
+    }
   };
 }
 
@@ -224,12 +214,20 @@ export function initRaiseGrievance() {
 // Citizen: My Grievances
 // ══════════════════════════════════════════
 
-export function initMyGrievances() {
+export async function initMyGrievances() {
   const session = initPage({ title: 'My Grievances', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'My Grievances' }], requiredRole: 'citizen' });
   if (!session) return;
   renderNotifPanel();
 
-  const allFiltered = getGrievances().filter(g => g.citizenId === session.id);
+  // Fetch from real backend
+  let allFiltered = [];
+  try {
+    const { apiGetMyGrievances } = await import('./api.js');
+    const res = await apiGetMyGrievances(1, 100);
+    allFiltered = res.data || [];
+  } catch (e) {
+    if(window.showToast) window.showToast('Backend unreachable.', 'error');
+  }
   const TERMINAL = ['resolved', 'rejected', 'escalated-resolved', 'escalated'];
   
   let currentFilter = 'all';
@@ -346,27 +344,26 @@ export function initMyGrievances() {
     }
   };
 
-  window.sendReply = () => {
+  window.sendReply = async () => {
     const input = document.getElementById('replyText');
     const txt = input?.value?.trim();
     if (!txt || !selectedId) return;
-    const all = getGrievances();
-    const idx = all.findIndex(x => x.id === selectedId);
-    if (idx === -1) return;
     
-    all[idx].history.push({
-      action: 'Citizen Update',
-      date: new Date().toISOString(),
-      actor: session.name,
-      note: txt
-    });
-    setGrievances(all);
-    // Refresh local array
-    const localIdx = allFiltered.findIndex(x => x.id === selectedId);
-    if (localIdx > -1) allFiltered[localIdx] = all[idx];
-    
-    window.selectGrv(selectedId);
-    if(window.showToast) window.showToast('Message sent to officer.', 'success');
+    try {
+      const { apiReplyToGrievance } = await import('./api.js');
+      const res = await apiReplyToGrievance(selectedId, txt);
+      
+      // Update local item
+      const localIdx = allFiltered.findIndex(x => x.id === selectedId);
+      if (localIdx > -1) {
+        allFiltered[localIdx] = res.data;
+        window.selectGrv(selectedId);
+      }
+      if(window.showToast) window.showToast('Message sent to officer.', 'success');
+      if (input) input.value = '';
+    } catch (e) {
+      if(window.showToast) window.showToast('Failed to send reply.', 'error');
+    }
   };
 
   window.rateGrv = (stars) => {
@@ -939,6 +936,12 @@ export function initGrievanceDetail() {
       action: { resolve: 'Resolved', reject: 'Rejected', escalate: 'Escalated to Supervisor' }[selectedResType],
       date: today.toISOString(), actor: session.name, note: resNote,
     });
+
+    // ── Call real backend API ──
+    apiUpdateGrievanceStatus(grievance.id, newStatus, resNote).catch(err => {
+      console.warn('[Grievance API] Status update failed, kept local change:', err.message);
+    });
+
     setGrievances(grievances);
 
     // Dynamically update the audit timeline

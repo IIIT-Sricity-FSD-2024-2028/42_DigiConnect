@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 import { Role } from '../../models/enums';
 
 export class CreateUserDto {
@@ -28,7 +28,16 @@ export class CreateUserDto {
   @IsString()
   dept?: string;
 
-  @IsOptional()
+  @ValidateIf(o => o.role === Role.CITIZEN)
+  @IsNotEmpty({ message: 'Jurisdiction is required for citizens.' })
   @IsString()
   jurisdiction?: string;
+
+  @IsOptional()
+  @IsString()
+  otp?: string;
+
+  @IsOptional()
+  @IsString()
+  password?: string;
 }

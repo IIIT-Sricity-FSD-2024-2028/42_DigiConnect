@@ -2,10 +2,10 @@
 // application.js — Application lifecycle management
 // ═══════════════════════════════════════════
 
-import { getSession, getApplications, setApplications, getServices, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries } from './state.js';
+import { getSession, getApplications, setApplications, getServices, setServices, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries } from './state.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal, getQueryParam, formatCard } from './utils.js';
-import { renderNotifPanel, addNotification } from './notifications.js';
+import { renderNotifPanel } from './notifications.js';
 import { checkSLA } from './escalation.js';
 import {
   addAuditEntry, assignOfficerByDept, getSupervisorByDept,
@@ -13,14 +13,31 @@ import {
   updateMasterApp, isOfficerFinalService,
   notifyCitizen, notifyOfficer, notifySupervisor
 } from './workflow.js';
+import {
+  apiSimulatePayment, apiSubmitApplication, apiGetMyApplications,
+  apiGetServices, apiTrackApplication, apiGetApplicationById
+} from './api.js';
 
 // ══════════════════════════════════════════
 // Citizen: Apply for Service
 // ══════════════════════════════════════════
 
-export function initApplyService() {
+export async function initApplyService() {
   const session = initPage({ title: 'Apply for Service', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'Apply for Service' }], requiredRole: 'citizen' });
-  const services = getServices().filter(s => s.status === 'Active');
+  
+  // Fetch services from real backend API
+  let services = [];
+  try {
+    const res = await apiGetServices();
+    services = res.data || [];
+    // Also cache in localStorage for offline fallback
+    setServices(services);
+  } catch (e) {
+    // Fallback to localStorage if backend is unreachable
+    services = getServices().filter(s => s.status === 'Active');
+    showToast('Backend unavailable. Using cached services.', 'warning');
+  }
+  
   let selectedService = null;
   let currentStep = 1;
 
@@ -380,138 +397,73 @@ export function initApplyService() {
     }
   });
 
-  // Submit application
-  window.submitApplication = () => {
+  // Submit application — now calls real backend API
+  window.submitApplication = async () => {
     if (window.validateForm && !window.validateForm('#applicationForm')) return;
     const submitBtn = document.getElementById('submitBtn');
     if (!selectedService) { if(window.showToast) window.showToast('No service selected.', 'error'); return; }
-    
-    // Sync application reference ID with what is already displayed in Payment Summary
-    const appRefEl = document.getElementById('appRefId');
-    const existingRefId = (appRefEl && appRefEl.textContent) ? appRefEl.textContent : ('APP-' + (Math.floor(1000 + Math.random() * 9000)));
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Processing Payment...';
+      submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Processing...';
     }
 
-    setTimeout(() => {
-      const apps = getApplications();
-      // ── FIX 1: Dept-matched officer assignment ──
-      const { officerId, officerName } = assignOfficerByDept(selectedService.name);
-      const supervisorId = getSupervisorByDept(selectedService.name);
+    try {
+      let paymentTransactionId = null;
 
-      // ── Read ALL service-specific and personal fields from the form DOM ──
-      const v = (id) => document.getElementById(id)?.value?.trim() || null;
-      const vq = (selector) => document.querySelector(selector);
-      // Helper: get value from the nth input/select inside specificBody
-      const sf = (idx) => {
-        const inputs = document.getElementById('specificBody')?.querySelectorAll('input,select,textarea');
-        return inputs?.[idx]?.value?.trim() || null;
-      };
-
-      // Personal / common fields — IDs match apply-service.html exactly
-      const formFirst   = v('f_firstName') || '';
-      const formLast    = v('f_lastName')  || '';
-      const formName    = [formFirst, formLast].filter(Boolean).join(' ') || session.name;
-      const formDob     = v('f_dob');
-      const formGender  = v('f_gender') || document.getElementById('f_gender')?.options?.[document.getElementById('f_gender')?.selectedIndex]?.text;
-      const formGuardian= v('f_guardianName');
-      const formPhone   = v('f_mobile') || session.phone;
-      const formAadhaar = v('f_aadhaar') || session.aadhaar;
-      // Compose full address from all address sub-fields
-      const formStreet  = v('f_street')   || '';
-      const formVillage = v('f_village')  || '';
-      const formMandal  = v('f_mandal')   || '';
-      const formDistrict= v('districtSelect') || '';
-      const formState   = v('f_state')    || '';
-      const formPincode = v('f_pincode')  || '';
-      const formAddress = [formStreet, formVillage, formMandal, formDistrict, formState, formPincode]
-        .filter(Boolean).join(', ') || null;
-
-      // Service-specific fields — positionally from specificBody
-      let svcFields = {};
-      const sName = selectedService.name;
-      if (sName === 'Income Certificate') {
-        svcFields = { income: sf(0), incomeSource: sf(1), occupation: sf(2), purpose: sf(3) };
-      } else if (sName === 'Caste Certificate') {
-        svcFields = { community: sf(0), subCaste: sf(1), category: sf(2), religion: sf(3), purpose: sf(4) };
-      } else if (sName === 'Residence Certificate') {
-        svcFields = { duration: sf(0), residenceType: sf(1), purpose: sf(2) };
-      } else if (sName === 'Welfare / Subsidy Scheme') {
-        svcFields = { landHolding: sf(0), surveyNo: sf(1), bankAccount: sf(2), ifsc: sf(3) };
-      } else if (sName === 'Scholarship Application') {
-        svcFields = { courseName: sf(0), institution: sf(1), admissionYear: sf(2), tuitionFee: sf(3) };
-      } else if (sName === 'Event Permission') {
-        svcFields = { eventName: sf(0), eventType: sf(1), eventDate: sf(2), eventDuration: sf(3), venueAddress: sf(4), attendance: sf(5) };
-      } else if (sName === 'Vendor License') {
-        svcFields = { businessName: sf(0), businessType: sf(1), businessAddress: sf(2), ownershipType: sf(3) };
-      } else if (sName === 'Record Correction') {
-        svcFields = { recordType: sf(0), recordNo: sf(1), incorrect: sf(2), correct: sf(3), reason: sf(4) };
+      // Step 1: If paid service, run payment simulator
+      if (selectedService.fee > 0) {
+        if (submitBtn) submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Connecting to Payment Gateway...';
+        const payRes = await apiSimulatePayment(selectedService.id, session.id, selectedService.fee);
+        paymentTransactionId = payRes.transactionId;
+        showToast(`Payment confirmed! TXN: ${paymentTransactionId}`, 'success');
       }
 
-      const newApp = {
-        id: existingRefId,
-        serviceId: selectedService.id, serviceName: selectedService.name, serviceType: selectedService.cat.toLowerCase(),
-        citizenId: session.id, citizenName: formName,
-        officerId, officerName,
-        supervisorId,
-        dept: selectedService.dept, status: 'under-review',
-        submittedDate: new Date().toISOString(),
-        slaDate: new Date(Date.now() + selectedService.sla * 86400000).toISOString(),
-        fee: selectedService.fee, paymentMethod: selectedService.fee === 0 ? 'free' : 'UPI', paymentStatus: selectedService.fee === 0 ? 'waived' : 'paid',
-        remarks: '',
-        // Personal fields
-        dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
-        phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
-        street: formStreet, village: formVillage, mandal: formMandal,
-        district: formDistrict, state: formState,
-        // All service-specific fields spread in
-        ...svcFields,
-        timeline: [
-          { action: 'Application Submitted', date: new Date().toISOString(), actor: session.name, note: 'Application received and registered.' },
-          { action: 'Assigned to Officer', date: new Date().toISOString(), actor: 'System', note: `Auto-assigned to ${officerName} based on department.` },
-          ...(selectedService.fee > 0 ? [{ action: 'Payment Confirmed', date: new Date().toISOString(), actor: 'System', note: `${selectedService.feeLabel} paid via UPI.` }] : []),
-        ],
-        documents: selectedService.docs.map(d => ({ name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending' })),
-      };
-      apps.push(newApp);
-      setApplications(apps);
+      if (submitBtn) submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Submitting Application...';
 
-      // ── FIX 1a: Push to Officer Queue (LIVE CONNECTION: Citizen → Officer) ──
-      pushToOfficerQueue(newApp, selectedService);
+      // Build document metadata from uploaded files
+      const documents = (selectedService.docs || []).map(d => ({
+        name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending'
+      }));
 
-      // ── Audit + Notifications ──
-      addAuditEntry('Application Submitted', `${session.name} applied for ${selectedService.name} (${newApp.id}). Assigned to ${officerName}.`);
-      addNotification({ userId: session.id, title: 'Application Submitted', message: `Your application for ${selectedService.name} (${newApp.id}) has been submitted successfully.`, type: 'success', link: `citizen/track-application.html?id=${newApp.id}` });
-      notifyOfficer(officerId, 'New Application Assigned', `${selectedService.name} application (${newApp.id}) from ${session.name} is assigned to you.`, newApp.id);
+      // Step 2: Submit application to real backend
+      const result = await apiSubmitApplication({
+        serviceId: selectedService.id,
+        citizenId: session.id,
+        dept: selectedService.dept,
+        fee: selectedService.fee || 0,
+        remarks: document.getElementById('f_remarks')?.value?.trim() || '',
+        paymentTransactionId,
+        documents,
+      });
+
+      const newApp = result.data;
 
       // Show success screen
       for (let i = 1; i <= 4; i++) {
         const el = document.getElementById('formStep' + i);
         if (el) el.style.display = 'none';
       }
-      
       const stepper = document.querySelector('.form-stepper');
       if (stepper) stepper.style.display = 'none';
-      
       const headerBtns = document.querySelector('[onclick="goBack()"]');
       if (headerBtns && headerBtns.parentElement) headerBtns.parentElement.style.display = 'none';
-
       const success = document.getElementById('successScreen');
-      if (success) { 
-        success.style.display = 'block'; 
-        setTC('successAppId', newApp.id); 
-      }
-      
-      if (window.showToast) window.showToast('Application submitted successfully!', 'success');
-      
-      // Update track buttons on success screen
       if (success) {
-        success.innerHTML = success.innerHTML.replace('track-application.html', `track-application.html?id=${newApp.id}`);
+        success.style.display = 'block';
+        const refEl = document.getElementById('successAppId');
+        if (refEl) refEl.textContent = newApp.id;
       }
+      if (window.showToast) window.showToast('Application submitted successfully!', 'success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 2000);
+
+    } catch (err) {
+      showToast(err.message || 'Submission failed. Please try again.', 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Application';
+      }
+    }
   };
 
   // Success screen navigation buttons
@@ -535,7 +487,7 @@ export function initApplyService() {
 // Citizen: My Applications
 // ══════════════════════════════════════════
 
-export function initMyApplications() {
+export async function initMyApplications() {
   const session = initPage({ title: 'My Applications', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'My Applications' }], requiredRole: 'citizen' });
   if (!session) return;
   renderNotifPanel();
@@ -549,19 +501,24 @@ export function initMyApplications() {
   const tbody = document.getElementById('appsTableBody') || document.getElementById('applicationsTableBody');
   const cardGrid = document.getElementById('appsCardGrid');
 
-  let baseApps = getApplications().filter(a => a.citizenId === session.id);
+  // Fetch from real backend
+  let baseApps = [];
+  try {
+    const { apiGetMyApplications } = await import('./api.js');
+    const res = await apiGetMyApplications(1, 100);
+    baseApps = res.data || [];
+  } catch (e) {
+    if(window.showToast) window.showToast('Backend unreachable.', 'error');
+  }
+
   let filterStatus = 'all';
   let filterType = '';
   let query = '';
   let sortBy = 'date-desc';
   let currentView = 'table';
   
-
-
   function renderView() {
-    // Always re-read from live storage so new submissions appear immediately
-    baseApps = getApplications().filter(a => a.citizenId === session.id);
-
+    // Re-use the already-fetched baseApps (no localStorage re-read needed)
     let filtered = baseApps.filter(a => {
       if (filterStatus !== 'all' && a.status !== filterStatus) return false;
       if (filterType && a.serviceType && a.serviceType.toLowerCase() !== filterType) return false;
@@ -706,15 +663,18 @@ export function initMyApplications() {
     if(el) el.textContent = id;
     window.openModal('withdrawModal');
   };
-  window.confirmWithdraw = () => {
+  window.confirmWithdraw = async () => {
     if(withdrawCandidate) {
-      baseApps = baseApps.filter(a => a.id !== withdrawCandidate);
-      const allApps = getApplications().filter(a => a.id !== withdrawCandidate);
-      setApplications(allApps);
-      addAuditEntry('Application Withdrawn', `Citizen withdrew draft ${withdrawCandidate}`);
-      window.closeModal('withdrawModal');
-      if(window.showToast) window.showToast('Application withdrawn successfully.', 'success');
-      renderView();
+      try {
+        const { apiWithdrawApplication } = await import('./api.js');
+        await apiWithdrawApplication(withdrawCandidate);
+        baseApps = baseApps.filter(a => a.id !== withdrawCandidate);
+        window.closeModal('withdrawModal');
+        if(window.showToast) window.showToast('Application withdrawn successfully.', 'success');
+        renderView();
+      } catch (err) {
+        if(window.showToast) window.showToast(err.message || 'Failed to withdraw application.', 'error');
+      }
     }
   };
 
@@ -725,7 +685,7 @@ export function initMyApplications() {
 // Citizen: Track Application
 // ══════════════════════════════════════════
 
-export function initTrackApplication() {
+export async function initTrackApplication() {
   const session = initPage({ title: 'Track Application', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'Track Application' }], requiredRole: 'citizen' });
   if (!session) return;
   renderNotifPanel();
@@ -735,9 +695,17 @@ export function initTrackApplication() {
   const appDetail = document.getElementById('appDetail');
   const trackInput = document.getElementById('trackInput');
 
-  function loadApplication(id) {
-    const apps = getApplications();
-    const app = apps.find(a => a.id === id);
+  async function loadApplication(id) {
+    let app = null;
+
+    // Try real backend API first
+    try {
+      const res = await apiGetApplicationById(id);
+      app = res.data || res;
+    } catch (e) {
+      if(window.showToast) window.showToast('Backend unreachable.', 'error');
+    }
+
     if (!app) {
       showToast('Application not found. Check the ID and try again.', 'error');
       return;
@@ -746,7 +714,6 @@ export function initTrackApplication() {
     // ── PRIVACY CHECK: Ensure the citizen owns this application ──
     if (app.citizenId !== session.id) {
       showToast('You are not authorized to track this application.', 'error');
-      // Hide details and show empty state if an unauthorized ID was entered
       if (appDetail) appDetail.style.display = 'none';
       if (emptyState) emptyState.style.display = 'block';
       return;
@@ -911,8 +878,11 @@ export function initTrackApplication() {
     loadApplication(appId);
   } else {
     // If no ID is passed, default to first citizen application if tracking from menu.
-    const myApps = getApplications().filter(a => a.citizenId === session.id);
-    if(myApps.length > 0) loadApplication(myApps[0].id);
+    try {
+      const { apiGetMyApplications } = await import('./api.js');
+      const res = await apiGetMyApplications(1, 1);
+      if(res.data && res.data.length > 0) loadApplication(res.data[0].id);
+    } catch(e) {}
   }
 
   // Search button / enter
@@ -960,78 +930,24 @@ export function initTrackApplication() {
     }
   };
 
-  window.submitQueryResponse = function() {
+  window.submitQueryResponse = async function() {
     const modal = document.getElementById('queryModal');
     const responseText = document.getElementById('queryResponseText')?.value?.trim()
                       || document.getElementById('citizenResponseText')?.value?.trim()
                       || 'Citizen uploaded requested documents.';
 
-    // ── 1. Find the current application being tracked ──
-    // appId comes from the URL (track-application.html?id=APP-XXXX)
-    const currentAppId = getQueryParam('id') || (() => {
-      const apps = getApplications().filter(a => a.citizenId === session.id);
-      return apps.find(a => a.status === 'query')?.id;
-    })();
+    const currentAppId = getQueryParam('id');
+    if (!currentAppId) {
+      if(window.showToast) window.showToast('No application ID found to respond to.', 'error');
+      return;
+    }
 
-    if (currentAppId) {
-      // ── 2. Update master app: save response text + change status back to under-review ──
-      updateMasterApp(
-        currentAppId,
-        'under-review',
-        'Citizen Responded to Query',
-        responseText,
-        session.name
-      );
-
-      // Also save citizenResponse on the master app itself (visible in officer review)
-      const allApps = getApplications();
-      const masterIdx = allApps.findIndex(a => a.id === currentAppId);
-      if (masterIdx !== -1) {
-        allApps[masterIdx].citizenResponse = responseText;
-        setApplications(allApps);
-      }
-
-      // ── 3. Restore officer queue entry to 'review' status so it reappears ──
-      const queue = getOfficerQueue();
-      const qIdx = queue.findIndex(q => q.id === currentAppId);
-      if (qIdx !== -1) {
-        queue[qIdx].status = 'review';
-        queue[qIdx].citizenResponse = responseText;
-        queue[qIdx].history = queue[qIdx].history || [];
-        queue[qIdx].history.push({
-          label: 'Citizen Responded',
-          ts: new Date().toLocaleString('en-IN'),
-          detail: responseText,
-          dot: 'review',
-        });
-        setOfficerQueue(queue);
-      }
-
-      // ── 4. Update officer_queries: mark as responded ──
-      const queries = getOfficerQueries();
-      const qryIdx = queries.findIndex(q => q.id === currentAppId);
-      if (qryIdx !== -1) {
-        queries[qryIdx].responded = true;
-        queries[qryIdx].citizenResponse = responseText;
-        setOfficerQueries(queries);
-      }
-
-      // ── 5. Notify officer ──
-      const masterApp = getApplications().find(a => a.id === currentAppId);
-      const officerId = masterApp?.officerId;
-      const serviceName = masterApp?.serviceName || currentAppId;
-      notifyOfficer(
-        officerId,
-        '💬 Citizen Responded to Query',
-        `${session.name} has responded to your query on ${serviceName} (${currentAppId}). Review and proceed.`,
-        currentAppId
-      );
-
-      // ── 6. Audit trail ──
-      addAuditEntry(
-        'Citizen Query Response',
-        `${session.name} responded to officer query on ${serviceName} (${currentAppId}): "${responseText}"`
-      );
+    try {
+      const { apiRespondToQuery } = await import('./api.js');
+      await apiRespondToQuery(currentAppId, responseText);
+    } catch (err) {
+      if(window.showToast) window.showToast(err.message || 'Failed to submit query response.', 'error');
+      return;
     }
 
     // ── Close modal + hide alert ──
@@ -1053,13 +969,21 @@ export function initTrackApplication() {
 // Officer: Review Application
 // ══════════════════════════════════════════
 
-export function initReviewApplication() {
+export async function initReviewApplication() {
   const session = initPage({ title: 'Review Applications', breadcrumbs: [{ label: 'Officer Portal', href: 'officer/officer-dashboard.html' }, { label: 'Review Applications' }], requiredRole: 'officer' });
   if (!session) return;
   renderNotifPanel();
 
-  let officerQueue = getOfficerQueue();
-  let myApps = officerQueue.filter(a => ['new', 'review', 'urgent', 'breach'].includes(a.status));
+  let myApps = [];
+  try {
+    const { apiGetOfficerApplications } = await import('./api.js');
+    const res = await apiGetOfficerApplications(session.id, 1, 100);
+    // Convert to queue-like format the UI expects
+    myApps = (res.data || []).filter(a => ['under-review', 'in-review', 'pending-external-verification'].includes(a.status));
+  } catch(e) {
+    if(window.showToast) window.showToast('Failed to load applications.', 'error');
+    return;
+  }
   
   // State 
   let currentIdx = 0;
@@ -1264,10 +1188,8 @@ export function initReviewApplication() {
   };
 
   function buildServiceFields(a) {
-      // First try to pull from master app (for newly submitted apps)
-      const masterApp = getApplications().find(ap => ap.id === a.id);
-      // Merge: queue entry fields take priority, fall back to master app
-      const merged = { ...masterApp, ...a };
+      // The backend now provides the full master app
+      const merged = { ...a };
 
       const base = [{k:'Service Type', v: merged.service || merged.serviceName || '—'}];
 
@@ -1392,7 +1314,7 @@ export function initReviewApplication() {
       document.getElementById('confirmModal')?.classList.add('active');
   };
 
-  window.finalSubmit = function() {
+  window.finalSubmit = async function() {
       window.closeModal('confirmModal');
       const a = myApps[currentIdx];
       if (!a) return;
@@ -1402,71 +1324,55 @@ export function initReviewApplication() {
           query: 'Query sent to citizen via SMS and portal notification.',
           reject: 'Application rejected. Citizen notified with reason provided.',
       };
-      window.showToast(msgs[currentDecision], currentDecision==='approve'?'success':currentDecision==='reject'?'warning':'info');
 
-      // ── Update officer queue status ──
-      a.status = currentDecision;
-      officerQueue = getOfficerQueue();
-      const index = officerQueue.findIndex(q => q.id === a.id);
-      if (index > -1) { officerQueue[index] = a; setOfficerQueue(officerQueue); }
-
-      // ── Lookup master app for citizenId ──
-      const allApps = getApplications();
-      const masterApp = allApps.find(ap => ap.id === a.id);
-      const citizenId = masterApp?.citizenId || null;
-      const serviceName = a.service || masterApp?.serviceName || '';
+      const serviceName = a.service || a.serviceName || '';
       const rejectReason = document.getElementById('rejectReason')?.value || 'Reason not specified';
       const queryText = document.getElementById('queryText')?.value?.trim() || '';
-      const supervisorId = masterApp?.supervisorId || getSupervisorByDept(serviceName);
+
+      let newStatus = currentDecision;
+      let remarks = '';
 
       if (currentDecision === 'approve') {
-          // ── FIX 2: Officer → Supervisor (non-Event Permission) ──
-          if (isOfficerFinalService(serviceName)) {
-              // Event Permission: Officer decision is FINAL
-              updateMasterApp(a.id, 'approved', 'Officer Approved (Final)', `${session.name} issued final approval for ${serviceName}.`, session.name);
-              notifyCitizen(citizenId, '✅ Application Approved!', `Your ${serviceName} (${a.id}) has been approved. Certificate issued.`, 'success', a.id);
-              addAuditEntry('Officer Final Approval', `${session.name} gave final approval for ${serviceName} (${a.id}) — Event Permission service.`);
+          if (window.isOfficerFinalService && window.isOfficerFinalService(serviceName)) {
+              newStatus = 'approved';
+              remarks = 'Officer Approved (Final)';
           } else {
-              // All other services → Supervisor final approval
-              updateMasterApp(a.id, 'officer-approved', 'Officer Approved', `Approved by ${session.name}. Awaiting Supervisor final approval.`, session.name);
-              pushToSuperApprovals(a, session, masterApp);
-              notifyCitizen(citizenId, 'Application Approved by Officer', `Your ${serviceName} (${a.id}) was approved by the officer. Supervisor review is next.`, 'info', a.id);
-              notifySupervisor(supervisorId, 'Application Awaiting Final Approval', `${serviceName} (${a.id}) approved by ${session.name}. Your final approval needed.`, 'info', `supervisor/supervisor-review.html?id=${a.id}&mode=final`);
-              addAuditEntry('Officer Approved → Supervisor', `${session.name} approved ${serviceName} (${a.id}). Sent to Supervisor (${supervisorId}) for final approval.`);
+              newStatus = 'officer-approved';
+              remarks = 'Officer Approved. Awaiting Supervisor final approval.';
           }
-          // Remove from queries if any
-          const updatedQueries = getOfficerQueries().filter(q => q.id !== a.id);
-          setOfficerQueries(updatedQueries);
-
       } else if (currentDecision === 'reject') {
-          // ── FIX 3: Officer → Citizen (rejection sync) ──
-          updateMasterApp(a.id, 'rejected', 'Application Rejected', `Rejected by ${session.name}: ${rejectReason}`, session.name);
-          notifyCitizen(citizenId, 'Application Rejected', `Your ${serviceName} (${a.id}) was rejected. Reason: ${rejectReason}. You may raise a grievance.`, 'error', a.id);
-          addAuditEntry('Officer Rejected', `${session.name} rejected ${serviceName} (${a.id}). Reason: ${rejectReason}`);
-          const updatedQueries = getOfficerQueries().filter(q => q.id !== a.id);
-          setOfficerQueries(updatedQueries);
-
+          newStatus = 'rejected';
+          remarks = rejectReason;
       } else if (currentDecision === 'query') {
-          // ── FIX 4: Officer → Citizen (query sync) ──
-          updateMasterApp(a.id, 'query', 'Query Raised', `${session.name}: ${queryText}`, session.name);
-          pushOfficerQuery(a, queryText);
-          notifyCitizen(citizenId, '⚠️ Action Required — Query', `Officer raised a query on your ${serviceName} (${a.id}): ${queryText}. Please respond within 3 days.`, 'warning', a.id);
-          addAuditEntry('Officer Query Raised', `${session.name} raised a query on ${serviceName} (${a.id}): ${queryText}`);
+          newStatus = 'query';
+          remarks = queryText;
+          if (!queryText) {
+            if(window.showToast) window.showToast('Please provide a query detail.', 'warning');
+            return;
+          }
       }
 
-      // ── Re-filter the active queue ──
-      officerQueue = getOfficerQueue();
-      myApps = officerQueue.filter(q => ['new', 'review', 'urgent', 'breach'].includes(q.status));
+      try {
+        const { apiUpdateApplicationStatus } = await import('./api.js');
+        await apiUpdateApplicationStatus(a.id, newStatus, remarks);
+        
+        if(window.showToast) window.showToast(msgs[currentDecision], currentDecision==='approve'?'success':currentDecision==='reject'?'warning':'info');
 
-      // Auto-advance to next, or refresh view if none left
-      setTimeout(() => {
-          if (myApps.length === 0) {
-              window.loadApp(0);
-          } else {
-              let nextIdx = currentIdx >= myApps.length ? myApps.length - 1 : currentIdx;
-              window.loadApp(nextIdx);
-          }
-      }, 1200);
+        // Remove from local array since it's no longer under review
+        myApps.splice(currentIdx, 1);
+        
+        // Auto-advance to next, or refresh view if none left
+        setTimeout(() => {
+            if (myApps.length === 0) {
+                window.loadApp(0); // will show empty state
+            } else {
+                let nextIdx = currentIdx >= myApps.length ? myApps.length - 1 : currentIdx;
+                window.loadApp(nextIdx);
+            }
+        }, 1200);
+      } catch (err) {
+        if(window.showToast) window.showToast(err.message || 'Failed to update application', 'error');
+      }
   };
 
   window.navApp = function(dir) {

@@ -33,7 +33,22 @@ async function bootstrap() {
     .build();
     
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    customSiteTitle: 'DigiConnect API Portal',
+    customCss: `
+      .swagger-ui .topbar { background-color: #0f172a; border-bottom: 3px solid #3b82f6; }
+      .swagger-ui .topbar .download-url-wrapper { display: none; }
+      .swagger-ui .info .title { color: #0f172a; font-weight: 800; font-family: sans-serif; }
+      .swagger-ui .opblock.opblock-get .opblock-summary-method { background-color: #0ea5e9; }
+      .swagger-ui .opblock.opblock-post .opblock-summary-method { background-color: #22c55e; }
+      .swagger-ui .opblock.opblock-patch .opblock-summary-method { background-color: #f59e0b; }
+      .swagger-ui .opblock.opblock-delete .opblock-summary-method { background-color: #ef4444; }
+      .swagger-ui .btn.execute { background-color: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: bold; text-shadow: none; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5); }
+      .swagger-ui .btn.execute:hover { background-color: #2563eb; }
+      .swagger-ui select { border-radius: 4px; border: 1px solid #cbd5e1; padding: 4px; }
+      body { background-color: #f8fafc; }
+    `
+  });
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

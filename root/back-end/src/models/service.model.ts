@@ -5,9 +5,12 @@ export interface GovtService {
   dept: string;
   sla: number; // days
   fee: number;
+  feeLabel?: string;
   desc: string;
   docs: string[]; // required document names
+  icon?: string;
   stages: number;
-  status: 'Active' | 'Inactive' | 'Draft';
+  status: 'Active' | 'Inactive' | 'Draft' | string;
   apps: number; // total applications count
+  color?: string;
 }

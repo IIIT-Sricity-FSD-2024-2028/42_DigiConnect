@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { SupervisorService } from './supervisor.service';
 import { RolesGuard } from '../guards/roles.guard';
@@ -15,11 +15,12 @@ export class SupervisorController {
   @Roles(Role.SUPERVISOR)
   @ApiOperation({ summary: 'Get supervisor dashboard statistics' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: false })
   @ApiResponse({ status: 200, description: 'Dashboard stats retrieved' })
-  getDashboardStats() {
+  getDashboardStats(@Headers('x-user-id') userId: string) {
     return {
       success: true,
-      data: this.supervisorService.getDashboardStats(),
+      data: this.supervisorService.getDashboardStats(userId),
       message: 'OK'
     };
   }
@@ -29,11 +30,12 @@ export class SupervisorController {
   @Roles(Role.SUPERVISOR)
   @ApiOperation({ summary: 'Get all escalated applications and grievances' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: false })
   @ApiResponse({ status: 200, description: 'Escalated items retrieved' })
-  getEscalated() {
+  getEscalated(@Headers('x-user-id') userId: string) {
     return {
       success: true,
-      data: this.supervisorService.getEscalated(),
+      data: this.supervisorService.getEscalated(userId),
       message: 'OK'
     };
   }

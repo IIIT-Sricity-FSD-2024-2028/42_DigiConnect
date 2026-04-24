@@ -24,6 +24,31 @@ export class UsersController {
     };
   }
 
+  @Post('login')
+  @ApiOperation({ summary: 'Login a user' })
+  @ApiBody({ schema: { type: 'object', properties: { email: { type: 'string' }, password: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'User logged in successfully' })
+  login(@Body() body: any) {
+    return {
+      success: true,
+      data: this.usersService.login(body),
+      message: 'Login successful'
+    };
+  }
+
+  @Post('request-otp')
+  @ApiOperation({ summary: 'Request Aadhaar OTP (Simulator)' })
+  @ApiBody({ schema: { type: 'object', properties: { phone: { type: 'string' }, aadhaar: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'OTP generated successfully' })
+  requestOtp(@Body() body: { phone: string; aadhaar: string }) {
+    const otp = this.usersService.requestOtp(body.phone, body.aadhaar);
+    return {
+      success: true,
+      otp,
+      message: `Simulation: OTP ${otp} sent to mobile ${body.phone}`
+    };
+  }
+
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_USER)
@@ -83,6 +108,21 @@ export class UsersController {
       success: true,
       data: this.usersService.update(id, updateUserDto),
       message: 'OK'
+    };
+  }
+
+  @Patch(':id/password')
+  @ApiOperation({ summary: 'Change user password' })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
+  @ApiBody({ schema: { type: 'object', properties: { currentPassword: { type: 'string' }, newPassword: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  changePassword(@Param('id') id: string, @Body() body: any) {
+    // In a real app we'd verify x-user-id matches id, and verify currentPassword.
+    // For this mock API, we just update it.
+    return {
+      success: true,
+      data: this.usersService.update(id, { password: body.newPassword }),
+      message: 'Password updated successfully'
     };
   }
 

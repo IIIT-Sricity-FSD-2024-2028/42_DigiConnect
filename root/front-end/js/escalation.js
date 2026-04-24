@@ -6,8 +6,15 @@ import { getApplications, setApplications, getGrievances, getUsers, getSession, 
 import { initPage } from './navigation.js';
 import { showToast, formatDate, formatDateTime, openModal, closeModal, generateId } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
-import { SUPER_ESC_SLA_CASES, SUPER_ESC_GRIEVANCE_CASES, SUPER_OFFICER_APPROVED, SUPER_TEAM, SUPER_PENDING_APPS } from './mock-data.js';
 import { addAuditEntry, updateMasterApp, notifyCitizen } from './workflow.js';
+
+// UI display constants for workload management (real data comes from supervisor dashboard API)
+export const OFFICER_QUERIES = [];
+export const OFFICER_ACTIVITY = [];
+export const OFFICER_SLA_RISKS = [];
+export const OFFICER_WEEK_CHART = [];
+export const SUPER_TEAM = [];
+
 
 /**
  * Check SLA status of an application
@@ -312,45 +319,45 @@ export function initSupervisorReview() {
       </div>`;
   };
 
-  window.submitFinal = function(action) {
+  window.submitFinal = async function(action) {
     const el = document.getElementById('finalRemarks');
     const remarks = el ? el.value : '';
     if (action === 'reject' && (!remarks || remarks.trim().length < 5)) {
-      showToast('Rejection requires remarks (min 5 characters).', 'warning'); return;
+      if(window.showToast) window.showToast('Rejection requires remarks (min 5 characters).', 'warning'); return;
     }
     const msgs = {
-      approve: `${selectedFinal.id} approved. Certificate issued to ${selectedFinal.citizen}. Status → APPROVED. Audit trail updated.`,
-      reject:  `${selectedFinal.id} rejected. ${selectedFinal.citizen} notified. Status → REJECTED. Audit trail updated.`
+      approve: `${selectedFinal.id} approved. Certificate issued to ${selectedFinal.citizen}. Status → APPROVED.`,
+      reject:  `${selectedFinal.id} rejected. ${selectedFinal.citizen} notified. Status → REJECTED.`
     };
-    showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
 
-    // ── FIX 7: Supervisor Final → Master App + Citizen Notification ──
-    const updatedApp = updateMasterApp(
-      selectedFinal.id,
-      action === 'approve' ? 'approved' : 'rejected',
-      action === 'approve' ? 'Supervisor Final Approval — Certificate Issued' : 'Supervisor Final Rejection',
-      remarks || (action === 'approve' ? 'Final approval granted. Certificate issued.' : 'Application rejected at supervisor level.'),
-      session.name
-    );
-    const citizenId = updatedApp?.citizenId || selectedFinal.citizenId || null;
-    if (action === 'approve') {
-      notifyCitizen(citizenId, '🎉 Certificate Issued!', `Your ${selectedFinal.service} (${selectedFinal.id}) has been approved. Download your certificate now.`, 'success', selectedFinal.id);
-      addAuditEntry('Supervisor Final Approval', `${session.name} gave final approval for ${selectedFinal.service} (${selectedFinal.id}). Certificate issued to ${selectedFinal.citizen}.`);
-    } else {
-      notifyCitizen(citizenId, 'Application Rejected by Supervisor', `Your ${selectedFinal.service} (${selectedFinal.id}) was rejected. Reason: ${remarks}`, 'error', selectedFinal.id);
-      addAuditEntry('Supervisor Final Rejection', `${session.name} rejected ${selectedFinal.service} (${selectedFinal.id}). Reason: ${remarks}`);
+    try {
+      const { apiUpdateApplicationStatus } = await import('./api.js');
+      await apiUpdateApplicationStatus(
+        selectedFinal.id, 
+        action === 'approve' ? 'approved' : 'rejected', 
+        remarks || (action === 'approve' ? 'Final approval granted. Certificate issued.' : 'Application rejected at supervisor level.')
+      );
+
+      if(window.showToast) window.showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
+
+      setTimeout(() => {
+        activeFinalApprovals = activeFinalApprovals.filter(a => a.id !== selectedFinal.id);
+        if (action === 'approve') {
+          // Increment locally if setSuperApprovedToday is available, otherwise we can just ignore it since it's just a UI counter
+          if (window.getSuperApprovedToday && window.setSuperApprovedToday) {
+            window.setSuperApprovedToday(window.getSuperApprovedToday() + 1);
+          }
+        }
+        selectedFinal = null;
+        window.renderFinalList();
+        syncReviewBadges();
+        const det = document.getElementById('finalDetail');
+        if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application from the list.</div></div>';
+      }, 1500);
+
+    } catch (err) {
+      if(window.showToast) window.showToast(err.message || 'Failed to submit decision.', 'error');
     }
-
-    setTimeout(() => {
-      activeFinalApprovals = activeFinalApprovals.filter(a => a.id !== selectedFinal.id);
-      setSuperApprovals(activeFinalApprovals);
-      if (action === 'approve') setSuperApprovedToday(getSuperApprovedToday() + 1);
-      selectedFinal = null;
-      window.renderFinalList();
-      syncReviewBadges();
-      const det = document.getElementById('finalDetail');
-      if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application from the list.</div></div>';
-    }, 1500);
   };
 
   /** OVERRIDE ESCALATION TAB **/
@@ -510,7 +517,7 @@ export function initSupervisorReview() {
       </div>`;
   };
 
-  window.submitOverride = function(action) {
+  window.submitOverride = async function(action) {
     if (action === 'reassign' && selectedOverride) {
       const offEl = document.getElementById('overrideReassignOfficer');
       const offName = offEl ? offEl.value : '';
@@ -521,41 +528,39 @@ export function initSupervisorReview() {
     }
     const el = document.getElementById('overrideJustification');
     const j = el ? el.value : '';
-    if (!j || j.trim().length < 10) { showToast('Justification required (min 10 characters).', 'warning'); return; }
-    const msgs = {
-      approve:  `Override applied: ${selectedOverride.id} approved. Certificate issued. Audit trail updated.`,
-      reject:   `Override applied: ${selectedOverride.id} rejected. Citizen notified. Audit trail updated.`,
-    };
-    showToast(msgs[action] || `Override action applied for ${selectedOverride.id}.`, action === 'approve' ? 'success' : 'warning');
-
-    // ── FIX 7b: Supervisor Override → Master App + Citizen Notification ──
-    if (action === 'approve' || action === 'reject') {
-      const updatedApp = updateMasterApp(
-        selectedOverride.id,
-        action === 'approve' ? 'approved' : 'rejected',
-        action === 'approve' ? 'Supervisor Override — Approved' : 'Supervisor Override — Rejected',
-        j,
-        session.name
-      );
-      const citizenId = updatedApp?.citizenId || selectedOverride.citizenId || null;
-      if (action === 'approve') {
-        notifyCitizen(citizenId, '🎉 Certificate Issued (Override)!', `Your ${selectedOverride.service} (${selectedOverride.id}) has been approved by the Supervisor. Certificate issued.`, 'success', selectedOverride.id);
-        addAuditEntry('Supervisor Override Approval', `${session.name} override-approved ${selectedOverride.service} (${selectedOverride.id}). Justification: ${j}`);
-      } else {
-        notifyCitizen(citizenId, 'Application Rejected (Override)', `Your ${selectedOverride.service} (${selectedOverride.id}) was rejected by the Supervisor. Reason: ${j}`, 'error', selectedOverride.id);
-        addAuditEntry('Supervisor Override Rejection', `${session.name} override-rejected ${selectedOverride.service} (${selectedOverride.id}). Justification: ${j}`);
-      }
+    if (!j || j.trim().length < 10) { 
+      if(window.showToast) window.showToast('Justification required (min 10 characters).', 'warning'); 
+      return; 
     }
 
-    activeEscalated = activeEscalated.filter(e => e.id !== selectedOverride.id);
-    setSuperEscSlaCases(activeEscalated);
-    selectedOverride = null;
-    syncReviewBadges();
-    setTimeout(() => {
-      window.renderOverrideList();
-      const det = document.getElementById('overrideDetail');
-      if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application.</div></div>';
-    }, 1500);
+    try {
+      const { apiReviewEscalated } = await import('./api.js');
+      await apiReviewEscalated(selectedOverride.id, action, j);
+
+      const msgs = {
+        approve:  `Override applied: ${selectedOverride.id} approved. Certificate issued.`,
+        reject:   `Override applied: ${selectedOverride.id} rejected. Citizen notified.`,
+      };
+      if(window.showToast) window.showToast(msgs[action] || `Override action applied for ${selectedOverride.id}.`, action === 'approve' ? 'success' : 'warning');
+
+      activeEscalated = activeEscalated.filter(e => e.id !== selectedOverride.id);
+      
+      // Update local storage fallback variable just in case
+      if (window.setSuperEscSlaCases) {
+        window.setSuperEscSlaCases(activeEscalated);
+      }
+
+      selectedOverride = null;
+      syncReviewBadges();
+      setTimeout(() => {
+        window.renderOverrideList();
+        const det = document.getElementById('overrideDetail');
+        if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application.</div></div>';
+      }, 1500);
+
+    } catch (err) {
+      if(window.showToast) window.showToast(err.message || 'Failed to apply override.', 'error');
+    }
   };
 
   const initMode = urlMode || 'final';

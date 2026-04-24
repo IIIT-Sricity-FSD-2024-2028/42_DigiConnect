@@ -1,12 +1,28 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../data/store';
+import { User } from '../models/user.model';
 import { AppStatus, GrievanceStatus } from '../models/enums';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class SupervisorService {
-  getDashboardStats() {
-    const apps = db.applications;
-    const grievances = db.grievances;
+  constructor(private readonly usersService: UsersService) {}
+
+  getDashboardStats(userId?: string) {
+    let apps = db.applications;
+    let grievances = db.grievances;
+
+    if (userId) {
+      let supervisor: User | null = null;
+      try {
+        supervisor = this.usersService.findById(userId);
+      } catch (e) {
+        // User not found
+      }
+      if (supervisor && supervisor.role === 'supervisor') {
+        apps = apps.filter(a => a.dept === supervisor.dept && (supervisor.jurisdiction === 'All' || a.jurisdiction === supervisor.jurisdiction));
+      }
+    }
 
     return {
       totalApplications: apps.length,
@@ -16,16 +32,31 @@ export class SupervisorService {
     };
   }
 
-  getEscalated() {
+  getEscalated(userId?: string) {
+    let apps = db.applications.filter(a => a.status === AppStatus.ESCALATED);
+    let grievances = db.grievances.filter(g => g.status === GrievanceStatus.ESCALATED);
+
+    if (userId) {
+      let supervisor: User | null = null;
+      try {
+        supervisor = this.usersService.findById(userId);
+      } catch(e) {}
+      if (supervisor && supervisor.role === 'supervisor') {
+        apps = apps.filter(a => a.dept === supervisor.dept && (supervisor.jurisdiction === 'All' || a.jurisdiction === supervisor.jurisdiction));
+        // Grievances don't have dept filtering for supervisor in our simplistic model unless we link them properly, 
+        // but we'll apply jurisdiction filtering
+        grievances = grievances.filter(g => supervisor.jurisdiction === 'All' || g.jurisdiction === supervisor.jurisdiction);
+      }
+    }
+
     return {
-      applications: db.applications.filter(a => a.status === AppStatus.ESCALATED),
-      grievances: db.grievances.filter(g => g.status === GrievanceStatus.ESCALATED)
+      applications: apps,
+      grievances: grievances
     };
   }
 
   getWorkload() {
-    return db.users
-      .filter(u => u.role === 'officer')
+    return this.usersService.findAllOfficers()
       .map(officer => {
         const handledApps = db.applications.filter(a => a.officerId === officer.id);
         return {
@@ -40,7 +71,11 @@ export class SupervisorService {
 
   assignApplication(appId: string, officerId: string) {
     const appIndex = db.applications.findIndex(a => a.id === appId);
-    const officer = db.users.find(u => u.id === officerId);
+    
+    let officer: User | null = null;
+    try {
+      officer = this.usersService.findById(officerId);
+    } catch(e) {}
 
     if (appIndex === -1) throw new NotFoundException('Application not found');
     if (!officer) throw new NotFoundException('Officer not found');

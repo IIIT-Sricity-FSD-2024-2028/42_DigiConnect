@@ -1,83 +1,29 @@
 // ═══════════════════════════════════════════
 // notifications.js — Notification management
+// Now uses real backend API via api.js
 // ═══════════════════════════════════════════
 
-import { getNotifications, setNotifications, getCurrentUserId } from './state.js';
-import { generateId, formatDateTime } from './utils.js';
+import { getCurrentUserId } from './state.js';
+import { apiGetNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead } from './api.js';
+import { formatDateTime } from './utils.js';
 
 /**
- * Get notifications for a specific user
- * @param {string} userId
- * @returns {Array}
+ * Render the notification panel in the topbar.
+ * Fetches from the real backend API.
  */
-export function getUserNotifications(userId) {
-  const all = getNotifications();
-  return all.filter(n => n.userId === userId);
-}
-
-/**
- * Get unread notification count for a user
- * @param {string} userId
- * @returns {number}
- */
-export function getUnreadCount(userId) {
-  return getUserNotifications(userId).filter(n => !n.read).length;
-}
-
-/**
- * Mark a notification as read
- * @param {string} notifId
- */
-export function markAsRead(notifId) {
-  const all = getNotifications();
-  const idx = all.findIndex(n => n.id === notifId);
-  if (idx !== -1) {
-    all[idx].read = true;
-    setNotifications(all);
-  }
-}
-
-/**
- * Mark all notifications as read for a user
- * @param {string} userId
- */
-export function markAllAsRead(userId) {
-  const all = getNotifications();
-  all.forEach(n => { if (n.userId === userId) n.read = true; });
-  setNotifications(all);
-}
-
-/**
- * Add a new notification
- * @param {object} data - { userId, title, message, type, link }
- * @returns {object}
- */
-export function addNotification(data) {
-  const all = getNotifications();
-  const notif = {
-    id: generateId('NOT'),
-    userId: data.userId,
-    title: data.title,
-    message: data.message,
-    type: data.type || 'info',
-    read: false,
-    date: new Date().toISOString(),
-    link: data.link || '#',
-  };
-  all.unshift(notif);
-  setNotifications(all);
-  return notif;
-}
-
-/**
- * Render the notification panel in the topbar
- * Call after buildTopbar() to populate the panel with actual data
- */
-export function renderNotifPanel() {
+export async function renderNotifPanel() {
   const userId = getCurrentUserId();
   if (!userId) return;
 
-  const notifications = getUserNotifications(userId);
+  let notifications = [];
+  try {
+    const res = await apiGetNotifications();
+    notifications = res.data || [];
+  } catch (e) {
+    console.warn('[Notifications] Could not load from backend, falling back to empty.', e.message);
+    notifications = [];
+  }
+
   const unread = notifications.filter(n => !n.read);
 
   // Update badge count
@@ -98,8 +44,8 @@ export function renderNotifPanel() {
   const typeIcons = {
     success: { bg: 'var(--green-100)', color: 'var(--green-500)', path: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
     warning: { bg: 'var(--amber-100)', color: 'var(--amber-600)', path: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>' },
-    info: { bg: 'var(--navy-100)', color: 'var(--navy-500)', path: '<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
-    error: { bg: 'var(--red-100)', color: 'var(--red-500)', path: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
+    info:    { bg: 'var(--navy-100)', color: 'var(--navy-500)', path: '<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
+    danger:  { bg: 'var(--red-100)',  color: 'var(--red-500)',  path: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
   };
 
   if (notifications.length === 0) {
@@ -124,25 +70,38 @@ export function renderNotifPanel() {
       </div>`;
   }).join('');
 
-  // Click handler for notifications
+  // Click handler — marks as read via real API
   notifList.querySelectorAll('.notif-item').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       const nid = el.dataset.notifId;
-      markAsRead(nid);
+      try {
+        await apiMarkNotificationRead(nid);
+      } catch (e) { /* non-critical */ }
       el.classList.remove('unread');
       const notif = notifications.find(n => n.id === nid);
       if (notif && notif.link && notif.link !== '#') {
-        const basePath = window.location.pathname.includes('/Super User/') || window.location.pathname.includes('/Super%20User/') || window.location.pathname.includes('/citizen/') || window.location.pathname.includes('/officer/') || window.location.pathname.includes('/supervisor/') || window.location.pathname.includes('/grievance/') ? '../' : '';
+        const basePath = window.location.pathname.includes('/citizen/') || window.location.pathname.includes('/officer/') || window.location.pathname.includes('/supervisor/') || window.location.pathname.includes('/grievance/') || window.location.pathname.includes('/Super') ? '../' : '';
         window.location.href = basePath + notif.link;
       }
     });
   });
+
+  // Mark all read button
+  const markAllBtn = document.querySelector('[data-action="mark-all-read"]');
+  if (markAllBtn) {
+    markAllBtn.onclick = async () => {
+      try {
+        await apiMarkAllNotificationsRead();
+        notifList.querySelectorAll('.notif-item').forEach(el => el.classList.remove('unread'));
+        if (countBadge) countBadge.style.display = 'none';
+        if (notifDot) notifDot.style.display = 'none';
+      } catch (e) { /* non-critical */ }
+    };
+  }
 }
 
 /**
  * Get a human-readable time ago string
- * @param {string} dateStr
- * @returns {string}
  */
 function getTimeAgo(dateStr) {
   const now = new Date();
@@ -159,3 +118,29 @@ function getTimeAgo(dateStr) {
   return formatDateTime(dateStr);
 }
 
+/**
+ * Add a notification to a specific user's notification list in localStorage.
+ * Used by workflow.js to queue notifications for citizens, officers, supervisors.
+ * @param {object} notif - { userId, title, message, type, link }
+ */
+export function addNotification({ userId, title, message, type = 'info', link = '' }) {
+  if (!userId) return;
+  const storageKey = `DigiConnect_notifications`;
+  let all = [];
+  try {
+    all = JSON.parse(localStorage.getItem(storageKey)) || [];
+  } catch { all = []; }
+
+  all.push({
+    id: `NTF-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    userId,
+    title,
+    message,
+    type,
+    link,
+    read: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  localStorage.setItem(storageKey, JSON.stringify(all));
+}
