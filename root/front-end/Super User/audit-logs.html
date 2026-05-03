@@ -89,9 +89,9 @@
                             <input type="text" class="form-input" id="logSearch" placeholder="Search by actor, action, application ID, IP…" style="padding-left:38px;" oninput="filterLogs()" />
                         </div>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                            <input type="date" class="form-input" id="dateFrom" style="width:auto;" value="2025-01-23" onchange="filterLogs()" />
+                            <input type="date" class="form-input" id="dateFrom" style="width:auto;" onchange="filterLogs()" />
                             <span style="color:var(--color-text-muted);font-size:0.8rem;">to</span>
-                            <input type="date" class="form-input" id="dateTo" style="width:auto;" value="2025-01-23" onchange="filterLogs()" />
+                            <input type="date" class="form-input" id="dateTo" style="width:auto;" onchange="filterLogs()" />
                         </div>
                         <select class="form-input" id="roleFilter" style="width:auto;padding:10px 36px 10px 12px;" onchange="filterLogs()">
                             <option value="">All Roles</option>
@@ -167,7 +167,6 @@
 
     
 
-    <script type="module" src="../js/admin.js"></script>
+    <script type="module" src="../js/crud.js"></script>
 </body>
-
 </html>

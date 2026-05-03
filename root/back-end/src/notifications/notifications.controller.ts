@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Patch, Param, UseGuards, Headers, Post, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { RolesGuard } from '../guards/roles.guard';
@@ -6,7 +6,7 @@ import { RolesGuard } from '../guards/roles.guard';
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(private readonly notificationsService: NotificationsService) { }
 
   @Get()
   @ApiOperation({ summary: 'Get all notifications for current user' })
@@ -17,6 +17,17 @@ export class NotificationsController {
       success: true,
       data: this.notificationsService.findByUser(userId),
       message: 'OK'
+    };
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a manual notification' })
+  @ApiResponse({ status: 201, description: 'Notification created' })
+  createNotification(@Body() data: any) {
+    return {
+      success: true,
+      data: this.notificationsService.createNotification(data),
+      message: 'Created'
     };
   }
 

@@ -56,9 +56,10 @@
 
         .chip-all .summary-chip-val    { color: var(--navy-700); }
         .chip-pending .summary-chip-val { color: var(--amber-600); }
+        .chip-query .summary-chip-val   { color: #d97706; }
         .chip-approved .summary-chip-val { color: #166534; }
         .chip-rejected .summary-chip-val { color: var(--red-500); }
-        .chip-draft .summary-chip-val   { color: var(--slate-500); }
+        .chip-escalated .summary-chip-val { color: #9333ea; }
 
         /* ── Filter Pills ── */
         .filter-bar {
@@ -231,8 +232,8 @@
         .status-rejected          { background: var(--red-100); color: #991b1b; }
         .status-rejected::before  { background: var(--red-500); }
 
-        .status-completed          { background: #e0f2fe; color: #0369a1; }
-        .status-completed::before  { background: #0ea5e9; }
+        .status-escalated          { background: #f3e8ff; color: #7e22ce; }
+        .status-escalated::before  { background: #9333ea; }
 
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; }
@@ -581,39 +582,42 @@
                 </a>
             </div>
 
-            <!-- Summary Strip -->
-            <div class="summary-strip">
+            <div class="summary-strip" style="grid-template-columns: repeat(6, 1fr);">
                 <div class="summary-chip chip-all active-filter" onclick="filterByStatus('all',this)">
-                    <div class="summary-chip-val">12</div>
+                    <div class="summary-chip-val">0</div>
                     <div class="summary-chip-label">Total</div>
                 </div>
                 <div class="summary-chip chip-pending" onclick="filterByStatus('under-review',this)">
-                    <div class="summary-chip-val">4</div>
+                    <div class="summary-chip-val">0</div>
                     <div class="summary-chip-label">Under Review</div>
                 </div>
+                <div class="summary-chip chip-query" onclick="filterByStatus('query',this)">
+                    <div class="summary-chip-val">0</div>
+                    <div class="summary-chip-label">Query Raised</div>
+                </div>
                 <div class="summary-chip chip-approved" onclick="filterByStatus('approved',this)">
-                    <div class="summary-chip-val">5</div>
+                    <div class="summary-chip-val">0</div>
                     <div class="summary-chip-label">Approved</div>
                 </div>
                 <div class="summary-chip chip-rejected" onclick="filterByStatus('rejected',this)">
-                    <div class="summary-chip-val">2</div>
+                    <div class="summary-chip-val">0</div>
                     <div class="summary-chip-label">Rejected</div>
                 </div>
-                <div class="summary-chip chip-draft" onclick="filterByStatus('draft',this)">
-                    <div class="summary-chip-val">1</div>
-                    <div class="summary-chip-label">Draft</div>
+                <div class="summary-chip chip-escalated" onclick="filterByStatus('escalated',this)">
+                    <div class="summary-chip-val">0</div>
+                    <div class="summary-chip-label">Escalated</div>
                 </div>
             </div>
 
             <!-- Status Filter Pills -->
             <div class="filter-bar">
                 <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-                <button class="filter-btn" onclick="setFilter('draft',this)">Draft</button>
                 <button class="filter-btn" onclick="setFilter('submitted',this)">Submitted</button>
                 <button class="filter-btn" onclick="setFilter('under-review',this)">Under Review</button>
+                <button class="filter-btn" onclick="setFilter('query',this)">Query Raised</button>
                 <button class="filter-btn" onclick="setFilter('approved',this)">Approved</button>
                 <button class="filter-btn" onclick="setFilter('rejected',this)">Rejected</button>
-                <button class="filter-btn" onclick="setFilter('completed',this)">Completed</button>
+                <button class="filter-btn" onclick="setFilter('escalated',this)">Escalated</button>
             </div>
 
             <!-- Search / Service Filter / Sort / View Toggle -->

@@ -17,7 +17,7 @@ export interface Grievance {
   category: 'delay' | 'rejection' | 'payment' | 'misconduct' | string;
   subject: string;
   description: string;
-  relatedAppId: string;
+  relatedAppId?: string;
   status: GrievanceStatus | string;
   priority: 'low' | 'medium' | 'high' | string;
   slaStatus: 'safe' | 'warn' | 'breach' | string;

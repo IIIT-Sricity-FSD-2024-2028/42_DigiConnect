@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsIn, IsOptional } from 'class-validator';
 
 export class CreateGrievanceDto {
   @IsNotEmpty()
@@ -7,8 +7,8 @@ export class CreateGrievanceDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsIn(['delay', 'rejection', 'payment', 'misconduct'])
-  category: 'delay' | 'rejection' | 'payment' | 'misconduct';
+  @IsIn(['delay', 'rejection', 'payment', 'misconduct', 'technical', 'wrong-info', 'other'])
+  category: string;
 
   @IsNotEmpty()
   @IsString()
@@ -18,7 +18,11 @@ export class CreateGrievanceDto {
   @IsString()
   description: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  relatedAppId: string;
+  relatedAppId?: string;
+
+  @IsOptional()
+  @IsString()
+  priority?: string;
 }

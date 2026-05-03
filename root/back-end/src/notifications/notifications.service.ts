@@ -28,6 +28,21 @@ export class NotificationsService {
     return { success: true, message: 'All notifications marked as read' };
   }
 
+  createNotification(data: Partial<Notification>) {
+    const notification: Notification = {
+      id: `NOT-${Math.floor(Math.random() * 90000 + 10000)}`,
+      userId: data.userId || '',
+      title: data.title || 'New Notification',
+      message: data.message || '',
+      type: data.type || 'info',
+      read: false,
+      date: new Date().toISOString(),
+      link: data.link || '#'
+    };
+    db.notifications.unshift(notification);
+    return notification;
+  }
+
   /**
    * Auto-push a notification when an application status changes.
    * Called internally by ApplicationsService.

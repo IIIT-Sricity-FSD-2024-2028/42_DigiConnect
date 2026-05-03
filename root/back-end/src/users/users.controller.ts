@@ -65,8 +65,6 @@ export class UsersController {
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_USER)
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiResponse({ status: 200, description: 'Return user matching ID' })
@@ -96,8 +94,6 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_USER)
   @ApiOperation({ summary: 'Update a user' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiBody({ type: UpdateUserDto })

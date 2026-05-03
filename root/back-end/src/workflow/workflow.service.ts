@@ -7,17 +7,30 @@ import { AppStatus } from '../models/enums';
 @Injectable()
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
-  getConfig(): Record<AppStatus, AppStatus[]> {
+  getConfig() {
+    // Return service-level workflow configs for the UI workflow-config page
+    return db.workflowConfig || [];
+  }
+
+  getTransitionMap(): Record<AppStatus, AppStatus[]> {
     return {
       [AppStatus.PENDING]: [AppStatus.UNDER_REVIEW, AppStatus.REJECTED, AppStatus.PENDING_EXTERNAL_VERIFICATION],
       [AppStatus.UNDER_REVIEW]: [AppStatus.APPROVED, AppStatus.REJECTED, AppStatus.QUERY, AppStatus.ESCALATED, AppStatus.PENDING_EXTERNAL_VERIFICATION],
-      [AppStatus.QUERY]: [AppStatus.UNDER_REVIEW], // Citizen responds to query
+      [AppStatus.QUERY]: [AppStatus.UNDER_REVIEW],
       [AppStatus.PENDING_EXTERNAL_VERIFICATION]: [AppStatus.UNDER_REVIEW],
-      [AppStatus.ESCALATED]: [AppStatus.UNDER_REVIEW, AppStatus.APPROVED, AppStatus.REJECTED], // Supervisor acts
+      [AppStatus.ESCALATED]: [AppStatus.UNDER_REVIEW, AppStatus.APPROVED, AppStatus.REJECTED],
       [AppStatus.APPROVED]: [AppStatus.COMPLETED],
       [AppStatus.REJECTED]: [],
       [AppStatus.COMPLETED]: []
     };
+  }
+
+  updateConfig(updatedWorkflow: any) {
+    const idx = (db.workflowConfig || []).findIndex((w: any) => w.id === updatedWorkflow.id);
+    if (idx !== -1) {
+      db.workflowConfig[idx] = { ...db.workflowConfig[idx], ...updatedWorkflow };
+    }
+    return db.workflowConfig;
   }
 
   transition(transitionDto: TransitionDto) {
@@ -27,7 +40,7 @@ export class WorkflowService {
     const app = db.applications[appIndex];
     
     // Check if transition is valid
-    const config = this.getConfig();
+    const config = this.getTransitionMap();
     const validNextStatuses = config[app.status] || [];
     
     if (!validNextStatuses.includes(transitionDto.newStatus)) {
@@ -77,7 +90,7 @@ export class WorkflowService {
 
     for (let i = 0; i < db.applications.length; i++) {
       const app = db.applications[i];
-      if (app.status === AppStatus.PENDING || app.status === AppStatus.UNDER_REVIEW || app.status === AppStatus.QUERY) {
+      if (app.status === AppStatus.PENDING || app.status === AppStatus.UNDER_REVIEW) {
         const slaTime = new Date(app.slaDate).getTime();
         if (now > slaTime) {
           app.status = AppStatus.ESCALATED;
@@ -104,6 +117,60 @@ export class WorkflowService {
     
     if (escalatedCount > 0) {
       this.logger.warn(`Auto-escalated ${escalatedCount} applications due to SLA breach.`);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  handleQueryTimeout() {
+    this.logger.debug('Running Query Timeout Daemon...');
+    const now = new Date().getTime();
+    const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+    let rejectedCount = 0;
+
+    for (let i = 0; i < db.applications.length; i++) {
+      const app = db.applications[i];
+      if (app.status === AppStatus.QUERY) {
+        const slaTime = new Date(app.slaDate).getTime();
+        const slaBreach = now - slaTime;
+
+        // Reject only if SLA is breached AND 3+ more days have passed with no citizen response
+        if (slaBreach > THREE_DAYS_MS) {
+          app.status = AppStatus.REJECTED;
+          app.remarks = 'Auto-rejected: Citizen did not respond to officer query within 3 days of SLA breach.';
+          app.timeline.push({
+            action: 'Auto-Rejected (Query Timeout)',
+            date: new Date().toISOString(),
+            actor: 'System Daemon',
+            note: 'Citizen failed to respond to officer query within 3 days of SLA breach.'
+          });
+
+          db.notifications.unshift({
+            id: `NOT-${Math.floor(Math.random() * 90000 + 10000)}`,
+            userId: app.citizenId,
+            title: '❌ Application Auto-Rejected',
+            message: `Your application (${app.id}) for "${app.serviceName}" was auto-rejected. You did not respond to the officer's query within 3 days after SLA breach.`,
+            type: 'danger',
+            read: false,
+            date: new Date().toISOString(),
+            link: `citizen/track-application.html?id=${app.id}`
+          } as any);
+
+          db.auditLogs.unshift({
+            id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,
+            action: 'Auto-Rejection (Query Timeout)',
+            actor: 'System Daemon',
+            role: 'System',
+            date: new Date().toISOString(),
+            details: `Application ${app.id} auto-rejected — citizen query timeout after SLA breach.`
+          });
+
+          rejectedCount++;
+        }
+      }
+    }
+
+    if (rejectedCount > 0) {
+      this.logger.warn(`Auto-rejected ${rejectedCount} applications due to citizen query timeout.`);
     }
   }
 }

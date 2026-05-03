@@ -1,507 +1,389 @@
 // ═══════════════════════════════════════════
-// api.js — Centralized HTTP API Client
-// Replaces all localStorage fake-backend calls with real NestJS backend calls.
-// Backend: http://localhost:3000/api/v1
-// Auth: No JWT — roles passed via x-role header (per professor requirements)
+// api.js — Centralized API client for NestJS backend
+// All data fetching goes through this file.
+// Session (x-role, x-user-id) is auto-appended to every request.
 // ═══════════════════════════════════════════
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const BASE = 'http://localhost:3000/api/v1';
 
 /**
- * Get current session from localStorage (session stays local — no auth endpoint needed)
+ * Build request headers from current session stored in localStorage
  */
-function getSessionHeaders() {
+function getHeaders() {
+  let session = null;
   try {
-    const session = JSON.parse(localStorage.getItem('DigiConnect_session'));
-    if (!session) return {};
-    return {
-      'x-role': session.role || '',
-      'x-user-id': session.id || '',
-    };
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Core HTTP request function
- * @param {string} method - GET | POST | PATCH | DELETE
- * @param {string} path - e.g. '/applications'
- * @param {object|null} body - request body
- * @param {object} extraHeaders - any additional headers
- * @returns {Promise<any>} - parsed response data
- */
-export async function apiRequest(method, path, body = null, extraHeaders = {}) {
-  const headers = {
+    session = JSON.parse(localStorage.getItem('DigiConnect_session'));
+  } catch (e) { /* ignore */ }
+  return {
     'Content-Type': 'application/json',
-    ...getSessionHeaders(),
-    ...extraHeaders,
+    'x-role': session?.role || '',
+    'x-user-id': session?.id || '',
   };
-
-  const options = { method, headers };
-  if (body && method !== 'GET') {
-    options.body = JSON.stringify(body);
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}${path}`, options);
-    const json = await res.json();
-
-    if (!res.ok) {
-      // Return error with backend message
-      throw new Error(json.message || `Request failed: ${res.status}`);
-    }
-    return json;
-  } catch (err) {
-    console.error(`[API Error] ${method} ${path}:`, err.message);
-    throw err;
-  }
 }
 
-// ══════════════════════════════════════════
+/**
+ * Generic fetch wrapper — returns parsed JSON or throws on error
+ */
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers: { ...getHeaders(), ...(options.headers || {}) },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = json?.message || `HTTP ${res.status}`;
+    throw new Error(Array.isArray(msg) ? msg.join('; ') : msg);
+  }
+  return json;
+}
+
+// ──────────────────────────────────────────
 // AUTH
-// ══════════════════════════════════════════
+// ──────────────────────────────────────────
 
-/**
- * Login a user
- * POST /users/login
- */
+/** Login: POST /users/login */
 export async function apiLogin(email, password) {
-  return apiRequest('POST', '/users/login', { email, password });
+  return apiFetch('/users/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
 }
 
-/**
- * Request Aadhaar OTP simulation
- * POST /users/request-otp
- */
-export async function apiRequestOtp(phone, aadhaar) {
-  return apiRequest('POST', '/users/request-otp', { phone, aadhaar });
-}
-
-/**
- * Register a new citizen
- * POST /users/register
- */
+/** Register a new citizen: POST /users/register */
 export async function apiRegister(userData) {
-  return apiRequest('POST', '/users/register', userData);
+  return apiFetch('/users/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  });
 }
 
-/**
- * Change user password
- * PATCH /users/:id/password
- */
+/** Change password: PATCH /users/:id/password */
 export async function apiChangePassword(id, currentPassword, newPassword) {
-  return apiRequest('PATCH', `/users/${id}/password`, { currentPassword, newPassword });
+  return apiFetch(`/users/${id}/password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }
 
-// ══════════════════════════════════════════
-// SERVICES CATALOG
-// ══════════════════════════════════════════
-
-/**
- * Get all active services (public)
- * GET /services
- */
-export async function apiGetServices() {
-  return apiRequest('GET', '/services');
+/** Update user profile: PATCH /users/:id */
+export async function apiUpdateUserProfile(id, data) {
+  return apiFetch(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
-/**
- * Get all services including drafts (Super User only)
- * GET /services/all
- */
-export async function apiGetAllServices() {
-  return apiRequest('GET', '/services/all');
+// ──────────────────────────────────────────
+// USERS (Admin / Super User)
+// ──────────────────────────────────────────
+
+/** Get all users: GET /users */
+export async function apiGetUsers() {
+  return apiFetch('/users');
 }
 
-/**
- * Get a single service by ID
- * GET /services/:id
- */
-export async function apiGetServiceById(id) {
-  return apiRequest('GET', `/services/${id}`);
+/** Get user by ID: GET /users/:id */
+export async function apiGetUserById(id) {
+  return apiFetch(`/users/${id}`);
 }
 
-/**
- * Create a new service (Super User only)
- * POST /services
- */
-export async function apiCreateService(serviceData) {
-  return apiRequest('POST', '/services', serviceData);
+/** Create a user: POST /users */
+export async function apiCreateUser(data) {
+  return apiFetch('/users', { method: 'POST', body: JSON.stringify(data) });
 }
 
-/**
- * Update a service (Super User only)
- * PATCH /services/:id
- */
-export async function apiUpdateService(id, serviceData) {
-  return apiRequest('PATCH', `/services/${id}`, serviceData);
+/** Update a user: PATCH /users/:id */
+export async function apiUpdateUser(id, data) {
+  return apiFetch(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
-/**
- * Toggle service status (Super User only)
- * PATCH /services/:id/toggle
- */
-export async function apiToggleService(id) {
-  return apiRequest('PATCH', `/services/${id}/toggle`);
-}
-
-// ══════════════════════════════════════════
-// APPLICATIONS
-// ══════════════════════════════════════════
-
-/**
- * Simulate payment gateway handshake (2-second async delay)
- * POST /applications/simulate-payment
- */
-export async function apiSimulatePayment(serviceId, citizenId, amount) {
-  return apiRequest('POST', '/applications/simulate-payment', { serviceId, citizenId, amount });
-}
-
-/**
- * Submit a new application (Citizen)
- * POST /applications
- */
-export async function apiSubmitApplication(applicationData) {
-  return apiRequest('POST', '/applications', applicationData);
-}
-
-/**
- * Get applications assigned to a specific officer
- * GET /applications?officerId=X&page=1&limit=50
- */
-export async function apiGetOfficerApplications(officerId, page = 1, limit = 50) {
-  return apiRequest('GET', `/applications?officerId=${officerId}&page=${page}&limit=${limit}`);
-}
-
-/**
- * Get applications by status
- * GET /applications?status=X
- */
-export async function apiGetApplicationsByStatus(status, page = 1, limit = 50) {
-  return apiRequest('GET', `/applications?status=${encodeURIComponent(status)}&page=${page}&limit=${limit}`);
-}
-
-/**
- * Get all applications (Officer/Supervisor/SuperUser)
- * GET /applications
- */
-export async function apiGetAllApplications(page = 1, limit = 50) {
-  return apiRequest('GET', `/applications?page=${page}&limit=${limit}`);
-}
-
-/**
- * Get citizen's own applications
- * GET /applications/my
- */
-export async function apiGetMyApplications(page = 1, limit = 50) {
-  return apiRequest('GET', `/applications/my?page=${page}&limit=${limit}`);
-}
-
-/**
- * Track an application by reference number
- * GET /applications/track/:ref
- */
-export async function apiTrackApplication(ref) {
-  return apiRequest('GET', `/applications/track/${ref}`);
-}
-
-/**
- * Get application by ID
- * GET /applications/:id
- */
-export async function apiGetApplicationById(id) {
-  return apiRequest('GET', `/applications/${id}`);
-}
-
-/**
- * Update application status (Officer/Supervisor)
- * PATCH /applications/:id/status
- */
-export async function apiUpdateApplicationStatus(id, status, remarks) {
-  return apiRequest('PATCH', `/applications/${id}/status`, { status, remarks });
-}
-
-/**
- * Request cross-department verification (Officer)
- * POST /applications/:id/request-verification
- */
-export async function apiRequestVerification(id, targetDept, reason) {
-  return apiRequest('POST', `/applications/${id}/request-verification`, { targetDept, reason });
-}
-
-/**
- * Resolve cross-department verification (Officer)
- * POST /applications/:id/resolve-verification
- */
-export async function apiResolveVerification(id, remarks) {
-  return apiRequest('POST', `/applications/${id}/resolve-verification`, { remarks });
-}
-
-/**
- * Withdraw an application (Citizen)
- * DELETE /applications/:id
- */
-export async function apiWithdrawApplication(id) {
-  return apiRequest('DELETE', `/applications/${id}`);
-}
-
-/**
- * Respond to an officer query (Citizen)
- * PATCH /applications/:id/query-response
- */
-export async function apiRespondToQuery(id, response) {
-  return apiRequest('PATCH', `/applications/${id}/query-response`, { response });
-}
-
-// ══════════════════════════════════════════
-// GRIEVANCES
-// ══════════════════════════════════════════
-
-/**
- * Raise a new grievance (Citizen)
- * POST /grievances
- */
-export async function apiRaiseGrievance(grievanceData) {
-  return apiRequest('POST', '/grievances', grievanceData);
-}
-
-/**
- * Get grievances for the grievance officer (filtered by jurisdiction)
- * GET /grievances
- */
-export async function apiGetAllGrievances(page = 1, limit = 50) {
-  return apiRequest('GET', `/grievances?page=${page}&limit=${limit}`);
-}
-
-/**
- * Get citizen's own grievances
- * GET /grievances/my
- */
-export async function apiGetMyGrievances(page = 1, limit = 50) {
-  return apiRequest('GET', `/grievances/my?page=${page}&limit=${limit}`);
-}
-
-/**
- * Get grievance by ID
- * GET /grievances/:id
- */
-export async function apiGetGrievanceById(id) {
-  return apiRequest('GET', `/grievances/${id}`);
-}
-
-/**
- * Update grievance status (Grievance Officer/Supervisor)
- * PATCH /grievances/:id/status
- */
-export async function apiUpdateGrievanceStatus(id, status, resolutionNote) {
-  return apiRequest('PATCH', `/grievances/${id}/status`, { status, resolutionNote });
-}
-
-/**
- * Reply to a grievance (Citizen)
- * PATCH /grievances/:id/reply
- */
-export async function apiReplyToGrievance(id, reply) {
-  return apiRequest('PATCH', `/grievances/${id}/reply`, { reply });
-}
-
-// ══════════════════════════════════════════
-// NOTIFICATIONS
-// ══════════════════════════════════════════
-
-/**
- * Get notifications for the logged-in user
- * GET /notifications
- */
-export async function apiGetNotifications() {
-  return apiRequest('GET', '/notifications');
-}
-
-/**
- * Get unread notification count
- * GET /notifications/count
- */
-export async function apiGetNotificationCount() {
-  return apiRequest('GET', '/notifications/count');
-}
-
-/**
- * Mark a notification as read
- * PATCH /notifications/:id/read
- */
-export async function apiMarkNotificationRead(id) {
-  return apiRequest('PATCH', `/notifications/${id}/read`);
-}
-
-/**
- * Mark all notifications as read
- * PATCH /notifications/read-all
- */
-export async function apiMarkAllNotificationsRead() {
-  return apiRequest('PATCH', '/notifications/read-all');
-}
-
-// ══════════════════════════════════════════
-// SUPERVISOR
-// ══════════════════════════════════════════
-
-/**
- * Get supervisor dashboard statistics
- * GET /supervisor/dashboard
- */
-export async function apiGetSupervisorDashboard() {
-  return apiRequest('GET', '/supervisor/dashboard');
-}
-
-/**
- * Get all escalated applications and grievances
- * GET /supervisor/escalated
- */
-export async function apiGetEscalated() {
-  return apiRequest('GET', '/supervisor/escalated');
-}
-
-/**
- * Get officer workload report
- * GET /supervisor/workload
- */
-export async function apiGetWorkload() {
-  return apiRequest('GET', '/supervisor/workload');
-}
-
-/**
- * Manually assign an application to an officer
- * POST /supervisor/assign
- */
-export async function apiAssignApplication(appId, officerId) {
-  return apiRequest('POST', '/supervisor/assign', { appId, officerId });
-}
-
-/**
- * Supervisor reviews an escalated case
- * PATCH /supervisor/review/:id
- */
-export async function apiReviewEscalated(id, action, remarks) {
-  return apiRequest('PATCH', `/supervisor/review/${id}`, { action, remarks });
-}
-
-// ══════════════════════════════════════════
-// SUPER USER
-// ══════════════════════════════════════════
-
-/**
- * Get super user system dashboard stats
- * GET /super-user/dashboard
- */
-export async function apiGetSuperUserDashboard() {
-  return apiRequest('GET', '/super-user/dashboard');
-}
-
-/**
- * Get all pending officer applications
- * GET /super-user/pending-officers
- */
-export async function apiGetPendingOfficers() {
-  return apiRequest('GET', '/super-user/pending-officers');
-}
-
-/**
- * Approve a pending officer
- * PATCH /super-user/pending-officers/:id/approve
- */
-export async function apiApproveOfficer(id) {
-  return apiRequest('PATCH', `/super-user/pending-officers/${id}/approve`);
-}
-
-/**
- * Reject a pending officer
- * PATCH /super-user/pending-officers/:id/reject
- */
-export async function apiRejectOfficer(id) {
-  return apiRequest('PATCH', `/super-user/pending-officers/${id}/reject`);
-}
-
-/**
- * Get system settings
- * GET /super-user/settings
- */
-export async function apiGetSettings() {
-  return apiRequest('GET', '/super-user/settings');
-}
-
-/**
- * Update system settings
- * PATCH /super-user/settings
- */
-export async function apiUpdateSettings(settings) {
-  return apiRequest('PATCH', '/super-user/settings', settings);
-}
-
-/**
- * Get all users (Super User only)
- * GET /users
- */
-export async function apiGetAllUsers() {
-  return apiRequest('GET', '/users');
-}
-
-/**
- * Create a new user (Super User only)
- * POST /users
- */
-export async function apiCreateUser(userData) {
-  return apiRequest('POST', '/users', userData);
-}
-
-/**
- * Update a user (Super User only)
- * PATCH /users/:id
- */
-export async function apiUpdateUser(id, userData) {
-  return apiRequest('PATCH', `/users/${id}`, userData);
-}
-
-/**
- * Delete a user (Super User only)
- * DELETE /users/:id
- */
+/** Delete a user: DELETE /users/:id */
 export async function apiDeleteUser(id) {
-  return apiRequest('DELETE', `/users/${id}`);
+  return apiFetch(`/users/${id}`, { method: 'DELETE' });
 }
 
-/**
- * Onboard a new officer directly (Super User only)
- * POST /super-user/onboard-officer
- */
-export async function apiOnboardOfficer(officerData) {
-  return apiRequest('POST', '/super-user/onboard-officer', officerData);
+// ──────────────────────────────────────────
+// APPLICATIONS
+// ──────────────────────────────────────────
+
+/** Get citizen's own applications: GET /applications/my */
+export async function apiGetMyApplications(page = 1, limit = 100) {
+  return apiFetch(`/applications/my?page=${page}&limit=${limit}`);
 }
 
-// ══════════════════════════════════════════
-// WORKFLOW
-// ══════════════════════════════════════════
-
-/**
- * Get workflow state machine configuration
- * GET /workflow/config
- */
-export async function apiGetWorkflowConfig() {
-  return apiRequest('GET', '/workflow/config');
+/** Get all applications (admin/officer): GET /applications */
+export async function apiGetAllApplications(params = '') {
+  return apiFetch(`/applications${params}`);
 }
 
-/**
- * Get application timeline
- * GET /workflow/history/:appId
- */
-export async function apiGetApplicationHistory(appId) {
-  return apiRequest('GET', `/workflow/history/${appId}`);
+/** Get application by ID: GET /applications/:id */
+export async function apiGetApplicationById(id) {
+  return apiFetch(`/applications/${id}`);
 }
 
-/**
- * Get audit logs
- * GET /workflow/audit-logs
- */
+/** Track application by reference: GET /applications/track/:ref */
+export async function apiTrackApplication(ref) {
+  return apiFetch(`/applications/track/${ref}`);
+}
+
+/** Submit a new application: POST /applications */
+export async function apiSubmitApplication(data) {
+  return apiFetch('/applications', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Update application status: PATCH /applications/:id/status */
+export async function apiUpdateApplicationStatus(id, data) {
+  return apiFetch(`/applications/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Respond to officer query: PATCH /applications/:id/query-response */
+export async function apiRespondToQuery(id, response) {
+  return apiFetch(`/applications/${id}/query-response`, {
+    method: 'PATCH',
+    body: JSON.stringify({ response }),
+  });
+}
+
+/** Withdraw application: DELETE /applications/:id */
+export async function apiWithdrawApplication(id) {
+  return apiFetch(`/applications/${id}`, { method: 'DELETE' });
+}
+
+/** Simulate payment: POST /applications/simulate-payment */
+export async function apiSimulatePayment(serviceId, citizenId, amount) {
+  return apiFetch('/applications/simulate-payment', {
+    method: 'POST',
+    body: JSON.stringify({ serviceId, citizenId, amount }),
+  });
+}
+
+// ──────────────────────────────────────────
+// OFFICER-SPECIFIC
+// ──────────────────────────────────────────
+
+/** Get officer application queue: GET /applications/officer-queue */
+export async function apiGetOfficerQueue() {
+  return apiFetch('/applications/officer-queue');
+}
+
+/** Get officer pending queries: GET /applications/officer-queries */
+export async function apiGetOfficerQueries() {
+  return apiFetch('/applications/officer-queries');
+}
+
+/** Get officer recent activity: GET /applications/officer-activity */
+export async function apiGetOfficerActivity() {
+  return apiFetch('/applications/officer-activity');
+}
+
+/** Get SLA at-risk items: GET /applications/officer-sla-risks */
+export async function apiGetOfficerSlaRisks() {
+  return apiFetch('/applications/officer-sla-risks');
+}
+
+/** Get officer weekly chart: GET /applications/officer-week-chart */
+export async function apiGetOfficerWeekChart() {
+  return apiFetch('/applications/officer-week-chart');
+}
+
+// ──────────────────────────────────────────
+// GRIEVANCES
+// ──────────────────────────────────────────
+
+/** Get citizen's grievances: GET /grievances/my */
+export async function apiGetMyGrievances() {
+  return apiFetch('/grievances/my');
+}
+
+/** Get all grievances (grievance officer / admin): GET /grievances */
+export async function apiGetAllGrievances(page = 1, limit = 200) {
+  return apiFetch(`/grievances?page=${page}&limit=${limit}`);
+}
+
+/** Get grievance by ID: GET /grievances/:id */
+export async function apiGetGrievanceById(id) {
+  return apiFetch(`/grievances/${id}`);
+}
+
+/** Raise a grievance: POST /grievances */
+export async function apiRaiseGrievance(data) {
+  return apiFetch('/grievances', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Update grievance status: PATCH /grievances/:id/status */
+export async function apiUpdateGrievanceStatus(id, data) {
+  return apiFetch(`/grievances/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Reply to a grievance: PATCH /grievances/:id/reply */
+export async function apiReplyGrievance(id, reply) {
+  return apiFetch(`/grievances/${id}/reply`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reply }),
+  });
+}
+
+// ──────────────────────────────────────────
+// SERVICES
+// ──────────────────────────────────────────
+
+/** Get all active services: GET /services */
+export async function apiGetServices() {
+  return apiFetch('/services');
+}
+
+/** Get all services including inactive: GET /services/all */
+export async function apiGetAllServices() {
+  return apiFetch('/services/all');
+}
+
+/** Create a service: POST /services */
+export async function apiCreateService(data) {
+  return apiFetch('/services', { method: 'POST', body: JSON.stringify(data) });
+}
+
+/** Update a service: PATCH /services/:id */
+export async function apiUpdateService(id, data) {
+  return apiFetch(`/services/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+/** Delete a service: DELETE /services/:id */
+export async function apiDeleteService(id) {
+  return apiFetch(`/services/${id}`, { method: 'DELETE' });
+}
+
+// ──────────────────────────────────────────
+// NOTIFICATIONS
+// ──────────────────────────────────────────
+
+/** Get notifications for current user: GET /notifications */
+export async function apiGetNotifications() {
+  return apiFetch('/notifications');
+}
+
+/** Get unread count: GET /notifications/count */
+export async function apiGetNotificationCount() {
+  return apiFetch('/notifications/count');
+}
+
+/** Mark all as read: PATCH /notifications/read-all */
+export async function apiMarkAllNotificationsRead() {
+  return apiFetch('/notifications/read-all', { method: 'PATCH' });
+}
+
+/** Mark one as read: PATCH /notifications/:id/read */
+export async function apiMarkNotificationRead(id) {
+  return apiFetch(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+/** Create manual notification: POST /notifications */
+export async function apiCreateNotification(data) {
+  return apiFetch('/notifications', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ──────────────────────────────────────────
+// SUPERVISOR
+// ──────────────────────────────────────────
+
+/** Get supervisor dashboard data: GET /supervisor/dashboard */
+export async function apiGetSupervisorDashboard() {
+  return apiFetch('/supervisor/dashboard');
+}
+
+/** Get escalated cases: GET /supervisor/escalated */
+export async function apiGetEscalated() {
+  return apiFetch('/supervisor/escalated');
+}
+
+/** Get officer workload: GET /supervisor/workload */
+export async function apiGetWorkload() {
+  return apiFetch('/supervisor/workload');
+}
+
+/** Assign application to officer: POST /supervisor/assign */
+export async function apiAssignApplication(appId, officerId) {
+  return apiFetch('/supervisor/assign', {
+    method: 'POST',
+    body: JSON.stringify({ appId, officerId }),
+  });
+}
+
+/** Review escalated case: PATCH /supervisor/review/:id */
+export async function apiReviewEscalated(id, action, remarks) {
+  return apiFetch(`/supervisor/review/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action, remarks }),
+  });
+}
+
+// ──────────────────────────────────────────
+// SUPER USER (Admin)
+// ──────────────────────────────────────────
+
+/** Get admin dashboard stats: GET /super-user/dashboard */
+export async function apiGetAdminDashboard() {
+  return apiFetch('/super-user/dashboard');
+}
+
+/** Get system settings: GET /super-user/settings */
+export async function apiGetSettings() {
+  return apiFetch('/super-user/settings');
+}
+
+/** Update system settings: PATCH /super-user/settings */
+export async function apiUpdateSettings(data) {
+  return apiFetch('/super-user/settings', { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+/** Get pending officer registrations: GET /super-user/pending-officers */
+export async function apiGetPendingOfficers() {
+  return apiFetch('/super-user/pending-officers');
+}
+
+/** Onboard a new officer directly: POST /super-user/onboard-officer */
+export async function apiOnboardOfficer(data) {
+  return apiFetch('/super-user/onboard-officer', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Approve pending officer: PATCH /super-user/pending-officers/:id/approve */
+export async function apiApproveOfficer(id) {
+  return apiFetch(`/super-user/pending-officers/${id}/approve`, { method: 'PATCH' });
+}
+
+/** Reject pending officer: PATCH /super-user/pending-officers/:id/reject */
+export async function apiRejectOfficer(id) {
+  return apiFetch(`/super-user/pending-officers/${id}/reject`, { method: 'PATCH' });
+}
+
+/** Get audit logs: GET /super-user/audit-logs */
 export async function apiGetAuditLogs() {
-  return apiRequest('GET', '/workflow/audit-logs');
+  return apiFetch('/super-user/audit-logs');
+}
+
+/** Create audit log: POST /super-user/audit-logs */
+export async function apiCreateAuditLog(data) {
+  return apiFetch('/super-user/audit-logs', { method: 'POST', body: JSON.stringify(data) });
+}
+
+// ──────────────────────────────────────────
+// WORKFLOW CONFIG
+// ──────────────────────────────────────────
+
+/** Get workflow config: GET /workflow/config */
+export async function apiGetWorkflowConfig() {
+  return apiFetch('/workflow/config');
+}
+
+/** Update workflow config: PATCH /workflow/config */
+export async function apiUpdateWorkflowConfig(data) {
+  return apiFetch('/workflow/config', { method: 'PATCH', body: JSON.stringify(data) });
 }

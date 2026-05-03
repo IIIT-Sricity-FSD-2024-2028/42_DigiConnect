@@ -2,21 +2,12 @@
 // application.js — Application lifecycle management
 // ═══════════════════════════════════════════
 
-import { getSession, getApplications, setApplications, getServices, setServices, getOfficerQueue, setOfficerQueue, getOfficerQueries, setOfficerQueries } from './state.js';
+import { getSession } from './auth.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal, getQueryParam, formatCard } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { checkSLA } from './escalation.js';
-import {
-  addAuditEntry, assignOfficerByDept, getSupervisorByDept,
-  pushToOfficerQueue, pushToSuperApprovals, pushOfficerQuery,
-  updateMasterApp, isOfficerFinalService,
-  notifyCitizen, notifyOfficer, notifySupervisor
-} from './workflow.js';
-import {
-  apiSimulatePayment, apiSubmitApplication, apiGetMyApplications,
-  apiGetServices, apiTrackApplication, apiGetApplicationById
-} from './api.js';
+import { apiGetServices, apiSubmitApplication, apiGetMyApplications, apiWithdrawApplication, apiGetApplicationById, apiRespondToQuery, apiGetAllApplications, apiUpdateApplicationStatus } from './api.js';
 
 // ══════════════════════════════════════════
 // Citizen: Apply for Service
@@ -24,20 +15,14 @@ import {
 
 export async function initApplyService() {
   const session = initPage({ title: 'Apply for Service', breadcrumbs: [{ label: 'Citizen Portal', href: 'citizen/citizen-dashboard.html' }, { label: 'Apply for Service' }], requiredRole: 'citizen' });
+  if (!session) return;
+  renderNotifPanel();
   
-  // Fetch services from real backend API
   let services = [];
   try {
-    const res = await apiGetServices();
-    services = res.data || [];
-    // Also cache in localStorage for offline fallback
-    setServices(services);
-  } catch (e) {
-    // Fallback to localStorage if backend is unreachable
-    services = getServices().filter(s => s.status === 'Active');
-    showToast('Backend unavailable. Using cached services.', 'warning');
-  }
-  
+      const res = await apiGetServices();
+      services = (res.data || []).filter(s => s.status === 'Active');
+  } catch(e) { console.error(e); }
   let selectedService = null;
   let currentStep = 1;
 
@@ -397,73 +382,126 @@ export async function initApplyService() {
     }
   });
 
-  // Submit application — now calls real backend API
-  window.submitApplication = async () => {
+  // Submit application
+  window.submitApplication = () => {
     if (window.validateForm && !window.validateForm('#applicationForm')) return;
     const submitBtn = document.getElementById('submitBtn');
     if (!selectedService) { if(window.showToast) window.showToast('No service selected.', 'error'); return; }
+    
+    // Sync application reference ID with what is already displayed in Payment Summary
+    const appRefEl = document.getElementById('appRefId');
+    const existingRefId = (appRefEl && appRefEl.textContent) ? appRefEl.textContent : ('APP-' + (Math.floor(1000 + Math.random() * 9000)));
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Processing...';
+      submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Processing Payment...';
     }
 
-    try {
-      let paymentTransactionId = null;
+    setTimeout(async () => {
+      // ── Read ALL service-specific and personal fields from the form DOM ──
+      const v = (id) => document.getElementById(id)?.value?.trim() || null;
+      const vq = (selector) => document.querySelector(selector);
+      // Helper: get value from the nth input/select inside specificBody
+      const sf = (idx) => {
+        const inputs = document.getElementById('specificBody')?.querySelectorAll('input,select,textarea');
+        return inputs?.[idx]?.value?.trim() || null;
+      };
 
-      // Step 1: If paid service, run payment simulator
-      if (selectedService.fee > 0) {
-        if (submitBtn) submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Connecting to Payment Gateway...';
-        const payRes = await apiSimulatePayment(selectedService.id, session.id, selectedService.fee);
-        paymentTransactionId = payRes.transactionId;
-        showToast(`Payment confirmed! TXN: ${paymentTransactionId}`, 'success');
+      // Personal / common fields — IDs match apply-service.html exactly
+      const formFirst   = v('f_firstName') || '';
+      const formLast    = v('f_lastName')  || '';
+      const formName    = [formFirst, formLast].filter(Boolean).join(' ') || session.name;
+      const formDob     = v('f_dob');
+      const formGender  = v('f_gender') || document.getElementById('f_gender')?.options?.[document.getElementById('f_gender')?.selectedIndex]?.text;
+      const formGuardian= v('f_guardianName');
+      const formPhone   = v('f_mobile') || session.phone;
+      const formAadhaar = v('f_aadhaar') || session.aadhaar;
+      // Compose full address from all address sub-fields
+      const formStreet  = v('f_street')   || '';
+      const formVillage = v('f_village')  || '';
+      const formMandal  = v('f_mandal')   || '';
+      const formDistrict= v('districtSelect') || '';
+      const formState   = v('f_state')    || '';
+      const formPincode = v('f_pincode')  || '';
+      const formAddress = [formStreet, formVillage, formMandal, formDistrict, formState, formPincode]
+        .filter(Boolean).join(', ') || null;
+
+      // Service-specific fields — positionally from specificBody
+      let svcFields = {};
+      const sName = selectedService.name;
+      if (sName === 'Income Certificate') {
+        svcFields = { income: sf(0), incomeSource: sf(1), occupation: sf(2), purpose: sf(3) };
+      } else if (sName === 'Caste Certificate') {
+        svcFields = { community: sf(0), subCaste: sf(1), category: sf(2), religion: sf(3), purpose: sf(4) };
+      } else if (sName === 'Residence Certificate') {
+        svcFields = { duration: sf(0), residenceType: sf(1), purpose: sf(2) };
+      } else if (sName === 'Welfare / Subsidy Scheme') {
+        svcFields = { landHolding: sf(0), surveyNo: sf(1), bankAccount: sf(2), ifsc: sf(3) };
+      } else if (sName === 'Scholarship Application') {
+        svcFields = { courseName: sf(0), institution: sf(1), admissionYear: sf(2), tuitionFee: sf(3) };
+      } else if (sName === 'Event Permission') {
+        svcFields = { eventName: sf(0), eventType: sf(1), eventDate: sf(2), eventDuration: sf(3), venueAddress: sf(4), attendance: sf(5) };
+      } else if (sName === 'Vendor License') {
+        svcFields = { businessName: sf(0), businessType: sf(1), businessAddress: sf(2), ownershipType: sf(3) };
+      } else if (sName === 'Record Correction') {
+        svcFields = { recordType: sf(0), recordNo: sf(1), incorrect: sf(2), correct: sf(3), reason: sf(4) };
       }
 
-      if (submitBtn) submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:18px;height:18px;"></div> Submitting Application...';
-
-      // Build document metadata from uploaded files
-      const documents = (selectedService.docs || []).map(d => ({
-        name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending'
-      }));
-
-      // Step 2: Submit application to real backend
-      const result = await apiSubmitApplication({
+      const paymentTxnId = selectedService.fee === 0 ? null : (window.mockPaymentTxn || `TXN-${Math.floor(1000000+Math.random()*9000000)}`);
+      
+      const newAppDto = {
         serviceId: selectedService.id,
         citizenId: session.id,
         dept: selectedService.dept,
-        fee: selectedService.fee || 0,
-        remarks: document.getElementById('f_remarks')?.value?.trim() || '',
-        paymentTransactionId,
-        documents,
-      });
+        fee: selectedService.fee,
+        paymentTransactionId: paymentTxnId,
+        documents: selectedService.docs.map(d => ({ name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending' })),
+        formData: {
+          dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
+          phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
+          street: formStreet, village: formVillage, mandal: formMandal,
+          district: formDistrict, state: formState,
+          ...svcFields
+        }
+      };
 
-      const newApp = result.data;
+      try {
+        const res = await apiSubmitApplication(newAppDto);
+        const newApp = res.data;
+        
+        // Show success screen
+        for (let i = 1; i <= 4; i++) {
+          const el = document.getElementById('formStep' + i);
+          if (el) el.style.display = 'none';
+        }
+        
+        const stepper = document.querySelector('.form-stepper');
+        if (stepper) stepper.style.display = 'none';
+        
+        const headerBtns = document.querySelector('[onclick="goBack()"]');
+        if (headerBtns && headerBtns.parentElement) headerBtns.parentElement.style.display = 'none';
 
-      // Show success screen
-      for (let i = 1; i <= 4; i++) {
-        const el = document.getElementById('formStep' + i);
-        if (el) el.style.display = 'none';
+        const success = document.getElementById('successScreen');
+        if (success) { 
+          success.style.display = 'block'; 
+          setTC('successAppId', newApp.id); 
+        }
+        
+        if (window.showToast) window.showToast('Application submitted successfully!', 'success');
+        
+        // Update track buttons on success screen
+        if (success) {
+          success.innerHTML = success.innerHTML.replace(/track-application\.html\?id=[A-Z0-9-]+|track-application\.html/g, `track-application.html?id=${newApp.id}`);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch(e) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Complete Application & Pay';
+        }
+        if(window.showToast) window.showToast(e.message, 'error');
       }
-      const stepper = document.querySelector('.form-stepper');
-      if (stepper) stepper.style.display = 'none';
-      const headerBtns = document.querySelector('[onclick="goBack()"]');
-      if (headerBtns && headerBtns.parentElement) headerBtns.parentElement.style.display = 'none';
-      const success = document.getElementById('successScreen');
-      if (success) {
-        success.style.display = 'block';
-        const refEl = document.getElementById('successAppId');
-        if (refEl) refEl.textContent = newApp.id;
-      }
-      if (window.showToast) window.showToast('Application submitted successfully!', 'success');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    } catch (err) {
-      showToast(err.message || 'Submission failed. Please try again.', 'error');
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Submit Application';
-      }
-    }
+    }, 1000);
   };
 
   // Success screen navigation buttons
@@ -501,26 +539,33 @@ export async function initMyApplications() {
   const tbody = document.getElementById('appsTableBody') || document.getElementById('applicationsTableBody');
   const cardGrid = document.getElementById('appsCardGrid');
 
-  // Fetch from real backend
   let baseApps = [];
   try {
-    const { apiGetMyApplications } = await import('./api.js');
-    const res = await apiGetMyApplications(1, 100);
-    baseApps = res.data || [];
-  } catch (e) {
-    if(window.showToast) window.showToast('Backend unreachable.', 'error');
+      const res = await apiGetMyApplications(1, 100); // Pagination disabled effectively
+      baseApps = res.data || [];
+  } catch(e) {
+      console.error(e);
   }
-
+  
   let filterStatus = 'all';
   let filterType = '';
   let query = '';
   let sortBy = 'date-desc';
   let currentView = 'table';
   
-  function renderView() {
-    // Re-use the already-fetched baseApps (no localStorage re-read needed)
+
+
+  async function renderView() {
+    // Re-fetch from live storage so new submissions appear immediately
+    try {
+        const res = await apiGetMyApplications(1, 100);
+        baseApps = res.data || [];
+    } catch(e) { console.error(e); }
+
     let filtered = baseApps.filter(a => {
-      if (filterStatus !== 'all' && a.status !== filterStatus) return false;
+      // Treat 'completed' as 'approved' — same terminal success state
+      const effectiveStatus = a.status === 'completed' ? 'approved' : a.status;
+      if (filterStatus !== 'all' && effectiveStatus !== filterStatus) return false;
       if (filterType && a.serviceType && a.serviceType.toLowerCase() !== filterType) return false;
       if (query && !a.id.toLowerCase().includes(query) && !a.serviceName.toLowerCase().includes(query)) return false;
       return true;
@@ -544,15 +589,25 @@ export async function initMyApplications() {
       document.getElementById('cardView').style.display = 'none';
 
       tbody.innerHTML = paginated.map(a => {
-        const clsMap = { 'approved': 'badge-success', 'rejected': 'badge-danger', 'query': 'badge-warning', 'draft': 'badge-neutral', 'under-review': 'badge-info', 'completed': 'badge-success' };
+        const clsMap = { 
+          'approved': 'badge-success', 
+          'completed': 'badge-success',   // completed = approved (same thing)
+          'rejected': 'badge-danger', 
+          'query': 'badge-warning', 
+          'escalated': 'badge-purple',
+          'draft': 'badge-neutral', 
+          'under-review': 'badge-info'
+        };
         const statusClass = clsMap[a.status] || 'badge-info';
-        const statusLabel = a.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        // Display 'Approved' for completed apps — same meaning, simpler label
+        const rawLabel = a.status === 'completed' ? 'approved' : a.status;
+        const statusLabel = rawLabel.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
         const typeClassMap = { 'certificate': 'svc-certificate', 'welfare': 'svc-welfare', 'permission': 'svc-permission', 'correction': 'svc-record' };
         const typeClass = typeClassMap[(a.serviceType||'').toLowerCase()] || 'svc-certificate';
         const typeLabel = a.serviceType ? a.serviceType.charAt(0).toUpperCase() + a.serviceType.slice(1) : 'Service';
         
         const sla = checkSLA(a);
-        const isClosed = ['approved', 'completed', 'rejected'].includes(a.status);
+        const isClosed = ['approved', 'completed', 'rejected', 'escalated'].includes(a.status);
         const slaText = isClosed ? 'Closed' : (sla.daysLeft !== null ? (sla.daysLeft >= 0 ? `${sla.daysLeft} days left` : `${Math.abs(sla.daysLeft)} days overdue`) : '—');
         const slaCls = isClosed ? (a.status === 'rejected' ? 'breach' : 'safe') : (sla.daysLeft === null ? '' : sla.daysLeft > 4 ? 'safe' : sla.daysLeft >= 0 ? 'warn' : 'breach');
         const slaWidth = isClosed ? 100 : Math.max(0, sla.daysLeft||0) * 10;
@@ -584,8 +639,17 @@ export async function initMyApplications() {
       document.getElementById('tableView').style.display = 'none';
       document.getElementById('cardView').style.display = 'block';
       cardGrid.innerHTML = paginated.map(a => {
-        const clsMap = { 'approved': 'badge-success', 'rejected': 'badge-danger', 'query': 'badge-warning', 'draft': 'badge-neutral', 'under-review': 'badge-info', 'completed': 'badge-success' };
-        const statusLabel = a.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const clsMap = { 
+          'approved': 'badge-success', 
+          'completed': 'badge-success',
+          'rejected': 'badge-danger', 
+          'query': 'badge-warning', 
+          'escalated': 'badge-purple',
+          'draft': 'badge-neutral', 
+          'under-review': 'badge-info' 
+        };
+        const rawLabel = a.status === 'completed' ? 'approved' : a.status;
+        const statusLabel = rawLabel.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
         return `
           <div class="app-card" onclick="window.location.href='track-application.html?id=${a.id}'">
             <div class="app-card-header">
@@ -603,13 +667,14 @@ export async function initMyApplications() {
       }).join('');
     }
     
-    // Update stats — include all in-progress statuses in "Under Review" count
-    const IN_PROGRESS = ['under-review', 'query', 'officer-approved', 'supervisor-review'];
+    // Update stats chips dynamically from live data
+    const IN_PROGRESS = ['submitted', 'under-review', 'officer-approved', 'supervisor-review', 'pending_external_verification'];
     setT('.chip-all .summary-chip-val', baseApps.length);
     setT('.chip-pending .summary-chip-val', baseApps.filter(a => IN_PROGRESS.includes(a.status)).length);
+    setT('.chip-query .summary-chip-val', baseApps.filter(a => a.status === 'query').length);
     setT('.chip-approved .summary-chip-val', baseApps.filter(a => a.status === 'approved' || a.status === 'completed').length);
     setT('.chip-rejected .summary-chip-val', baseApps.filter(a => a.status === 'rejected').length);
-    setT('.chip-draft .summary-chip-val', baseApps.filter(a => a.status === 'draft').length);
+    setT('.chip-escalated .summary-chip-val', baseApps.filter(a => a.status === 'escalated').length);
   }
 
   window.handleSearch = () => { query = document.getElementById('searchInput')?.value.toLowerCase() || ''; renderView(); };
@@ -666,14 +731,13 @@ export async function initMyApplications() {
   window.confirmWithdraw = async () => {
     if(withdrawCandidate) {
       try {
-        const { apiWithdrawApplication } = await import('./api.js');
         await apiWithdrawApplication(withdrawCandidate);
         baseApps = baseApps.filter(a => a.id !== withdrawCandidate);
         window.closeModal('withdrawModal');
         if(window.showToast) window.showToast('Application withdrawn successfully.', 'success');
         renderView();
-      } catch (err) {
-        if(window.showToast) window.showToast(err.message || 'Failed to withdraw application.', 'error');
+      } catch(e) {
+        if(window.showToast) window.showToast(e.message, 'error');
       }
     }
   };
@@ -697,23 +761,20 @@ export async function initTrackApplication() {
 
   async function loadApplication(id) {
     let app = null;
-
-    // Try real backend API first
     try {
       const res = await apiGetApplicationById(id);
-      app = res.data || res;
-    } catch (e) {
-      if(window.showToast) window.showToast('Backend unreachable.', 'error');
-    }
-
-    if (!app) {
+      app = res.data;
+    } catch(e) {
       showToast('Application not found. Check the ID and try again.', 'error');
+      if (appDetail) appDetail.style.display = 'none';
+      if (emptyState) emptyState.style.display = 'block';
       return;
     }
 
     // ── PRIVACY CHECK: Ensure the citizen owns this application ──
     if (app.citizenId !== session.id) {
       showToast('You are not authorized to track this application.', 'error');
+      // Hide details and show empty state if an unauthorized ID was entered
       if (appDetail) appDetail.style.display = 'none';
       if (emptyState) emptyState.style.display = 'block';
       return;
@@ -741,7 +802,7 @@ export async function initTrackApplication() {
 
     // Days left & SLA bar
     const slaCheck = checkSLA(app);
-    const isClosed = ['approved', 'completed', 'rejected'].includes(app.status);
+    const isClosed = ['approved', 'completed', 'rejected', 'escalated'].includes(app.status);
     const slaCls = isClosed ? (app.status === 'rejected' ? 'breach' : 'safe') : (slaCheck.daysLeft === null ? '' : slaCheck.daysLeft > 4 ? 'safe' : slaCheck.daysLeft >= 0 ? 'warn' : 'breach');
     
     setTC('detailDaysLeft', isClosed ? '—' : (slaCheck.daysLeft !== null ? Math.abs(slaCheck.daysLeft) : '—'));
@@ -760,42 +821,89 @@ export async function initTrackApplication() {
     }
 
     // Stage bar — maps all real statuses to progress steps
-    // Steps: Submitted → Officer Verified → Supervisor Review → Approved/Rejected
+    // Steps: 1=Submitted, 2=Officer Verified, 3=Supervisor Review, 4=Approved/Completed
     const STATUS_STEP = {
-      'under-review':       1,
-      'query':              1,
-      'officer-approved':   2,
-      'supervisor-review':  3,
-      'approved':           4,
-      'rejected':           -1,
+      'pending':              1,
+      'submitted':            1,
+      'under-review':         1,
+      'query':                1,
+      'pending_external_verification': 1,
+      'officer-approved':     2,
+      'escalated':            2,  // escalated means officer stage failed → supervisor takes over
+      'supervisor-review':    3,
+      'approved':             4,
+      'completed':            4,
+      'rejected':             -1,
     };
-    let currStep = STATUS_STEP[app.status] ?? 0;
+
+    // Helper: map a timeline action string to a step number
+    function actionToStep(action) {
+      const a = (action || '').toLowerCase();
+      if (a.includes('approv') && (a.includes('officer') || a.includes('final'))) return 2;
+      if (a.includes('supervisor') || a.includes('final approv')) return 3;
+      if ((a.includes('approv') || a.includes('complet')) && !a.includes('officer')) return 4;
+      if (a.includes('officer-approved') || a.includes('officer_approved')) return 2;
+      if (a.includes('escalat')) return 2;  // escalation reached officer decision level
+      if (a.includes('under') || a.includes('review') || a.includes('query') || a.includes('pending')) return 1;
+      if (a.includes('submit')) return 1;
+      if (a.includes('reject')) return -1;
+      return 0;
+    }
+
+    // ── Derive the highest step ever reached from the full timeline ──
+    // This ensures stage nodes stay "done" even if the app cycled back (e.g. escalated → under-review)
+    let maxStepReached = STATUS_STEP[app.status] ?? 0;
+    if (app.timeline && app.timeline.length) {
+      for (const t of app.timeline) {
+        const s = actionToStep(t.action);
+        if (s > maxStepReached) maxStepReached = s;
+      }
+    }
+    // currentStep is what the app is at RIGHT NOW (may be lower than max if cycled back)
+    const currStep = STATUS_STEP[app.status] ?? 0;
 
     const stages = [
       { label: 'Application\nSubmitted',  step: 1 },
       { label: 'Officer\nVerified',        step: 2 },
       { label: 'Supervisor\nReview',       step: 3 },
-      { label: 'Service\nCompleted',       step: 4 },
+      { label: 'Approved /\nCompleted',    step: 4 },
     ];
 
     const stageBar = document.getElementById('stageBar');
     if (stageBar) {
       stageBar.innerHTML = stages.map(s => {
         let stStatus;
+
         if (app.status === 'rejected') {
-          stStatus = s.step === 1 ? 'done' : '';
-        } else if (currStep >= s.step) {
-          stStatus = 'done';
-        } else if (currStep === s.step - 1) {
-          stStatus = 'active';
+          // Mark all stages up to the point of rejection as done, rest empty
+          stStatus = s.step <= maxStepReached ? 'done' : '';
+        } else if (app.status === 'escalated') {
+          // Officer stage shown as breach (failed), supervisor is now active
+          if (s.step < 2) stStatus = 'done';
+          else if (s.step === 2) stStatus = 'breach';
+          else if (s.step === 3) stStatus = 'active';
+          else stStatus = '';
         } else {
-          stStatus = '';
+          // General case: use the high-water mark from timeline
+          if (s.step <= maxStepReached) {
+            stStatus = 'done';
+          } else if (s.step === maxStepReached + 1) {
+            stStatus = 'active';
+          } else {
+            stStatus = '';
+          }
         }
+
+        const iconMap = {
+          'done':   '<svg width="16" height="16" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>',
+          'active': '<svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+          'breach': '<svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>'
+        };
 
         return `
         <div class="stage-node ${stStatus}">
           <div class="stage-circle">
-            ${stStatus === 'done' ? '<svg width="16" height="16" fill="none" stroke="#fff" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : stStatus === 'active' ? '<svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '○'}
+            ${iconMap[stStatus] || '○'}
           </div>
           <div class="stage-label">${s.label.replace('\n', '<br>')}</div>
         </div>
@@ -819,7 +927,14 @@ export async function initTrackApplication() {
     if (timeline && app.timeline) {
       timeline.innerHTML = app.timeline.map((t, i) => {
         const isLast = i === app.timeline.length - 1;
-        const dot = isLast ? (app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'danger' : 'active') : 'success';
+        let dot = 'success';
+        const actionText = t.action.toLowerCase();
+        if (actionText.includes('escalate') || actionText.includes('reject') || actionText.includes('breach')) {
+          dot = 'danger';
+        } else if (isLast) {
+          dot = (app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'danger' : 'active');
+        }
+        
         return `
       <div class="timeline-item">
         <div class="timeline-dot ${dot}">
@@ -878,11 +993,12 @@ export async function initTrackApplication() {
     loadApplication(appId);
   } else {
     // If no ID is passed, default to first citizen application if tracking from menu.
-    try {
-      const { apiGetMyApplications } = await import('./api.js');
-      const res = await apiGetMyApplications(1, 1);
-      if(res.data && res.data.length > 0) loadApplication(res.data[0].id);
-    } catch(e) {}
+    apiGetMyApplications().then(res => {
+      const myApps = res.data || [];
+      if(myApps.length > 0) loadApplication(myApps[0].id);
+    }).catch(e => {
+      if (emptyState) emptyState.style.display = 'block';
+    });
   }
 
   // Search button / enter
@@ -922,41 +1038,60 @@ export async function initTrackApplication() {
     if (modal) modal.classList.add('active');
   };
 
-  window.simulateResponseUpload = function() {
+  window.handleQueryFileSelect = function(input) {
     const uploadedFile = document.getElementById('uploadedFile');
+    const submitBtn = document.getElementById('submitResponseBtn');
+    
+    if (!input.files || input.files.length === 0) return;
+
+    const files = Array.from(input.files);
+    const fileListHtml = files.map(f => {
+      const sizeKb = (f.size / 1024).toFixed(0);
+      const sizeStr = f.size > 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+      return `<div style="display:flex;align-items:center;gap:8px;background:var(--green-50);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--green-200);margin-bottom:4px;">
+        <svg width="14" height="14" fill="none" stroke="var(--green-500)" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span style="font-size:0.8125rem;font-weight:600;color:var(--navy-900);flex:1;">${f.name}</span>
+        <span style="font-size:0.72rem;color:var(--color-text-muted);">${sizeStr}</span>
+      </div>`;
+    }).join('');
+
     if (uploadedFile) {
       uploadedFile.style.display = 'block';
-      uploadedFile.innerHTML = `<div style="display:flex;align-items:center;gap:8px;background:var(--green-50);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--green-200);"><svg width="14" height="14" fill="none" stroke="var(--green-500)" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><span style="font-size:0.8125rem;font-weight:600;color:var(--navy-900);">Document_Uploaded.pdf</span><span style="font-size:0.72rem;color:var(--color-text-muted);margin-left:auto;">1.2 MB</span></div>`;
+      uploadedFile.innerHTML = fileListHtml;
     }
+    // Enable the Submit button now that files are chosen
+    if (submitBtn) submitBtn.disabled = false;
   };
+
 
   window.submitQueryResponse = async function() {
     const modal = document.getElementById('queryModal');
-    const responseText = document.getElementById('queryResponseText')?.value?.trim()
-                      || document.getElementById('citizenResponseText')?.value?.trim()
-                      || 'Citizen uploaded requested documents.';
+    const noteText = document.getElementById('queryResponseNote')?.value?.trim();
+    const fileInput = document.getElementById('queryFileInput');
+    const fileNames = fileInput && fileInput.files.length > 0
+      ? Array.from(fileInput.files).map(f => f.name).join(', ')
+      : null;
+    
+    // Build response message from note + uploaded file names
+    const responseText = [noteText, fileNames ? `Files: ${fileNames}` : null]
+      .filter(Boolean).join(' | ') || 'Citizen uploaded requested documents.';
 
-    const currentAppId = getQueryParam('id');
-    if (!currentAppId) {
-      if(window.showToast) window.showToast('No application ID found to respond to.', 'error');
-      return;
+    const currentAppId = document.getElementById('detailAppId')?.textContent || getQueryParam('id');
+
+    if (currentAppId) {
+      try {
+        await apiRespondToQuery(currentAppId, responseText);
+      } catch(e) {
+        if(window.showToast) window.showToast(e.message, 'error');
+        return;
+      }
     }
 
-    try {
-      const { apiRespondToQuery } = await import('./api.js');
-      await apiRespondToQuery(currentAppId, responseText);
-    } catch (err) {
-      if(window.showToast) window.showToast(err.message || 'Failed to submit query response.', 'error');
-      return;
-    }
-
-    // ── Close modal + hide alert ──
     if (modal) modal.classList.remove('active');
     if (window.showToast) window.showToast('Response submitted! Officer has been notified and your application is back under review.', 'success');
     const alertBox = document.getElementById('actionAlert');
     if (alertBox) alertBox.style.display = 'none';
 
-    // ── Reload the application detail to show updated status ──
     if (currentAppId) {
       setTimeout(() => loadApplication(currentAppId), 800);
     }
@@ -974,16 +1109,22 @@ export async function initReviewApplication() {
   if (!session) return;
   renderNotifPanel();
 
+  let officerQueue = [];
   let myApps = [];
   try {
-    const { apiGetOfficerApplications } = await import('./api.js');
-    const res = await apiGetOfficerApplications(session.id, 1, 100);
-    // Convert to queue-like format the UI expects
-    myApps = (res.data || []).filter(a => ['under-review', 'in-review', 'pending-external-verification'].includes(a.status));
-  } catch(e) {
-    if(window.showToast) window.showToast('Failed to load applications.', 'error');
-    return;
-  }
+      const { apiGetOfficerQueue } = await import('./api.js');
+      const res = await apiGetOfficerQueue();
+      officerQueue = res.data || [];
+      // officerQueue is already shaped by backend: has service, citizen, submitted, slaLeft, slaTotal
+      // Enrich with history from timeline if present
+      officerQueue = officerQueue.map(a => ({
+          ...a,
+          docs: a.documents ? a.documents.map(d => ({ name: d.name, size: '—', type: d.type, icon: d.name.endsWith('pdf') ? 'pdf' : 'img' })) : [],
+          history: a.timeline ? a.timeline.map(t => ({ label: t.action, ts: formatDateTime(t.date), detail: t.note, dot: 'review' })) : []
+      }));
+      // All apps in officer-queue are active (pending/under-review/query/escalated)
+      myApps = officerQueue.filter(a => !['approved', 'rejected', 'completed'].includes(a.status));
+  } catch(e) { console.error('Failed to load officer queue:', e); }
   
   // State 
   let currentIdx = 0;
@@ -1181,6 +1322,8 @@ export async function initReviewApplication() {
                 <span class="badge ${q.status==='breach'?'badge-danger':q.status==='urgent'?'badge-danger':q.status==='review'?'badge-warning':'badge-info'}" style="font-size:0.65rem;">${q.status==='breach'?'Breach':q.status==='urgent'?'Urgent':q.status==='review'?'Review':'New'}</span>
             </div>`;
         }).join('');
+        const qCountSpan = document.querySelector('.queue-nav-header span:last-child');
+        if (qCountSpan) qCountSpan.textContent = `${myApps.length} application${myApps.length === 1 ? '' : 's'}`;
       }
 
       // Reset decision
@@ -1188,8 +1331,8 @@ export async function initReviewApplication() {
   };
 
   function buildServiceFields(a) {
-      // The backend now provides the full master app
-      const merged = { ...a };
+      // First try to pull from master app (for newly submitted apps)
+      const merged = a; // Already contains full data from backend
 
       const base = [{k:'Service Type', v: merged.service || merged.serviceName || '—'}];
 
@@ -1200,7 +1343,7 @@ export async function initReviewApplication() {
 
       // Purpose / service-specific info
       if (merged.purpose) base.push({k:'Purpose', v: merged.purpose});
-      else if (masterApp?.remarks) base.push({k:'Purpose / Remarks', v: masterApp.remarks});
+      else if (merged.remarks) base.push({k:'Purpose / Remarks', v: merged.remarks});
 
       // Service-specific details — all service types
       if (merged.income) base.push({k:'Annual Income (₹)', v:'₹'+merged.income}, {k:'Occupation', v:merged.occupation||'—'}, {k:'Income Source', v:merged.incomeSource||'—'});
@@ -1212,16 +1355,14 @@ export async function initReviewApplication() {
       if (merged.landHolding) base.push({k:'Land Holding (acres)', v:merged.landHolding}, {k:'Survey No.', v:merged.surveyNo||'—'}, {k:'Bank Account', v:merged.bankAccount||'—'}, {k:'IFSC Code', v:merged.ifsc||'—'});
       if (merged.courseName) base.push({k:'Course Name', v:merged.courseName}, {k:'Institution', v:merged.institution||'—'}, {k:'Admission Year', v:merged.admissionYear||'—'}, {k:'Annual Tuition Fee', v:merged.tuitionFee ? '₹'+merged.tuitionFee : '—'});
 
-      // Documents info from master app
-      if (masterApp?.documents?.length) {
-        base.push({k:'Documents Submitted', v: masterApp.documents.map(d=>d.name).join(', ')});
+      // Documents info
+      if (merged.documents?.length) {
+        base.push({k:'Documents Submitted', v: merged.documents.map(d=>d.name).join(', ')});
       }
 
-      // Payment info from master app
-      if (masterApp) {
-        base.push({k:'Fee Paid', v: masterApp.fee > 0 ? '₹'+masterApp.fee+' ('+masterApp.paymentMethod+')' : 'Free'});
-        base.push({k:'Submitted On', v: masterApp.submittedDate ? new Date(masterApp.submittedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : a.submitted || '—'});
-      }
+      // Payment info
+      base.push({k:'Fee Paid', v: merged.fee > 0 ? '₹'+merged.fee+' ('+merged.paymentMethod+')' : 'Free'});
+      base.push({k:'Submitted On', v: merged.submittedDate ? new Date(merged.submittedDate).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : a.submitted || '—'});
 
       return base;
   }
@@ -1324,54 +1465,48 @@ export async function initReviewApplication() {
           query: 'Query sent to citizen via SMS and portal notification.',
           reject: 'Application rejected. Citizen notified with reason provided.',
       };
-
-      const serviceName = a.service || a.serviceName || '';
+      
       const rejectReason = document.getElementById('rejectReason')?.value || 'Reason not specified';
       const queryText = document.getElementById('queryText')?.value?.trim() || '';
 
-      let newStatus = currentDecision;
-      let remarks = '';
+      const statusMap = {
+          approve: 'approved',
+          reject: 'rejected',
+          query: 'query'
+      };
 
-      if (currentDecision === 'approve') {
-          if (window.isOfficerFinalService && window.isOfficerFinalService(serviceName)) {
-              newStatus = 'approved';
-              remarks = 'Officer Approved (Final)';
-          } else {
-              newStatus = 'officer-approved';
-              remarks = 'Officer Approved. Awaiting Supervisor final approval.';
-          }
-      } else if (currentDecision === 'reject') {
-          newStatus = 'rejected';
-          remarks = rejectReason;
-      } else if (currentDecision === 'query') {
-          newStatus = 'query';
-          remarks = queryText;
-          if (!queryText) {
-            if(window.showToast) window.showToast('Please provide a query detail.', 'warning');
-            return;
-          }
-      }
+      const payload = {
+          status: statusMap[currentDecision],
+          remarks: currentDecision === 'query' ? queryText : (currentDecision === 'reject' ? rejectReason : 'Approved by Officer')
+      };
 
       try {
-        const { apiUpdateApplicationStatus } = await import('./api.js');
-        await apiUpdateApplicationStatus(a.id, newStatus, remarks);
-        
-        if(window.showToast) window.showToast(msgs[currentDecision], currentDecision==='approve'?'success':currentDecision==='reject'?'warning':'info');
+          await apiUpdateApplicationStatus(a.id, payload);
+          window.showToast(msgs[currentDecision], currentDecision==='approve'?'success':currentDecision==='reject'?'warning':'info');
+          
+          // Re-fetch queue
+          const { apiGetOfficerQueue } = await import('./api.js');
+          const res = await apiGetOfficerQueue();
+          officerQueue = res.data || [];
+          officerQueue = officerQueue.map(app => ({
+              ...app,
+              docs: app.documents ? app.documents.map(d => ({ name: d.name, size: '—', type: d.type, icon: d.name.endsWith('pdf') ? 'pdf' : 'img' })) : [],
+              history: app.timeline ? app.timeline.map(t => ({ label: t.action, ts: formatDateTime(t.date), detail: t.note, dot: 'review' })) : []
+          }));
+          myApps = officerQueue.filter(a => !['approved', 'rejected', 'completed'].includes(a.status));
+          
+          // Auto-advance
+          setTimeout(() => {
+              if (myApps.length === 0) {
+                  window.loadApp(0);
+              } else {
+                  let nextIdx = currentIdx >= myApps.length ? myApps.length - 1 : currentIdx;
+                  window.loadApp(nextIdx);
+              }
+          }, 1200);
 
-        // Remove from local array since it's no longer under review
-        myApps.splice(currentIdx, 1);
-        
-        // Auto-advance to next, or refresh view if none left
-        setTimeout(() => {
-            if (myApps.length === 0) {
-                window.loadApp(0); // will show empty state
-            } else {
-                let nextIdx = currentIdx >= myApps.length ? myApps.length - 1 : currentIdx;
-                window.loadApp(nextIdx);
-            }
-        }, 1200);
-      } catch (err) {
-        if(window.showToast) window.showToast(err.message || 'Failed to update application', 'error');
+      } catch(e) {
+          window.showToast(e.message, 'error');
       }
   };
 

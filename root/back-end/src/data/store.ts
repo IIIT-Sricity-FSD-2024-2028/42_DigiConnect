@@ -64,30 +64,478 @@ export interface OfficerQueueItem {
 // ═══════════════════════════════════════════
 
 const MOCK_USERS = [
-  // Migrated from legacy ALL_USERS
-  { id: 'CIT-001', name: 'Ravi Kumar', role: 'citizen', email: 'ravi.k@gmail.com', phone: '9876543200', aadhaar: '895421674301', joined: '10 Jan 2024', status: 'Active', dept: '-', jurisdiction: 'Secunderabad', password: 'password123', securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'CIT-002', name: 'Meena Devi', role: 'citizen', email: 'meena.d@gmail.com', phone: '9876543201', aadhaar: '895421674302', joined: '12 Jan 2024', status: 'Active', dept: '-', jurisdiction: 'Hyderabad Central', password: 'password123', securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'CIT-003', name: 'Gopal Rao', role: 'citizen', email: 'gopal.r@gmail.com', phone: '9876543202', aadhaar: '895421674303', joined: '15 Jan 2024', status: 'Suspended', dept: '-', jurisdiction: 'Uppal', password: 'password123', securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'CIT-004', name: 'Sunita Verma', role: 'citizen', email: 'sunita.v@gmail.com', phone: '9876543203', aadhaar: '895421674304', joined: '18 Jan 2024', status: 'Active', dept: '-', jurisdiction: 'Secunderabad', password: 'password123', securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'CIT-005', name: 'Arun Prasad', role: 'citizen', email: 'arun.p@gmail.com', phone: '9876543204', aadhaar: '895421674305', joined: '20 Jan 2024', status: 'Active', dept: '-', jurisdiction: 'Hyderabad Central', password: 'password123', securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-001', name: 'Suresh Reddy', role: 'officer', title: 'VRO', email: 's.reddy@gov.in', phone: '9876543210', aadhaar: '895421675001', joined: '15 Mar 2023', status: 'Active', dept: 'Revenue Department', jurisdiction: 'Secunderabad', password: 'password123', services: ['Income Certificate', 'Caste Certificate'], cases: 28, sla: 91, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-002', name: 'Anita Sharma', role: 'officer', title: 'RI', email: 'a.sharma@gov.in', phone: '9876543211', aadhaar: '895421675002', joined: '20 Jan 2023', status: 'Active', dept: 'Revenue Department', jurisdiction: 'Hyderabad Central', password: 'password123', services: ['Income Certificate', 'Residence Certificate'], cases: 34, sla: 87, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-003', name: 'Ramesh Kumar', role: 'supervisor', title: 'MRO', email: 'r.kumar@gov.in', phone: '9876543212', aadhaar: '895421675003', joined: '10 Jun 2022', status: 'Active', dept: 'Revenue Department', jurisdiction: 'LB Nagar', password: 'password123', services: ['Income Certificate', 'Caste Certificate', 'Record Correction'], cases: 18, sla: 95, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-004', name: 'Priya Nair', role: 'officer', title: 'Welfare Officer', email: 'p.nair@gov.in', phone: '9876543213', aadhaar: '895421675004', joined: '01 Aug 2022', status: 'Active', dept: 'Welfare Department', jurisdiction: 'All Mandals', password: 'password123', services: ['Welfare Scheme', 'Scholarship Application'], cases: 22, sla: 93, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-005', name: 'Kiran Babu', role: 'officer', title: 'VRO', email: 'k.babu@gov.in', phone: '9876543214', aadhaar: '895421675005', joined: '05 Nov 2023', status: 'Active', dept: 'Revenue Department', jurisdiction: 'Uppal', password: 'password123', services: ['Income Certificate', 'Caste Certificate'], cases: 31, sla: 88, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'SUP-001', name: 'Deepak Verma', role: 'supervisor', title: 'Supervisor', email: 'd.verma@gov.in', phone: '9876543220', aadhaar: '895421676001', joined: '01 Jan 2022', status: 'Active', dept: 'Revenue Department', jurisdiction: 'Hyderabad District', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'SUP-002', name: 'Kavitha Reddy', role: 'supervisor', title: 'District Welfare Officer (DWO)', email: 'k.reddy@gov.in', phone: '9876543221', aadhaar: '895421676002', joined: '15 Feb 2022', status: 'Active', dept: 'Welfare Department', jurisdiction: 'Telangana State', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'GRV-001', name: 'Nalini Rao', role: 'grievance', title: 'Grievance Officer', email: 'n.rao@gov.in', phone: '9876543230', aadhaar: '895421677001', joined: '10 Mar 2022', status: 'Active', dept: 'Grievance Cell', jurisdiction: 'Hyderabad', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'GRV-002', name: 'Srinivas Goud', role: 'grievance', title: 'Grievance Officer', email: 's.goud@gov.in', phone: '9876543231', aadhaar: '895421677002', joined: '20 Apr 2022', status: 'Pending', dept: 'Grievance Cell', jurisdiction: 'Warangal', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'EMP-006', name: 'Mohan Das', role: 'officer', title: 'Sanitary Inspector', email: 'm.das@gov.in', phone: '9876543215', aadhaar: '895421675006', joined: '10 Feb 2023', status: 'Active', dept: 'Municipal Corporation', jurisdiction: 'All', password: 'password123', services: ['Event Permission', 'Vendor License', 'Death Certificate'], cases: 14, sla: 92, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'SUP-003', name: 'Lakshmi Narayana', role: 'supervisor', title: 'Zonal Commissioner', email: 'l.narayana@gov.in', phone: '9876543222', aadhaar: '895421676003', joined: '22 May 2021', status: 'Active', dept: 'Municipal Corporation', jurisdiction: 'All', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' },
-  { id: 'ADM-001', name: 'Super User', role: 'super_user', title: 'Super User', email: 'superuser@gov.in', phone: '9876543299', aadhaar: '895421678001', joined: '01 Jan 2020', status: 'Active', dept: 'IT Admin', jurisdiction: 'All', password: 'password123', services: [], cases: 0, sla: 100, securityQuestion: 'In what city were you born?', securityAnswer: 'Hyderabad' }
+  {
+    "id": "ADM-001",
+    "name": "Super User",
+    "role": "super_user",
+    "title": "Super User",
+    "email": "superuser@gov.in",
+    "phone": "9876543299",
+    "aadhaar": "895421678001",
+    "joined": "01 Jan 2020",
+    "status": "Active",
+    "dept": "IT Admin",
+    "jurisdiction": "All",
+    "password": "password123",
+    "services": [],
+    "cases": 0,
+    "sla": 100,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "IT Secretariat, Masab Tank",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Masab Tank",
+    "pincode": "500028",
+    "dob": "1975-06-01",
+    "gender": "Male"
+  },
+  {
+    "id": "CIT-001",
+    "name": "Ravi Kumar",
+    "role": "citizen",
+    "email": "ravi.k@gmail.com",
+    "phone": "9876543200",
+    "aadhaar": "895421674301",
+    "joined": "10 Jan 2024",
+    "status": "Active",
+    "dept": "-",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Plot 45, MG Road",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1985-04-12",
+    "gender": "Male"
+  },
+  {
+    "id": "CIT-002",
+    "name": "Sunita Verma",
+    "role": "citizen",
+    "email": "sunita.v@gmail.com",
+    "phone": "9876543203",
+    "aadhaar": "895421674304",
+    "joined": "18 Jan 2024",
+    "status": "Active",
+    "dept": "-",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Street 4, Tarnaka",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500017",
+    "dob": "1988-02-14",
+    "gender": "Female"
+  },
+  {
+    "id": "CIT-003",
+    "name": "Kaveri Devi",
+    "role": "citizen",
+    "email": "kaveri.d@gmail.com",
+    "phone": "9876543209",
+    "aadhaar": "895421674310",
+    "joined": "05 Feb 2024",
+    "status": "Active",
+    "dept": "-",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1985-09-05",
+    "gender": "Female"
+  },
+  {
+    "id": "GRV-001",
+    "name": "Nalini Rao",
+    "role": "grievance",
+    "title": "Grievance Officer",
+    "email": "n.rao@gov.in",
+    "phone": "9876543230",
+    "aadhaar": "895421677001",
+    "joined": "10 Mar 2022",
+    "status": "Active",
+    "dept": "Grievance Cell",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [],
+    "cases": 0,
+    "sla": 100,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1986-08-25",
+    "gender": "Female"
+  },
+  {
+    "id": "SUP-001",
+    "name": "Deepak Verma",
+    "role": "supervisor",
+    "title": "MRO",
+    "email": "d.verma@gov.in",
+    "phone": "9876543220",
+    "aadhaar": "895421676001",
+    "joined": "01 Jan 2022",
+    "status": "Active",
+    "dept": "Revenue Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [],
+    "cases": 0,
+    "sla": 100,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1980-09-30",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-001",
+    "name": "Suresh Reddy",
+    "role": "officer",
+    "title": "VRO",
+    "email": "s.reddy@gov.in",
+    "phone": "9876543210",
+    "aadhaar": "895421675001",
+    "joined": "15 Mar 2023",
+    "status": "Active",
+    "dept": "Revenue Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Income Certificate",
+      "Caste Certificate",
+      "Residence Certificate",
+      "Record Correction"
+    ],
+    "cases": 28,
+    "sla": 91,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1988-06-15",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-002",
+    "name": "Anita Sharma",
+    "role": "officer",
+    "title": "VRO",
+    "email": "a.sharma@gov.in",
+    "phone": "9876543211",
+    "aadhaar": "895421675002",
+    "joined": "20 Jan 2023",
+    "status": "Active",
+    "dept": "Revenue Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Income Certificate",
+      "Caste Certificate",
+      "Residence Certificate",
+      "Record Correction"
+    ],
+    "cases": 34,
+    "sla": 87,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1990-03-22",
+    "gender": "Female"
+  },
+  {
+    "id": "EMP-003",
+    "name": "Ravi Teja",
+    "role": "officer",
+    "title": "VRO",
+    "email": "r.teja@gov.in",
+    "phone": "9876543240",
+    "aadhaar": "895421675007",
+    "joined": "10 Jan 2024",
+    "status": "Active",
+    "dept": "Revenue Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Income Certificate",
+      "Caste Certificate",
+      "Residence Certificate",
+      "Record Correction"
+    ],
+    "cases": 15,
+    "sla": 90,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1995-01-01",
+    "gender": "Male"
+  },
+  {
+    "id": "SUP-002",
+    "name": "Kavitha Reddy",
+    "role": "supervisor",
+    "title": "DWO",
+    "email": "k.reddy@gov.in",
+    "phone": "9876543221",
+    "aadhaar": "895421676002",
+    "joined": "15 Feb 2022",
+    "status": "Active",
+    "dept": "Welfare Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [],
+    "cases": 0,
+    "sla": 100,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1982-04-12",
+    "gender": "Female"
+  },
+  {
+    "id": "EMP-004",
+    "name": "Priya Nair",
+    "role": "officer",
+    "title": "Welfare Officer",
+    "email": "p.nair@gov.in",
+    "phone": "9876543213",
+    "aadhaar": "895421675004",
+    "joined": "01 Aug 2022",
+    "status": "Active",
+    "dept": "Welfare Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Welfare / Subsidy Scheme",
+      "Scholarship Application"
+    ],
+    "cases": 22,
+    "sla": 93,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1992-07-04",
+    "gender": "Female"
+  },
+  {
+    "id": "EMP-005",
+    "name": "Kiran Babu",
+    "role": "officer",
+    "title": "Welfare Officer",
+    "email": "k.babu@gov.in",
+    "phone": "9876543214",
+    "aadhaar": "895421675005",
+    "joined": "05 Nov 2023",
+    "status": "Active",
+    "dept": "Welfare Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Welfare / Subsidy Scheme",
+      "Scholarship Application"
+    ],
+    "cases": 31,
+    "sla": 88,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1993-02-17",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-006",
+    "name": "Aruna Kumari",
+    "role": "officer",
+    "title": "Welfare Officer",
+    "email": "a.kumari@gov.in",
+    "phone": "9876543246",
+    "aadhaar": "895421675013",
+    "joined": "25 Jan 2024",
+    "status": "Active",
+    "dept": "Welfare Department",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Welfare / Subsidy Scheme",
+      "Scholarship Application"
+    ],
+    "cases": 25,
+    "sla": 94,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1989-07-07",
+    "gender": "Female"
+  },
+  {
+    "id": "SUP-003",
+    "name": "Lakshmi Narayana",
+    "role": "supervisor",
+    "title": "Zonal Commissioner",
+    "email": "l.narayana@gov.in",
+    "phone": "9876543222",
+    "aadhaar": "895421676003",
+    "joined": "22 May 2021",
+    "status": "Active",
+    "dept": "Municipal Corporation",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [],
+    "cases": 0,
+    "sla": 100,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1978-12-05",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-007",
+    "name": "Mohan Das",
+    "role": "officer",
+    "title": "Sanitary Inspector",
+    "email": "m.das@gov.in",
+    "phone": "9876543215",
+    "aadhaar": "895421675006",
+    "joined": "10 Feb 2023",
+    "status": "Active",
+    "dept": "Municipal Corporation",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Event Permission",
+      "Vendor License",
+      "Death Certificate"
+    ],
+    "cases": 14,
+    "sla": 92,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1991-05-20",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-008",
+    "name": "Praveen Kumar",
+    "role": "officer",
+    "title": "Sanitary Inspector",
+    "email": "p.kumar@gov.in",
+    "phone": "9876543254",
+    "aadhaar": "895421675021",
+    "joined": "01 Mar 2024",
+    "status": "Active",
+    "dept": "Municipal Corporation",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Event Permission",
+      "Vendor License",
+      "Death Certificate"
+    ],
+    "cases": 10,
+    "sla": 98,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1995-03-15",
+    "gender": "Male"
+  },
+  {
+    "id": "EMP-009",
+    "name": "Rekha Singh",
+    "role": "officer",
+    "title": "Sanitary Inspector",
+    "email": "r.singh@gov.in",
+    "phone": "9876543255",
+    "aadhaar": "895421675022",
+    "joined": "05 Mar 2024",
+    "status": "Active",
+    "dept": "Municipal Corporation",
+    "jurisdiction": "Secunderabad",
+    "password": "password123",
+    "services": [
+      "Event Permission",
+      "Vendor License",
+      "Death Certificate"
+    ],
+    "cases": 11,
+    "sla": 96,
+    "securityQuestion": "In what city were you born?",
+    "securityAnswer": "Hyderabad",
+    "address": "Secunderabad",
+    "state": "Telangana",
+    "district": "Hyderabad",
+    "mandal": "Secunderabad",
+    "pincode": "500003",
+    "dob": "1994-04-16",
+    "gender": "Female"
+  }
 ];
 
-const MOCK_PENDING_OFFICERS = [ 
+const MOCK_PENDING_OFFICERS = [
   { id: 'EMP-039', name: 'Vijay Teja', title: 'VRO', dept: 'Revenue Department', jurisdiction: 'Malkajgiri', applied: '24 Jan 2025', docs: ['Employee ID', 'Appointment Order'], email: 'v.teja@gov.in', phone: '9876549901', services: ['Income Certificate'] },
   { id: 'EMP-040', name: 'Lakshmi Devi', title: 'Welfare Officer', dept: 'Welfare Department', jurisdiction: 'Warangal', applied: '25 Jan 2025', docs: ['Employee ID', 'Training Certificate'], email: 'l.devi@gov.in', phone: '9876549902', services: ['Welfare / Subsidy Scheme'] },
-  { id: 'EMP-041', name: 'Arjun Reddy', title: 'RI', dept: 'Revenue Department', jurisdiction: 'Karimnagar', applied: '26 Jan 2025', docs: ['Employee ID', 'Appointment Order', 'NOC'], email: 'a.reddy@gov.in', phone: '9876549903', services: ['Caste Certificate'] },
+  { id: 'EMP-041', name: 'Arjun Reddy', title: 'VRO', dept: 'Revenue Department', jurisdiction: 'Karimnagar', applied: '26 Jan 2025', docs: ['Employee ID', 'Appointment Order', 'NOC'], email: 'a.reddy@gov.in', phone: '9876549903', services: ['Caste Certificate'] },
 ];
 
 const MOCK_SERVICES = [
@@ -103,242 +551,1056 @@ const MOCK_SERVICES = [
   { id: 'SVC-010', name: 'Death Certificate', cat: 'Certificate', dept: 'Municipal Corporation', sla: 3, fee: 20, feeLabel: '₹20', desc: 'Official certificate for registering death.', docs: ['Aadhaar Card', 'Hospital Record'], icon: 'cert', stages: 2, status: 'Inactive', apps: 0, color: 'var(--slate-400)' },
 ];
 
+const MOCK_WORKFLOW_CONFIG = [
+  {
+    id: 1,
+    service: 'Income Certificate',
+    dept: 'Revenue Department',
+    status: 'Active',
+    stages: [
+      { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Field Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
+      { name: 'Final Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 2,
+    service: 'Caste Certificate',
+    dept: 'Revenue Department',
+    status: 'Active',
+    stages: [
+      { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Field Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
+      { name: 'Final Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 3,
+    service: 'Residence Certificate',
+    dept: 'Revenue Department',
+    status: 'Active',
+    stages: [
+      { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Field Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
+      { name: 'Final Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 4,
+    service: 'Welfare / Subsidy Scheme',
+    dept: 'Welfare Department',
+    status: 'Active',
+    stages: [
+      { name: 'Eligibility Check', role: 'Welfare Officer', days: 3, type: 'officer' },
+      { name: 'Document Verification', role: 'Welfare Officer', days: 3, type: 'officer' },
+      { name: 'Field Verification', role: 'Dept. Officer (RI)', days: 4, type: 'officer' },
+      { name: 'Final Approval & Disbursement', role: 'Dept. Supervisor (MRO)', days: 4, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 5,
+    service: 'Scholarship Application',
+    dept: 'Welfare Department',
+    status: 'Active',
+    stages: [
+      { name: 'Eligibility Screening', role: 'Welfare Officer', days: 5, type: 'officer' },
+      { name: 'Document Review', role: 'Welfare Officer', days: 5, type: 'officer' },
+      { name: 'Institute Verification', role: 'Dept. Officer (RI)', days: 5, type: 'officer' },
+      { name: 'Scholarship Approval', role: 'Dept. Supervisor (MRO)', days: 6, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 6,
+    service: 'Event Permission',
+    dept: 'Municipal Corporation',
+    status: 'Active',
+    stages: [
+      { name: 'Application Review', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Approval & Issue', role: 'Dept. Supervisor (MRO)', days: 3, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 7,
+    service: 'Vendor License',
+    dept: 'Municipal Corporation',
+    status: 'Active',
+    stages: [
+      { name: 'Application Review', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Premises Inspection', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
+      { name: 'License Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 8,
+    service: 'Record Correction',
+    dept: 'Revenue Department',
+    status: 'Active',
+    stages: [
+      { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 3, type: 'officer' },
+      { name: 'Gazette Verification', role: 'Dept. Officer (RI)', days: 4, type: 'officer' },
+      { name: 'Record Update Approval', role: 'Dept. Supervisor (MRO)', days: 3, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 9,
+    service: 'Marriage Certificate',
+    dept: 'Revenue Department',
+    status: 'Draft',
+    stages: [
+      { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
+      { name: 'Witness Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
+      { name: 'Certificate Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+  {
+    id: 10,
+    service: 'Death Certificate',
+    dept: 'Municipal Corporation',
+    status: 'Inactive',
+    stages: [
+      { name: 'Hospital Record Verification', role: 'Dept. Officer (VRO)', days: 1, type: 'officer' },
+      { name: 'Certificate Issuance', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
+    ]
+  },
+];
+
 const MOCK_APPLICATIONS = [
   {
-    id: 'APP-1001', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'approved', submittedDate: '2023-11-10', slaDate: '2023-11-17',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-11-10T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Certificate Issued', date: '2023-11-15T11:00:00', actor: 'System', note: 'Certificate available for download.' }
+    'id': 'APP-3100',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-001',
+    'officerName': 'Suresh Reddy',
+    'dept': 'Revenue Department',
+    'status': 'completed',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.073Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Aadhaar_Card.pdf', type: 'Identity Proof', date: '2023-11-10', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-28T09:27:27.082Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Suresh Reddy',
+        'date': '2026-04-29T09:27:27.082Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to approved',
+        'date': '2026-04-30T09:27:27.083Z',
+        'actor': 'Suresh Reddy',
+        'note': 'Documents verified. Approved.'
+      },
+      {
+        'action': 'Supervisor Final Approval',
+        'date': '2026-05-01T09:27:27.083Z',
+        'actor': 'Deepak Verma',
+        'note': 'Approved for certificate generation'
+      },
+      {
+        'action': 'Certificate Generated',
+        'date': '2026-05-02T09:27:27.083Z',
+        'actor': 'System',
+        'note': ''
+      }
+    ],
+    'submittedDate': '2026-04-28T09:27:27.082Z',
+    'slaDate': '2026-05-05T09:27:27.082Z'
   },
   {
-    id: 'APP-1002', serviceId: 'SVC-003', serviceName: 'Residence Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-10-05', slaDate: '2023-10-12',
-    fee: 30, paymentMethod: 'Card', paymentStatus: 'paid', remarks: 'Completed.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-10-05T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Service Completed', date: '2023-10-10T11:00:00', actor: 'System', note: 'Service delivered.' }
+    'id': 'APP-3101',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-002',
+    'officerName': 'Anita Sharma',
+    'dept': 'Revenue Department',
+    'status': 'escalated',
+    'remarks': 'SLA Exceeded',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.083Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Electricity_Bill.pdf', type: 'Address Proof', date: '2023-10-05', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-23T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Anita Sharma',
+        'date': '2026-04-24T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'SLA Breached',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Officer failed to act within SLA'
+      },
+      {
+        'action': 'Supervisor Warning Sent',
+        'date': '2026-05-01T09:27:27.084Z',
+        'actor': 'Deepak Verma',
+        'note': 'Please process immediately'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
+    ],
+    'submittedDate': '2026-04-23T09:27:27.084Z',
+    'slaDate': '2026-04-30T09:27:27.084Z'
   },
   {
-    id: 'APP-1003', serviceId: 'SVC-006', serviceName: 'Event Permission', serviceType: 'permission',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Municipal Corporation', status: 'approved', submittedDate: '2023-09-12', slaDate: '2023-09-17',
-    fee: 200, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-09-12T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Approved', date: '2023-09-15T11:00:00', actor: 'System', note: 'Event permitted.' }
+    'id': 'APP-3102',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-004',
+    'officerName': 'Priya Nair',
+    'dept': 'Welfare Department',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Event_Plan.pdf', type: 'Details', date: '2023-09-12', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-18T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Priya Nair',
+        'date': '2026-04-19T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to query',
+        'date': '2026-04-21T09:27:27.084Z',
+        'actor': 'Priya Nair',
+        'note': 'Please provide missing affidavit'
+      },
+      {
+        'action': 'SLA Breached (Citizen)',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Citizen did not respond'
+      },
+      {
+        'action': 'Query Responded',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': 'Affidavit uploaded'
+      },
+      {
+        'action': 'SLA Reset',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'SLA restarted after response'
+      }
+    ],
+    'submittedDate': '2026-04-18T09:27:27.084Z',
+    'slaDate': '2026-05-08T09:27:27.084Z'
   },
   {
-    id: 'APP-1004', serviceId: 'SVC-008', serviceName: 'Record Correction', serviceType: 'correction',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-08-20', slaDate: '2023-08-30',
-    fee: 100, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Record Corrected.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-08-20T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Completed', date: '2023-08-25T11:00:00', actor: 'System', note: 'Correction done.' }
+    'id': 'APP-3103',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-005',
+    'officerName': 'Kiran Babu',
+    'dept': 'Welfare Department',
+    'status': 'rejected',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Correction_Form.pdf', type: 'Form', date: '2023-08-20', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-25T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Kiran Babu',
+        'date': '2026-04-26T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to rejected',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Kiran Babu',
+        'note': 'Invalid documents'
+      }
+    ],
+    'submittedDate': '2026-04-25T09:27:27.084Z',
+    'slaDate': '2026-05-04T09:27:27.084Z'
   },
   {
-    id: 'APP-1005', serviceId: 'SVC-004', serviceName: 'Welfare / Subsidy Scheme', serviceType: 'welfare',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-004', officerName: 'Priya Nair',
-    dept: 'Welfare Department', status: 'approved', submittedDate: '2023-07-15', slaDate: '2023-07-29',
-    fee: 0, paymentMethod: 'free', paymentStatus: 'waived', remarks: 'Approved.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-07-15T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Approved', date: '2023-07-25T11:00:00', actor: 'System', note: 'Scheme approved.' }
+    'id': 'APP-3104',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-007',
+    'officerName': 'Mohan Das',
+    'dept': 'Municipal Corporation',
+    'status': 'escalated',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Income_Cert.pdf', type: 'Proof', date: '2023-07-15', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Mohan Das',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
+    ],
+    'submittedDate': '2026-04-27T09:27:27.084Z',
+    'slaDate': '2026-05-02T09:27:27.084Z'
   },
   {
-    id: 'APP-1006', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'approved', submittedDate: '2023-06-10', slaDate: '2023-06-17',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Approved.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-06-10T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Certificate Issued', date: '2023-06-15T11:00:00', actor: 'System', note: 'Certificate issued.' }
+    'id': 'APP-3105',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-008',
+    'officerName': 'Praveen Kumar',
+    'dept': 'Municipal Corporation',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Salary_Slip.pdf', type: 'Proof', date: '2023-06-10', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'Ravi Kumar',
+        'note': ''
+      },
+      {
+        'action': 'Payment Failed / Double Deducted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Praveen Kumar',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
+    ],
+    'submittedDate': '2026-04-29T09:27:27.084Z',
+    'slaDate': '2026-05-06T09:27:27.084Z'
   },
   {
-    id: 'APP-1007', serviceId: 'SVC-003', serviceName: 'Residence Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'completed', submittedDate: '2023-05-05', slaDate: '2023-05-12',
-    fee: 30, paymentMethod: 'UPI', paymentStatus: 'paid', remarks: 'Completed.',
-    timeline: [
-      { action: 'Application Submitted', date: '2023-05-05T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Completed', date: '2023-05-10T11:00:00', actor: 'System', note: 'Service completed.' }
+    'id': 'APP-3106',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-003',
+    'officerName': 'Ravi Teja',
+    'dept': 'Revenue Department',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Aadhaar.pdf', type: 'ID', date: '2023-05-05', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-18T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Ravi Teja',
+        'date': '2026-04-19T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to query',
+        'date': '2026-04-21T09:27:27.084Z',
+        'actor': 'Ravi Teja',
+        'note': 'Please provide missing affidavit'
+      },
+      {
+        'action': 'SLA Breached (Citizen)',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Citizen did not respond'
+      },
+      {
+        'action': 'Query Responded',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': 'Affidavit uploaded'
+      },
+      {
+        'action': 'SLA Reset',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'SLA restarted after response'
+      }
+    ],
+    'submittedDate': '2026-04-18T09:27:27.084Z',
+    'slaDate': '2026-05-08T09:27:27.084Z'
   },
   {
-    id: 'APP-2488', serviceId: 'SVC-002', serviceName: 'Caste Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'escalated', submittedDate: '2025-01-10', slaDate: '2025-01-17',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid',
-    remarks: 'Under verification delayed.',
-    timeline: [
-      { action: 'Application Submitted', date: '2025-01-10T09:00:00', actor: 'Ravi Kumar', note: 'Citizen submitted application.' },
-      { action: 'Under Verification', date: '2025-01-12T14:30:00', actor: 'Suresh Reddy', note: 'Application delayed at officer review stage.' }
+    'id': 'APP-3107',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-001',
+    'officerName': 'Suresh Reddy',
+    'dept': 'Revenue Department',
+    'status': 'rejected',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [{ name: 'Aadhaar.pdf', type: 'ID', date: '2025-01-10', status: 'verified' }]
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-25T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Suresh Reddy',
+        'date': '2026-04-26T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to rejected',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Suresh Reddy',
+        'note': 'Invalid documents'
+      }
+    ],
+    'submittedDate': '2026-04-25T09:27:27.084Z',
+    'slaDate': '2026-05-04T09:27:27.084Z'
   },
   {
-    id: 'APP-2456', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'approved', submittedDate: '2025-01-15', slaDate: '2025-01-22',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid',
-    remarks: 'All documents verified. Certificate issued.',
-    timeline: [
-      { action: 'Application Submitted', date: '2025-01-15T10:30:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Payment Confirmed', date: '2025-01-15T10:31:00', actor: 'System', note: '₹50 via UPI. TXN: TXN8847291' },
-      { action: 'Documents Verified', date: '2025-01-16T14:15:00', actor: 'Suresh Reddy', note: 'All docs verified.' },
-      { action: 'Officer Approved', date: '2025-01-17T11:00:00', actor: 'Suresh Reddy', note: 'Application approved.' },
-      { action: 'Certificate Issued', date: '2025-01-18T09:45:00', actor: 'System', note: 'Certificate available for download.' },
+    'id': 'APP-3108',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-006',
+    'officerName': 'Aruna Kumari',
+    'dept': 'Welfare Department',
+    'status': 'escalated',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2025-01-15', status: 'verified' },
-      { name: 'Ration_Card.jpg', type: 'Address Proof', date: '2025-01-15', status: 'verified' },
-      { name: 'Salary_Slip.pdf', type: 'Income Proof', date: '2025-01-15', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Aruna Kumari',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-27T09:27:27.084Z',
+    'slaDate': '2026-05-02T09:27:27.084Z'
   },
   {
-    id: 'APP-2489', serviceId: 'SVC-002', serviceName: 'Caste Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'query', submittedDate: '2026-03-21', slaDate: '2026-04-04',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid',
-    remarks: 'Query raised - need updated community certificate.',
-    timeline: [
-      { action: 'Application Submitted', date: '2026-03-21T10:15:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Payment Confirmed', date: '2026-03-21T10:16:00', actor: 'System', note: '₹50 via UPI.' },
-      { action: 'Documents Verified', date: '2026-03-22T15:30:00', actor: 'Suresh Reddy', note: 'Most docs verified.' },
-      { action: 'Query Raised', date: '2026-03-24T11:00:00', actor: 'Suresh Reddy', note: 'Please upload updated community certificate.' },
+    'id': 'APP-3109',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-004',
+    'officerName': 'Priya Nair',
+    'dept': 'Welfare Department',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2025-01-20', status: 'verified' },
-      { name: 'Ration_Card.jpg', type: 'Address Proof', date: '2025-01-20', status: 'verified' },
-      { name: 'Community_Cert.pdf', type: 'Community Proof', date: '2025-01-20', status: 'query' },
-      { name: 'Caste_Decl.pdf', type: 'Self Declaration', date: '2025-01-20', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Payment Failed / Double Deducted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Priya Nair',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-29T09:27:27.084Z',
+    'slaDate': '2026-05-06T09:27:27.084Z'
   },
   {
-    id: 'APP-2398', serviceId: 'SVC-004', serviceName: 'PM Kisan Welfare Scheme', serviceType: 'welfare',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-002', officerName: 'Anita Sharma',
-    dept: 'Welfare Department', status: 'approved', submittedDate: '2024-12-05', slaDate: '2024-12-19',
-    fee: 0, paymentMethod: 'free', paymentStatus: 'waived',
-    remarks: 'Approved. First installment credited.',
-    timeline: [
-      { action: 'Application Submitted', date: '2024-12-05T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Eligibility Verified', date: '2024-12-08T14:00:00', actor: 'Anita Sharma', note: 'Income and land records eligible.' },
-      { action: 'Approved', date: '2024-12-15T16:00:00', actor: 'Anita Sharma', note: 'Application approved.' },
-      { action: 'Benefit Disbursed', date: '2024-12-18T08:00:00', actor: 'System', note: '₹2,000 credited to bank account.' },
+    'id': 'APP-3110',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-009',
+    'officerName': 'Rekha Singh',
+    'dept': 'Municipal Corporation',
+    'status': 'completed',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2024-12-05', status: 'verified' },
-      { name: 'Land_Records.pdf', type: 'Land Proof', date: '2024-12-05', status: 'verified' },
-      { name: 'Bank_Passbook.jpg', type: 'Bank Proof', date: '2024-12-05', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Rekha Singh',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to approved',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'Rekha Singh',
+        'note': 'Documents verified. Approved.'
+      },
+      {
+        'action': 'Supervisor Final Approval',
+        'date': '2026-05-01T09:27:27.084Z',
+        'actor': 'Lakshmi Narayana',
+        'note': 'Approved for certificate generation'
+      },
+      {
+        'action': 'Certificate Generated',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-28T09:27:27.084Z',
+    'slaDate': '2026-05-05T09:27:27.084Z'
   },
   {
-    id: 'APP-2301', serviceId: 'SVC-006', serviceName: 'Event Permission', serviceType: 'permission',
-    citizenId: 'CIT-002', citizenName: 'Meena Devi', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Municipal Corporation', status: 'rejected', submittedDate: '2024-11-10', slaDate: '2024-11-15',
-    fee: 200, paymentMethod: 'card', paymentStatus: 'paid',
-    remarks: 'Rejected - venue in restricted zone.',
-    timeline: [
-      { action: 'Application Submitted', date: '2024-11-10T10:00:00', actor: 'Meena Devi', note: 'Application submitted.' },
-      { action: 'Field Inspection', date: '2024-11-12T14:00:00', actor: 'Suresh Reddy', note: 'Venue inspection conducted.' },
-      { action: 'Rejected', date: '2024-11-14T16:00:00', actor: 'Suresh Reddy', note: 'Venue in restricted zone.' },
+    'id': 'APP-3111',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-007',
+    'officerName': 'Mohan Das',
+    'dept': 'Municipal Corporation',
+    'status': 'escalated',
+    'remarks': 'SLA Exceeded',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2024-11-10', status: 'verified' },
-      { name: 'Event_Letter.pdf', type: 'Event Details', date: '2024-11-10', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-23T09:27:27.084Z',
+        'actor': 'Sunita Verma',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Mohan Das',
+        'date': '2026-04-24T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'SLA Breached',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Officer failed to act within SLA'
+      },
+      {
+        'action': 'Supervisor Warning Sent',
+        'date': '2026-05-01T09:27:27.084Z',
+        'actor': 'Lakshmi Narayana',
+        'note': 'Please process immediately'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-23T09:27:27.084Z',
+    'slaDate': '2026-04-30T09:27:27.084Z'
   },
   {
-    id: 'APP-2490', serviceId: 'SVC-001', serviceName: 'Income Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-003', citizenName: 'Gopal Rao', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'under-review', submittedDate: '2025-01-22', slaDate: '2025-01-29',
-    fee: 50, paymentMethod: 'UPI', paymentStatus: 'paid',
-    remarks: '',
-    timeline: [
-      { action: 'Application Submitted', date: '2025-01-22T09:00:00', actor: 'Gopal Rao', note: 'Application submitted online.' },
+    'id': 'APP-3112',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-002',
+    'officerName': 'Anita Sharma',
+    'dept': 'Revenue Department',
+    'status': 'escalated',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar_Card.pdf', type: 'Identity Proof', date: '2025-01-22', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Anita Sharma',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-27T09:27:27.084Z',
+    'slaDate': '2026-05-02T09:27:27.084Z'
   },
   {
-    id: 'APP-2399', serviceId: 'SVC-004', serviceName: 'Welfare / Subsidy Scheme', serviceType: 'welfare',
-    citizenId: 'CIT-004', citizenName: 'Sunita Verma', officerId: 'EMP-004', officerName: 'Priya Nair',
-    dept: 'Welfare Department', status: 'under-review', submittedDate: '2025-01-10', slaDate: '2025-01-24',
-    fee: 0, paymentMethod: 'free', paymentStatus: 'waived',
-    remarks: '',
-    timeline: [
-      { action: 'Application Submitted', date: '2025-01-10T10:00:00', actor: 'Sunita Verma', note: 'Application received.' },
+    'id': 'APP-3113',
+    'serviceId': 'SVC-001',
+    'serviceName': 'Income Certificate',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-003',
+    'officerName': 'Ravi Teja',
+    'dept': 'Revenue Department',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2025-01-10', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Payment Failed / Double Deducted',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Ravi Teja',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-29T09:27:27.084Z',
+    'slaDate': '2026-05-06T09:27:27.084Z'
   },
   {
-    id: 'APP-2510', serviceId: 'SVC-003', serviceName: 'Residence Certificate', serviceType: 'certificate',
-    citizenId: 'CIT-001', citizenName: 'Ravi Kumar', officerId: 'EMP-001', officerName: 'Suresh Reddy',
-    dept: 'Revenue Department', status: 'under-review', submittedDate: '2026-03-11', slaDate: '2026-04-04',
-    fee: 30, paymentMethod: 'UPI', paymentStatus: 'paid',
-    remarks: 'Under officer review.',
-    timeline: [
-      { action: 'Application Submitted', date: '2026-03-11T09:00:00', actor: 'Ravi Kumar', note: 'Application received.' },
-      { action: 'Payment Confirmed', date: '2026-03-11T09:01:00', actor: 'System', note: '₹30 via UPI.' },
-      { action: 'Under Review', date: '2026-03-12T11:00:00', actor: 'Suresh Reddy', note: 'Documents being reviewed.' },
+    'id': 'APP-3114',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-005',
+    'officerName': 'Kiran Babu',
+    'dept': 'Welfare Department',
+    'status': 'completed',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar Card.pdf', type: 'Identity Proof', date: '2025-01-25', status: 'verified' },
-      { name: 'Electricity_Bill.pdf', type: 'Address Proof', date: '2025-01-25', status: 'pending' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Kiran Babu',
+        'date': '2026-04-29T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to approved',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'Kiran Babu',
+        'note': 'Documents verified. Approved.'
+      },
+      {
+        'action': 'Supervisor Final Approval',
+        'date': '2026-05-01T09:27:27.084Z',
+        'actor': 'Kavitha Reddy',
+        'note': 'Approved for certificate generation'
+      },
+      {
+        'action': 'Certificate Generated',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-28T09:27:27.084Z',
+    'slaDate': '2026-05-05T09:27:27.084Z'
   },
   {
-    id: 'APP-2254',
-    serviceId: 'SVC-007',
-    serviceName: 'Vendor License',
-    serviceType: 'permission',
-    citizenId: 'CIT-002',
-    citizenName: 'Meena Devi',
-    officerId: 'EMP-003',
-    officerName: 'Ramesh Kumar',
-    dept: 'Municipal Corporation',
-    status: 'approved',
-    submittedDate: '2024-11-20',
-    slaDate: '2024-11-27',
-    fee: 500,
-    paymentMethod: 'UPI',
-    paymentStatus: 'paid',
-    remarks: 'Approved after grievance resolution.',
-    timeline: [
-      { action: 'Application Submitted', date: '2024-11-20T10:00:00', actor: 'Meena Devi', note: 'New vendor license requested.' },
-      { action: 'Payment Confirmed', date: '2024-11-20T10:05:00', actor: 'System', note: '₹500 via UPI.' },
-      { action: 'Officer Rejected', date: '2024-12-05T14:30:00', actor: 'Ramesh Kumar', note: 'Rejected for incomplete documentation.' },
-      { action: 'Application Reopened', date: '2024-12-12T11:00:00', actor: 'Priya Nair', note: 'Reopened following grievance review (GRV-043).' },
-      { action: 'Documents Verified', date: '2024-12-15T09:00:00', actor: 'Ramesh Kumar', note: 'NOC successfully re-uploaded.' },
-      { action: 'License Issued', date: '2024-12-18T15:00:00', actor: 'Municipal Corporation', note: 'Vendor license granted.' },
+    'id': 'APP-3115',
+    'serviceId': 'SVC-004',
+    'serviceName': 'Welfare / Subsidy Scheme',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-006',
+    'officerName': 'Aruna Kumari',
+    'dept': 'Welfare Department',
+    'status': 'escalated',
+    'remarks': 'SLA Exceeded',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
     ],
-    documents: [
-      { name: 'Aadhaar_Card.pdf', type: 'Identity Proof', date: '2024-11-20', status: 'verified' },
-      { name: 'Shop_Photo.jpg', type: 'Shop Image', date: '2024-11-20', status: 'verified' },
-      { name: 'Agreement.pdf', type: 'Rent Agreement', date: '2024-11-20', status: 'verified' },
-      { name: 'NOC_Landlord.pdf', type: 'NOC', date: '2024-12-14', status: 'verified' },
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-23T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Aruna Kumari',
+        'date': '2026-04-24T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'SLA Breached',
+        'date': '2026-04-30T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Officer failed to act within SLA'
+      },
+      {
+        'action': 'Supervisor Warning Sent',
+        'date': '2026-05-01T09:27:27.084Z',
+        'actor': 'Kavitha Reddy',
+        'note': 'Please process immediately'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      }
     ],
+    'submittedDate': '2026-04-23T09:27:27.084Z',
+    'slaDate': '2026-04-30T09:27:27.084Z'
   },
+  {
+    'id': 'APP-3116',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-008',
+    'officerName': 'Praveen Kumar',
+    'dept': 'Municipal Corporation',
+    'status': 'under-review',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
+    ],
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-18T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Praveen Kumar',
+        'date': '2026-04-19T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to query',
+        'date': '2026-04-21T09:27:27.084Z',
+        'actor': 'Praveen Kumar',
+        'note': 'Please provide missing affidavit'
+      },
+      {
+        'action': 'SLA Breached (Citizen)',
+        'date': '2026-04-28T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'Citizen did not respond'
+      },
+      {
+        'action': 'Query Responded',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': 'Affidavit uploaded'
+      },
+      {
+        'action': 'SLA Reset',
+        'date': '2026-05-02T09:27:27.084Z',
+        'actor': 'System',
+        'note': 'SLA restarted after response'
+      }
+    ],
+    'submittedDate': '2026-04-18T09:27:27.084Z',
+    'slaDate': '2026-05-08T09:27:27.084Z'
+  },
+  {
+    'id': 'APP-3117',
+    'serviceId': 'SVC-007',
+    'serviceName': 'Vendor License',
+    'serviceType': 'certificate',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'jurisdiction': 'Secunderabad',
+    'officerId': 'EMP-009',
+    'officerName': 'Rekha Singh',
+    'dept': 'Municipal Corporation',
+    'status': 'rejected',
+    'remarks': '',
+    'fee': 50,
+    'paymentStatus': 'paid',
+    'documents': [
+      {
+        'name': 'Aadhaar Card.pdf',
+        'type': 'Identity Proof',
+        'date': '2026-05-03T09:27:27.084Z',
+        'status': 'verified'
+      }
+    ],
+    'timeline': [
+      {
+        'action': 'Application Submitted',
+        'date': '2026-04-25T09:27:27.084Z',
+        'actor': 'Kaveri Devi',
+        'note': ''
+      },
+      {
+        'action': 'Assigned to Rekha Singh',
+        'date': '2026-04-26T09:27:27.084Z',
+        'actor': 'System',
+        'note': ''
+      },
+      {
+        'action': 'Status updated to rejected',
+        'date': '2026-04-27T09:27:27.084Z',
+        'actor': 'Rekha Singh',
+        'note': 'Invalid documents'
+      }
+    ],
+    'submittedDate': '2026-04-25T09:27:27.084Z',
+    'slaDate': '2026-05-04T09:27:27.084Z'
+  }
 ];
 
 // ── Grievance statuses ──
@@ -350,218 +1612,408 @@ const MOCK_APPLICATIONS = [
 // 'safe' | 'warn' | 'breach'
 
 const MOCK_GRIEVANCES = [
-
-  /* ════════════ ACTIVE GRIEVANCES (shown on Dashboard) ════════════ */
-
   {
-    id: 'GRV-051', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'GRV-001', officerName: 'Nalini Rao',
-    category: 'delay', subject: 'Caste Certificate delayed for 12 days',
-    description: 'My application has been stuck under verification with the assigned officer. The SLA is breached and I am reporting this delay.',
-    relatedAppId: 'APP-2488', status: 'open', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-28', lastUpdated: '2025-01-28',
-    history: [
-      { action: 'Grievance Raised', date: '2025-01-28T10:00:00', actor: 'Ravi Kumar', note: 'Citizen raised grievance due to delay at officer level.' },
-      { action: 'Assigned to Grievance Officer', date: '2025-01-28T10:05:00', actor: 'System', note: 'Assigned to Nalini Rao for investigation.' },
-    ],
-  },
-
-  {
-    id: 'GRV-049', citizenId: 'CIT-002', citizenName: 'Meena Devi',
-    officerId: 'GRV-001', officerName: 'Nalini Rao',
-    category: 'delay', subject: 'Event permission pending 28 days — event is next week',
-    description: 'I applied for event permission 28 days ago. The SLA is 5 days. I visited the office three times and each time told to come back later. My event is scheduled for next week and I risk losing my deposit.',
-    relatedAppId: 'APP-2301', status: 'investigating', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-20', lastUpdated: '2025-01-25',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-20T09:00:00', actor: 'Meena Devi', note: 'Event permission pending 23 days past SLA.' },
-      { action: 'Assigned to Officer', date: '2025-01-20T09:05:00', actor: 'System', note: 'Assigned to Nalini Rao.' },
-      { action: 'Under Investigation', date: '2025-01-25T11:00:00', actor: 'Nalini Rao', note: 'Investigating with Municipal Corporation.' },
-    ],
-  },
-  {
-    id: 'GRV-048', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'GRV-001', officerName: 'Nalini Rao',
-    category: 'delay', subject: 'Delay in Caste Certificate Processing',
-    description: 'My caste certificate application (APP-2489) has been pending for over a week with no update. The SLA deadline has passed and no communication has been received from the officer.',
-    relatedAppId: 'APP-2489', status: 'investigating', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-22', lastUpdated: '2025-01-24',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-22T14:00:00', actor: 'Ravi Kumar', note: 'Complaint about delay in caste certificate.' },
-      { action: 'Assigned to Officer', date: '2025-01-22T14:30:00', actor: 'System', note: 'Assigned to Nalini Rao (Grievance Officer).' },
-      { action: 'Under Investigation', date: '2025-01-24T10:00:00', actor: 'Nalini Rao', note: 'Investigating the delay with Revenue Department.' },
-    ],
+    'id': 'GRV-060',
+    'category': 'delay',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'relatedAppId': 'APP-3101',
+    'description': 'Application delayed past SLA.',
+    'filedDate': '2026-05-01T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Delay complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Checking SLA'
+      },
+      {
+        'action': 'Warning Issued to Officer',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Warning issued for SLA breach'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-03T09:27:27.084Z',
+        'note': 'Grievance escalated'
+      }
+    ]
   },
   {
-    id: 'GRV-047', citizenId: 'CIT-003', citizenName: 'Gopal Rao',
-    officerId: 'GRV-001', officerName: 'Nalini Rao',
-    category: 'misconduct', subject: 'Officer demanded informal payment for processing',
-    description: 'When I visited the Revenue Office to inquire about my application, the officer (OFF-067) implied that the processing would be faster if I paid an "informal facilitation fee". I refused and want to formally report this misconduct.',
-    relatedAppId: 'APP-2490', status: 'open', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-18', lastUpdated: '2025-01-18',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-18T16:00:00', actor: 'Gopal Rao', note: 'Formal bribery allegation against OFF-067.' },
-      { action: 'Assigned to Officer', date: '2025-01-18T16:10:00', actor: 'System', note: 'Assigned to Nalini Rao (Grievance Officer). CRITICAL PRIORITY.' },
-    ],
+    'id': 'GRV-061',
+    'category': 'rejection',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'relatedAppId': 'APP-3103',
+    'description': 'Officer rejected application wrongly.',
+    'filedDate': '2026-04-28T09:27:27.084Z',
+    'status': 'open',
+    'priority': 'medium',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-28T09:27:27.084Z',
+        'note': 'Rejection dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Reviewing documents'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Escalated to Appellate Authority for review'
+      }
+    ]
   },
   {
-    id: 'GRV-046', citizenId: 'CIT-004', citizenName: 'Sunita Verma',
-    officerId: 'GRV-001', officerName: 'Nalini Rao',
-    category: 'misconduct', subject: 'Repeated harassment at Welfare Department office',
-    description: 'I have been to the Welfare Department five times for my PM Kisan application. Each time a different officer handles it and says the previous officer made an error. I have been asked to re-submit documents three times already.',
-    relatedAppId: 'APP-2399', status: 'escalated', priority: 'high', slaStatus: 'breach',
-    filedDate: '2025-01-10', lastUpdated: '2025-01-26',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-10T10:00:00', actor: 'Sunita Verma', note: 'Complaint about repeated document re-submission demands.' },
-      { action: 'Assigned to Officer', date: '2025-01-10T10:05:00', actor: 'System', note: 'Assigned to Nalini Rao.' },
-      { action: 'Under Investigation', date: '2025-01-15T11:00:00', actor: 'Nalini Rao', note: 'Reviewing case history with Welfare Department.' },
-      { action: 'Escalated to Supervisor', date: '2025-01-26T14:00:00', actor: 'Nalini Rao', note: 'Systemic issue found — escalating to Dept. Supervisor for corrective action.' },
-    ],
-  },
-
-  /* ════════════ TERMINAL GRIEVANCES (shown on History page) ════════════ */
-
-  {
-    id: 'GRV-045', citizenId: 'CIT-005', citizenName: 'Arun Prasad',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'delay', subject: 'Income certificate delayed by 15 days past SLA',
-    description: 'Income certificate application pending for 22 days — SLA is 7 days. No communication received.',
-    relatedAppId: 'APP-2415', status: 'resolved', priority: 'medium', slaStatus: 'warn',
-    filedDate: '2025-01-05', lastUpdated: '2025-01-12', closedDate: '2025-01-12', daysTaken: 7,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Confirmed officer was on leave without handover. Application reassigned and processed in 24 hours. Citizen notified.',
-    history: [
-      { action: 'Grievance Filed', date: '2025-01-05T09:00:00', actor: 'Arun Prasad', note: 'Delay in income certificate.' },
-      { action: 'Assigned to Officer', date: '2025-01-05T09:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2025-01-08T10:00:00', actor: 'Priya Nair', note: 'Found officer on leave without handover.' },
-      { action: 'Resolved', date: '2025-01-12T16:00:00', actor: 'Priya Nair', note: 'Application reassigned and processed. Certificate issued.' },
-    ],
-  },
-
-  {
-    id: 'GRV-043', citizenId: 'CIT-002', citizenName: 'Meena Devi',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'rejection', subject: 'Vendor license rejected — no reason given',
-    description: 'My trade license application was rejected with only "Incomplete Documentation" mentioned, but all listed documents were uploaded.',
-    relatedAppId: 'APP-2254', status: 'resolved', priority: 'medium', slaStatus: 'safe',
-    filedDate: '2024-12-10', lastUpdated: '2024-12-18', closedDate: '2024-12-18', daysTaken: 8,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Found officer rejected without reviewing all documents. Application reopened. Citizen asked to re-upload NOC which was missing from portal upload (upload error, not citizen fault). Certificate issued.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-12-10T11:00:00', actor: 'Meena Devi', note: 'Rejection without clear reason.' },
-      { action: 'Assigned to Officer', date: '2024-12-10T11:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2024-12-12T10:00:00', actor: 'Priya Nair', note: 'Reviewing rejection and documents.' },
-      { action: 'Resolved', date: '2024-12-18T15:00:00', actor: 'Priya Nair', note: 'Application reopened. Upload error fixed. License issued.' },
-    ],
+    'id': 'GRV-062',
+    'category': 'misconduct',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'relatedAppId': 'APP-3104',
+    'description': 'Officer demanded a bribe to process my file.',
+    'filedDate': '2026-04-29T09:27:27.084Z',
+    'status': 'investigating',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Misconduct complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Checking internal logs'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Serious allegation, sent to MRO'
+      },
+      {
+        'action': 'Supervisor Notified SuperUser',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Suspension pending review'
+      }
+    ]
   },
   {
-    id: 'GRV-042', citizenId: 'CIT-003', citizenName: 'Gopal Rao',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'rejection', subject: 'Bribery allegation — no evidence found',
-    description: 'Citizen claimed officer demanded payment for caste certificate. Citizen had no supporting evidence — no call records, no written communication.',
-    relatedAppId: 'APP-2101', status: 'rejected', priority: 'medium', slaStatus: 'safe',
-    filedDate: '2024-12-01', lastUpdated: '2024-12-09', closedDate: '2024-12-09', daysTaken: 8,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Investigation found no supporting evidence. Audit logs showed officer processed all cases within SLA. Complaint could not be substantiated. Grievance rejected.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-12-01T14:00:00', actor: 'Gopal Rao', note: 'Bribery allegation, no supporting evidence provided.' },
-      { action: 'Assigned to Officer', date: '2024-12-01T14:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2024-12-03T10:00:00', actor: 'Priya Nair', note: 'Reviewing audit logs and officer history.' },
-      { action: 'Grievance Rejected', date: '2024-12-09T11:00:00', actor: 'Priya Nair', note: 'Complaint unsubstantiated — no evidence found. Case closed.' },
-    ],
+    'id': 'GRV-063',
+    'category': 'payment',
+    'citizenId': 'CIT-001',
+    'citizenName': 'Ravi Kumar',
+    'relatedAppId': 'APP-3105',
+    'description': 'Amount deducted from bank but gateway shows failed.',
+    'filedDate': '2026-04-30T09:27:27.084Z',
+    'status': 'resolved',
+    'priority': 'low',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Payment dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Checking payment gateway logs'
+      },
+      {
+        'action': 'Resolved',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Payment synced manually.'
+      }
+    ]
   },
   {
-    id: 'GRV-041', citizenId: 'CIT-001', citizenName: 'Ravi Kumar',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'misconduct', subject: 'Unprofessional behavior at Revenue Office',
-    description: 'During my visit to the Revenue Office for document verification, the officer was rude and unhelpful. Refused to explain the process and dismissed my queries.',
-    relatedAppId: 'APP-2456', status: 'resolved', priority: 'medium', slaStatus: 'safe',
-    filedDate: '2024-11-15', lastUpdated: '2024-11-28', closedDate: '2024-11-28', daysTaken: 13,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Investigation confirmed officer behavior was inappropriate. Officer counselled. Formal warning issued. Citizen compensated with priority processing on pending application.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-11-15T09:00:00', actor: 'Ravi Kumar', note: 'Complaint about officer behavior.' },
-      { action: 'Assigned', date: '2024-11-15T09:30:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Investigation Complete', date: '2024-11-22T15:00:00', actor: 'Priya Nair', note: 'Investigated and confirmed. Warning issued.' },
-      { action: 'Resolved', date: '2024-11-28T11:00:00', actor: 'Priya Nair', note: 'Officer counseled. Formal warning issued.' },
-    ],
+    'id': 'GRV-064',
+    'category': 'rejection',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'relatedAppId': 'APP-3107',
+    'description': 'Officer rejected application wrongly.',
+    'filedDate': '2026-04-28T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'medium',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-28T09:27:27.084Z',
+        'note': 'Rejection dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Reviewing documents'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Escalated to Appellate Authority for review'
+      }
+    ]
   },
   {
-    id: 'GRV-040', citizenId: 'CIT-004', citizenName: 'Sunita Verma',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'payment', subject: 'Duplicate payment deducted during application',
-    description: 'Two UPI payments of ₹200 each were deducted for a single Event Permission application. Portal showed payment successful but two transactions appear in bank statement.',
-    relatedAppId: 'APP-2301', status: 'resolved', priority: 'low', slaStatus: 'safe',
-    filedDate: '2024-11-02', lastUpdated: '2024-11-07', closedDate: '2024-11-07', daysTaken: 5,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Payment gateway logs confirmed duplicate deduction due to network timeout. Refund of ₹200 processed to citizen\'s bank within 3 business days.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-11-02T12:00:00', actor: 'Sunita Verma', note: 'Duplicate payment of ₹200 reported.' },
-      { action: 'Assigned to Officer', date: '2024-11-02T12:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Payment Verified', date: '2024-11-04T10:00:00', actor: 'Priya Nair', note: 'Duplicate confirmed in payment gateway logs.' },
-      { action: 'Resolved', date: '2024-11-07T11:00:00', actor: 'Priya Nair', note: 'Refund of ₹200 processed to bank.' },
-    ],
+    'id': 'GRV-065',
+    'category': 'misconduct',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'relatedAppId': 'APP-3108',
+    'description': 'Officer demanded a bribe to process my file.',
+    'filedDate': '2026-04-29T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Misconduct complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Checking internal logs'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Serious allegation, sent to MRO'
+      },
+      {
+        'action': 'Supervisor Notified SuperUser',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Suspension pending review'
+      }
+    ]
   },
   {
-    id: 'GRV-039', citizenId: 'CIT-005', citizenName: 'Arun Prasad',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'delay', subject: 'Residence certificate pending beyond SLA — duplicate filing',
-    description: 'Citizen filed a duplicate grievance for the same application that was already resolved under GRV-033. Current application still shows pending but was in fact processed.',
-    relatedAppId: 'APP-2180', status: 'rejected', priority: 'low', slaStatus: 'safe',
-    filedDate: '2024-10-20', lastUpdated: '2024-10-28', closedDate: '2024-10-28', daysTaken: 8,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Found this is a duplicate filing for an already-resolved case (GRV-033). The certificate was issued and available for download. Citizen was notified and shown how to access the certificate. Grievance rejected as duplicate.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-10-20T10:00:00', actor: 'Arun Prasad', note: 'Second complaint about same pending application.' },
-      { action: 'Assigned to Officer', date: '2024-10-20T10:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Duplicate Identified', date: '2024-10-25T11:00:00', actor: 'Priya Nair', note: 'GRV-033 already resolved this case. Certificate was available.' },
-      { action: 'Grievance Rejected', date: '2024-10-28T09:00:00', actor: 'Priya Nair', note: 'Rejected as duplicate. Citizen notified and guided to download certificate.' },
-    ],
+    'id': 'GRV-066',
+    'category': 'payment',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'relatedAppId': 'APP-3109',
+    'description': 'Amount deducted from bank but gateway shows failed.',
+    'filedDate': '2026-04-30T09:27:27.084Z',
+    'status': 'resolved',
+    'priority': 'low',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Payment dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Checking payment gateway logs'
+      },
+      {
+        'action': 'Resolved',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Payment synced manually.'
+      }
+    ]
   },
   {
-    id: 'GRV-038', citizenId: 'CIT-4421', citizenName: 'Gopal Rao',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'delay', subject: 'Event permission SLA breached — escalated to Supervisor',
-    description: 'Event permission application pending 45 days. SLA breached by 15 days. Citizen visited office twice. Event date approaching in 3 days.',
-    relatedAppId: 'APP-2301', status: 'escalated-resolved', priority: 'high', slaStatus: 'breach',
-    filedDate: '2024-09-12', lastUpdated: '2024-09-22', closedDate: '2024-09-22', daysTaken: 10,
-    resolvedBy: 'Supervisor: Anita Sharma', resolutionNote: 'Escalated to Department Supervisor. Supervisor directly approved the application and issued formal warning to officer for SLA breach. Permission issued within 24 hours of escalation.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-09-12T09:00:00', actor: 'Gopal Rao', note: 'SLA breached by 15 days. Event approaching.' },
-      { action: 'Assigned to Officer', date: '2024-09-12T09:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2024-09-14T10:00:00', actor: 'Priya Nair', note: 'Confirmed SLA breach. Officer found non-responsive.' },
-      { action: 'Escalated to Supervisor', date: '2024-09-15T14:00:00', actor: 'Priya Nair', note: 'Escalated to Dept. Supervisor Anita Sharma. GRIEVANCE_ESCALATED.' },
-      { action: 'Supervisor Action', date: '2024-09-16T11:00:00', actor: 'Anita Sharma', note: 'Supervisor directly approved application and issued warning to officer.' },
-      { action: 'Case Closed', date: '2024-09-22T16:00:00', actor: 'Anita Sharma', note: 'Grievance closed. Citizen notified.' },
-    ],
+    'id': 'GRV-067',
+    'category': 'delay',
+    'citizenId': 'CIT-002',
+    'citizenName': 'Sunita Verma',
+    'relatedAppId': 'APP-3111',
+    'description': 'Application delayed past SLA.',
+    'filedDate': '2026-05-01T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Delay complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Checking SLA'
+      },
+      {
+        'action': 'Warning Issued to Officer',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Warning issued for SLA breach'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-03T09:27:27.084Z',
+        'note': 'Grievance escalated'
+      }
+    ]
   },
   {
-    id: 'GRV-037', citizenId: 'CIT-2941', citizenName: 'Mohammed Ali',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'misconduct', subject: 'Officer solicited bribe — evidence provided',
-    description: 'Officer (OFF-071) solicited informal payment for certificate processing. Citizen has call recording as evidence.',
-    relatedAppId: 'APP-2144', status: 'escalated-resolved', priority: 'high', slaStatus: 'breach',
-    filedDate: '2024-08-09', lastUpdated: '2024-08-21', closedDate: '2024-08-21', daysTaken: 12,
-    resolvedBy: 'Supervisor: Anita Sharma', resolutionNote: 'Escalated due to seriousness. Supervisor launched departmental inquiry. Officer found guilty. Disciplinary action initiated. Certificate issued to citizen directly by supervisor. Formal vigilance complaint filed.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-08-09T11:00:00', actor: 'Mohammed Ali', note: 'Bribery allegation with call recording evidence.' },
-      { action: 'Assigned to Officer', date: '2024-08-09T11:05:00', actor: 'System', note: 'Assigned to Priya Nair. CRITICAL.' },
-      { action: 'Escalated to Supervisor', date: '2024-08-10T09:00:00', actor: 'Priya Nair', note: 'Misconduct too serious for officer level — escalated.' },
-      { action: 'Departmental Inquiry', date: '2024-08-11T10:00:00', actor: 'Anita Sharma', note: 'Formal inquiry launched against OFF-071.' },
-      { action: 'Certificate Issued', date: '2024-08-12T15:00:00', actor: 'Anita Sharma', note: 'Supervisor directly issued certificate to citizen.' },
-      { action: 'Case Closed', date: '2024-08-21T11:00:00', actor: 'Anita Sharma', note: 'Grievance closed. Vigilance case ongoing separately.' },
-    ],
+    'id': 'GRV-068',
+    'category': 'misconduct',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'relatedAppId': 'APP-3112',
+    'description': 'Officer demanded a bribe to process my file.',
+    'filedDate': '2026-04-29T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Misconduct complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Checking internal logs'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Serious allegation, sent to MRO'
+      },
+      {
+        'action': 'Supervisor Notified SuperUser',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Suspension pending review'
+      }
+    ]
   },
   {
-    id: 'GRV-036', citizenId: 'CIT-1677', citizenName: 'Swathi Priya',
-    officerId: 'EMP-004', officerName: 'Priya Nair',
-    category: 'rejection', subject: 'Residence certificate — data entry error by system',
-    description: 'Certificate issued with incorrect address. System auto-populated old address from legacy record.',
-    relatedAppId: 'APP-1998', status: 'resolved', priority: 'medium', slaStatus: 'safe',
-    filedDate: '2024-07-06', lastUpdated: '2024-07-14', closedDate: '2024-07-14', daysTaken: 8,
-    resolvedBy: 'Priya Nair', resolutionNote: 'Verified citizen documents. Address was incorrectly auto-populated from legacy record. Certificate recalled and re-issued with correct data. System admin notified to fix legacy data migration.',
-    history: [
-      { action: 'Grievance Filed', date: '2024-07-06T15:00:00', actor: 'Swathi Priya', note: 'Wrong address on certificate.' },
-      { action: 'Assigned to Officer', date: '2024-07-06T15:05:00', actor: 'System', note: 'Assigned to Priya Nair.' },
-      { action: 'Under Investigation', date: '2024-07-08T10:00:00', actor: 'Priya Nair', note: 'Confirmed legacy data migration error.' },
-      { action: 'Certificate Recalled', date: '2024-07-10T13:00:00', actor: 'Priya Nair', note: 'Erroneous certificate revoked.' },
-      { action: 'Resolved', date: '2024-07-14T10:30:00', actor: 'Priya Nair', note: 'Corrected certificate issued. Citizen notified.' },
-    ],
+    'id': 'GRV-069',
+    'category': 'payment',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'relatedAppId': 'APP-3113',
+    'description': 'Amount deducted from bank but gateway shows failed.',
+    'filedDate': '2026-04-30T09:27:27.084Z',
+    'status': 'resolved',
+    'priority': 'low',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-30T09:27:27.084Z',
+        'note': 'Payment dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Checking payment gateway logs'
+      },
+      {
+        'action': 'Resolved',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Payment synced manually.'
+      }
+    ]
   },
+  {
+    'id': 'GRV-070',
+    'category': 'delay',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'relatedAppId': 'APP-3115',
+    'description': 'Application delayed past SLA.',
+    'filedDate': '2026-05-01T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'high',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Delay complaint'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Checking SLA'
+      },
+      {
+        'action': 'Warning Issued to Officer',
+        'date': '2026-05-02T09:27:27.084Z',
+        'note': 'Warning issued for SLA breach'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-03T09:27:27.084Z',
+        'note': 'Grievance escalated'
+      }
+    ]
+  },
+  {
+    'id': 'GRV-071',
+    'category': 'rejection',
+    'citizenId': 'CIT-003',
+    'citizenName': 'Kaveri Devi',
+    'relatedAppId': 'APP-3117',
+    'description': 'Officer rejected application wrongly.',
+    'filedDate': '2026-04-28T09:27:27.084Z',
+    'status': 'escalated',
+    'priority': 'medium',
+    'officerId': 'GRV-001',
+    'officerName': 'Nalini Rao',
+    'jurisdiction': 'Secunderabad',
+    'history': [
+      {
+        'action': 'Grievance Filed',
+        'date': '2026-04-28T09:27:27.084Z',
+        'note': 'Rejection dispute'
+      },
+      {
+        'action': 'Investigating',
+        'date': '2026-04-29T09:27:27.084Z',
+        'note': 'Reviewing documents'
+      },
+      {
+        'action': 'Escalated to Supervisor',
+        'date': '2026-05-01T09:27:27.084Z',
+        'note': 'Escalated to Appellate Authority for review'
+      }
+    ]
+  }
 ];
 
 const MOCK_NOTIFICATIONS = [
@@ -574,14 +2026,24 @@ const MOCK_NOTIFICATIONS = [
   { id: 'NOT-007', userId: 'EMP-004', title: 'SLA Breach Alert', message: 'Grievance GRV-048 has breached SLA. Immediate action required.', type: 'danger', read: false, date: '2025-01-25T08:00:00', link: 'grievance/grievance-detail.html?id=GRV-048' },
 ];
 
+const _nowMs = Date.now();
+const _hAgo = (h: number) => new Date(_nowMs - h * 3600000).toISOString();
 const MOCK_AUDIT_LOGS = [
-  { id: 'LOG-001', action: 'User Login', actor: 'admin@DigiConnect.com', role: 'admin', date: '2025-01-25T08:00:00', details: 'Admin logged in.' },
-  { id: 'LOG-002', action: 'Service Created', actor: 'admin@DigiConnect.com', role: 'admin', date: '2025-01-24T14:00:00', details: 'Added new service: Birth Certificate.' },
-  { id: 'LOG-003', action: 'Application Approved', actor: 'officer1@DigiConnect.com', role: 'officer', date: '2025-01-18T09:45:00', details: 'Approved APP-2456 (Income Certificate).' },
-  { id: 'LOG-004', action: 'Grievance Filed', actor: 'citizen1@DigiConnect.com', role: 'citizen', date: '2025-01-22T14:00:00', details: 'Filed GRV-048 regarding delay in caste certificate.' },
-  { id: 'LOG-005', action: 'Officer Onboarded', actor: 'admin@DigiConnect.com', role: 'admin', date: '2025-01-20T10:00:00', details: 'Onboarded new officer: Deepak Menon.' },
-  { id: 'LOG-006', action: 'Grievance Escalated', actor: 'grievance@DigiConnect.com', role: 'grievance', date: '2025-01-26T14:00:00', details: 'GRV-046 escalated to Dept. Supervisor.' },
-  { id: 'LOG-007', action: 'Grievance Resolved', actor: 'grievance@DigiConnect.com', role: 'grievance', date: '2025-01-12T16:00:00', details: 'GRV-045 resolved — officer leave handover issue.' },
+  { id: 'LOG-001', action: 'User Login', actor: 'superuser@gov.in', role: 'super_user', date: _hAgo(1), details: 'Super User logged in from Hyderabad, Telangana.' },
+  { id: 'LOG-002', action: 'Application Approved', actor: 's.reddy@gov.in', role: 'officer', date: _hAgo(2), details: 'Officer Suresh Reddy approved APP-3100 (Income Certificate) for citizen Ravi Kumar.' },
+  { id: 'LOG-003', action: 'Supervisor Final Approval', actor: 'd.verma@gov.in', role: 'supervisor', date: _hAgo(3), details: 'Supervisor Deepak Verma issued final approval for APP-3100. Certificate issued to Ravi Kumar.' },
+  { id: 'LOG-004', action: 'Grievance Filed', actor: 'ravi.k@gmail.com', role: 'citizen', date: _hAgo(4), details: 'Citizen Ravi Kumar filed grievance regarding delay in Income Certificate (APP-3102).' },
+  { id: 'LOG-005', action: 'SLA Breach Auto-Escalation', actor: 'System Daemon', role: 'system', date: _hAgo(5), details: 'APP-3103 auto-escalated to Supervisor Deepak Verma after SLA breach.' },
+  { id: 'LOG-006', action: 'Grievance Escalated', actor: 'n.rao@gov.in', role: 'grievance', date: _hAgo(7), details: 'Grievance Officer Nalini Rao escalated GRV-001 (Wrongful Rejection) to Supervisor.' },
+  { id: 'LOG-007', action: 'Warning Issued to Officer', actor: 'd.verma@gov.in', role: 'supervisor', date: _hAgo(9), details: 'Supervisor Deepak Verma issued SLA warning to Officer Suresh Reddy for APP-3103.' },
+  { id: 'LOG-008', action: 'Application Rejected', actor: 'p.nair@gov.in', role: 'officer', date: _hAgo(11), details: 'Officer Priya Nair rejected APP-3106 (Welfare Scheme) - Incomplete documents submitted.' },
+  { id: 'LOG-009', action: 'Officer Onboarded', actor: 'superuser@gov.in', role: 'super_user', date: _hAgo(23), details: 'Super User onboarded Officer Rekha Singh (EMP-009) for Municipal Corporation, Secunderabad.' },
+  { id: 'LOG-010', action: 'Service Deactivated', actor: 'superuser@gov.in', role: 'super_user', date: _hAgo(29), details: 'Super User deactivated SVC-010 (Death Certificate) pending workflow review.' },
+  { id: 'LOG-011', action: 'Query Raised', actor: 'r.teja@gov.in', role: 'officer', date: _hAgo(35), details: 'Officer Ravi Teja raised document query on APP-3108 (Caste Certificate) for Citizen Kaveri Devi.' },
+  { id: 'LOG-012', action: 'Citizen Query Response', actor: 'kaveri.d@gmail.com', role: 'citizen', date: _hAgo(39), details: 'Citizen Kaveri Devi responded to officer query on APP-3108. SLA timer reset.' },
+  { id: 'LOG-013', action: 'Grievance Resolved', actor: 'n.rao@gov.in', role: 'grievance', date: _hAgo(47), details: 'Grievance Officer Nalini Rao resolved GRV-003 - Payment issue confirmed resolved.' },
+  { id: 'LOG-014', action: 'Supervisor Override', actor: 'l.narayana@gov.in', role: 'supervisor', date: _hAgo(51), details: 'Supervisor Lakshmi Narayana overrode officer decision on APP-3113, approving Event Permission.' },
+  { id: 'LOG-015', action: 'Workflow Config Updated', actor: 'superuser@gov.in', role: 'super_user', date: _hAgo(71), details: 'Super User updated workflow stages for Income Certificate - added Field Verification step.' },
 ];
 
 /**
@@ -893,7 +2355,7 @@ const SUPER_GRIEVANCES = [
 
 const SUPER_TEAM = [
   { name: 'Suresh Reddy', role: 'VRO', initials: 'SR', pending: 28, approved: 14, breach: 2, sla: 91 },
-  { name: 'Anita Sharma', role: 'RI', initials: 'AS', pending: 34, approved: 18, breach: 3, sla: 87 },
+  { name: 'Anita Sharma', role: 'VRO', initials: 'AS', pending: 34, approved: 18, breach: 3, sla: 87 },
   { name: 'Ramesh Kumar', role: 'MRO', initials: 'RK', pending: 18, approved: 10, breach: 1, sla: 95 },
   { name: 'Priya Nair', role: 'Welfare Officer', initials: 'PN', pending: 7, approved: 5, breach: 0, sla: 97 },
 ];
@@ -980,6 +2442,7 @@ export const db: {
   superEscSlaCases: any[];
   superEscGrievanceCases: any[];
   superPendingApps: any[];
+  workflowConfig: any[];
 } = {
   users: MOCK_USERS as User[],
   applications: MOCK_APPLICATIONS as Application[],
@@ -1000,5 +2463,6 @@ export const db: {
   superTeam: SUPER_TEAM,
   superEscSlaCases: SUPER_ESC_SLA_CASES,
   superEscGrievanceCases: SUPER_ESC_GRIEVANCE_CASES,
-  superPendingApps: SUPER_PENDING_APPS
+  superPendingApps: SUPER_PENDING_APPS,
+  workflowConfig: MOCK_WORKFLOW_CONFIG,
 };

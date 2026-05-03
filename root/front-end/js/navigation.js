@@ -2,7 +2,7 @@
 // navigation.js — Dynamic sidebar, topbar, breadcrumb builder
 // ═══════════════════════════════════════════
 
-import { getSession, getCurrentRole, getCurrentUserName, getSettings, getUsers } from './state.js';
+import { getSession } from './auth.js';
 import { getRoleConfig, svgIcons } from './role-manager.js';
 import { getInitials, toggleSidebar, setupGlobalClickHandlers, initEventDelegation, showToast } from './utils.js';
 import { logout } from './auth.js';
@@ -15,8 +15,7 @@ import { logout } from './auth.js';
  */
 function getBasePath() {
   const path = window.location.pathname;
-  if (path.includes('/Super User/') || path.includes('/Super%20User/') || path.includes('/super-user/') ||
-      path.includes('/citizen/') || path.includes('/officer/') ||
+  if (path.includes('/Super User/') || path.includes('/Super%20User/') || path.includes('/citizen/') || path.includes('/officer/') ||
       path.includes('/supervisor/') || path.includes('/grievance/')) {
     return '../';
   }
@@ -89,7 +88,7 @@ export function buildSidebar(role) {
         </svg>
       </a>
       <div class="sidebar-brand-text">
-        <div class="sidebar-brand-name">${getSettings().general?.platformName || 'DigiConnect'}</div>
+        <div class="sidebar-brand-name">DigiConnect</div>
         <div class="sidebar-brand-sub" data-testid="sidebar-portal-label">${config.portalLabel}</div>
       </div>
     </div>
@@ -110,10 +109,9 @@ export function buildSidebar(role) {
   // Attach logout handler
   const logoutBtn = document.getElementById('sidebarLogoutBtn');
   if (logoutBtn) {
-    logoutBtn.addEventListener('click', (e) => {
+    logoutBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      logout();
-      window.location.href = basePath + 'login.html';
+      await logout();
     });
   }
 }
@@ -225,9 +223,9 @@ export function buildTopbar(title, breadcrumbs) {
 
   const topbarLogout = document.getElementById('topbarLogoutBtn');
   if (topbarLogout) {
-    topbarLogout.addEventListener('click', () => {
-      logout();
-      window.location.href = basePath + 'login.html';
+    topbarLogout.addEventListener('click', async (e) => {
+      if(e) e.preventDefault();
+      await logout();
     });
   }
 }
@@ -250,34 +248,11 @@ export function initPage(options = {}) {
       return null;
     }
 
-    // ── LIVE SYNC: Check User Status (Suspended/Active) ──
-    const liveUser = getUsers().find(u => u.id === session.id);
-    if (liveUser && liveUser.status === 'Suspended') {
-      logout();
-      window.location.href = getBasePath() + 'login.html?reason=suspended';
-      return null;
-    }
-
-    // ── LIVE SYNC: Check Maintenance Mode ──
-    const settings = getSettings();
-    if (settings.maintenance?.enabled && session.role !== 'super_user') {
-      // Redirect to a maintenance view or show overlay
-      document.body.innerHTML = `
-        <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; font-family:var(--font-sans); background:linear-gradient(135deg, var(--navy-900), var(--navy-700)); color:white;">
-          <div style="font-size:4rem; margin-bottom:20px;">🛠️</div>
-          <h1 style="font-size:2rem; margin-bottom:10px;">Platform Under Maintenance</h1>
-          <p style="max-width:500px; opacity:0.9; margin-bottom:30px;">${settings.maintenance.message || 'System is undergoing scheduled maintenance. Please try again later.'}</p>
-          <button onclick="window.location.reload()" class="btn btn-primary" style="background:white; color:var(--navy-900);">Check Again</button>
-        </div>
-      `;
-      return null;
-    }
+    // The backend will enforce suspended status by rejecting API requests.
+    // Maintenance mode can also be handled via API interceptors if needed.
   }
 
-  const settings = getSettings();
-  if (settings.general?.platformName) {
-      document.title = `${options.title || 'Dashboard'} | ${settings.general.platformName}`;
-  }
+  document.title = `${options.title || 'Dashboard'} | DigiConnect`;
 
   const role = session ? session.role : 'citizen';
   const config = getRoleConfig(role);

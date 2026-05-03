@@ -2,30 +2,28 @@
 // crud.js — Generic CRUD operations + Admin page initializers
 // ═══════════════════════════════════════════
 
-import { apiGetAllUsers, apiCreateUser, apiUpdateUser, apiDeleteUser, apiGetAllServices, apiCreateService, apiUpdateService, apiToggleService, apiGetAuditLogs, apiGetSettings, apiUpdateSettings, apiGetWorkflowConfig, apiOnboardOfficer, apiGetPendingOfficers, apiApproveOfficer, apiRejectOfficer } from './api.js';
-import { getCollection, setCollection, getUsers, setUsers, getServices, setServices, getApplications, getGrievances, getAuditLogs, setAuditLogs, getSession, getPendingOfficers, setPendingOfficers, getSettings, setSettings } from './state.js';
 import { initPage } from './navigation.js';
 import { addAuditEntry } from './workflow.js';
 import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal } from './utils.js';
+import { apiGetUsers, apiCreateUser, apiUpdateUser, apiDeleteUser, apiGetServices, apiGetAllServices, apiCreateService, apiUpdateService, apiDeleteService, apiGetWorkflowConfig, apiUpdateWorkflowConfig, apiGetPendingOfficers, apiApproveOfficer, apiRejectOfficer, apiOnboardOfficer, apiGetAuditLogs } from './api.js';
 
 // Expose utils
 window.showToast = showToast;
 window.openModal = function(id) { if(typeof openModal === 'function') openModal(id); else document.getElementById(id).style.display = 'flex'; };
 window.closeModal = function(id) { if(typeof closeModal === 'function') closeModal(id); else document.getElementById(id).style.display = 'none'; };
 
-// ── Generic CRUD helpers ──
-export function findById(collectionKey, id) { return getCollection(collectionKey).find(i => i.id === id) || null; }
-export function addItem(collectionKey, item) { const items = getCollection(collectionKey); items.push(item); setCollection(collectionKey, items); return item; }
-export function updateItem(collectionKey, id, updates) { const items = getCollection(collectionKey); const idx = items.findIndex(i => i.id === id); if (idx === -1) return null; items[idx] = { ...items[idx], ...updates }; setCollection(collectionKey, items); return items[idx]; }
-export function deleteItem(collectionKey, id) { const items = getCollection(collectionKey); const filtered = items.filter(i => i.id !== id); setCollection(collectionKey, filtered); return filtered.length < items.length; }
-export function filterItems(collectionKey, pred) { return getCollection(collectionKey).filter(pred); }
-
 // Manage Users
 export async function initManageUsers() {
   const session = initPage({ title: 'Manage Users', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Manage Users' }], requiredRole: 'super_user' });
   if (!session) return;
   const tbody = document.getElementById('usersTableBody');
-  let users = await apiGetAllUsers();
+  let users = [];
+  try {
+    const res = await apiGetUsers();
+    users = res.data || [];
+  } catch(e) {
+    console.error(e);
+  }
   let currentTab = 'all';
   let searchTerm = '';
 
@@ -109,18 +107,24 @@ export async function initManageUsers() {
     const phone = document.getElementById('uPhone').value.trim();
     const status = document.getElementById('uStatus').value;
     if (!name || !email || !role) { if(window.showToast) window.showToast('Fill required fields','warning'); return; }
-    if (editModeUserId) {
-      const u = users.find(u => u.id === editModeUserId);
-      Object.assign(u, {name, email, role, phone, status});
-      await apiUpdateUser(editModeUserId, {name, email, role, phone, status});
-      addAuditEntry('User Updated', `Updated user ${name}`);
-      if(window.showToast) window.showToast('User updated','success');
-    } else {
-      const newU = await apiCreateUser({ name, email, role, phone, status, password: 'password123' });
-      users.push(newU);
-      addAuditEntry('User Created', `Created user ${name}`);
-      if(window.showToast) window.showToast('User created','success');
+    
+    try {
+        if (editModeUserId) {
+          const res = await apiUpdateUser(editModeUserId, {name, email, role, phone, status});
+          const updatedUser = res.data;
+          const idx = users.findIndex(u => u.id === editModeUserId);
+          if (idx !== -1) users[idx] = updatedUser;
+          if(window.showToast) window.showToast('User updated','success');
+        } else {
+          const res = await apiCreateUser({ name, email, role, phone, status, password: 'password123' });
+          users.push(res.data);
+          if(window.showToast) window.showToast('User created','success');
+        }
+    } catch(e) {
+        if(window.showToast) window.showToast(e.message, 'error');
+        return;
     }
+    
     window.closeModal('addUserModal');
     window.filterUsers();
     window.updateUsersStats();
@@ -130,10 +134,13 @@ export async function initManageUsers() {
   window.confirmDelete = (id) => { deleteCandidate = id; const u = users.find(u=>u.id===id); if(document.getElementById('deleteUserName')) document.getElementById('deleteUserName').textContent = u?.name || 'User'; window.openModal('deleteUserModal'); };
   window.confirmDeleteUser = async () => {
     if(deleteCandidate) {
-      await apiDeleteUser(deleteCandidate);
-      users = await apiGetAllUsers();
-      addAuditEntry('User Deleted', `Deleted user ${deleteCandidate}`);
-      if(window.showToast) window.showToast('User deleted','success');
+      try {
+        await apiDeleteUser(deleteCandidate);
+        users = users.filter(u => u.id !== deleteCandidate);
+        if(window.showToast) window.showToast('User deleted','success');
+      } catch(e) {
+        if(window.showToast) window.showToast(e.message, 'error');
+      }
       window.closeModal('deleteUserModal');
       window.filterUsers();
       window.updateUsersStats();
@@ -165,7 +172,13 @@ export async function initManageServices() {
   let currentView = 'grid';
   let currentModalStep = 1;
   const totalModalSteps = 4;
-  let allServices = await apiGetAllServices();
+  let allServices = [];
+  try {
+    const res = await apiGetAllServices();
+    allServices = res.data || [];
+  } catch(e) {
+    console.error(e);
+  }
   let filteredServices = [...allServices];
 
   window.renderGrid = () => {
@@ -201,8 +214,8 @@ export async function initManageServices() {
           <div class="card-footer" style="display:flex;gap:8px;justify-content:flex-end;">
               <button class="btn btn-outline btn-sm" onclick="openServiceModal('${s.id}')"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Edit</button>
               ${s.status === 'Active'
-                  ? `<button class="btn btn-outline btn-sm" onclick="confirmDelete('${s.id}')" style="color:var(--red-500);border-color:var(--red-500);">Deactivate</button>`
-                  : `<button class="btn btn-success btn-sm" onclick="activateService('${s.id}')">Activate</button>`}
+                  ? `<button class="btn btn-outline btn-sm" onclick="toggleServiceStatus('${s.id}', 'Inactive')" style="color:var(--red-500);border-color:var(--red-500);">Deactivate</button>`
+                  : `<button class="btn btn-success btn-sm" onclick="toggleServiceStatus('${s.id}', 'Active')">Activate</button>`}
           </div>
       </div>
     `).join('');
@@ -224,8 +237,8 @@ export async function initManageServices() {
               <div style="display:flex;gap:4px;">
                   <button class="btn btn-outline btn-sm" onclick="openServiceModal('${s.id}')" style="font-size:0.72rem;padding:4px 10px;">Edit</button>
                   ${s.status === 'Active'
-                      ? `<button class="btn btn-sm" onclick="confirmDelete('${s.id}')" style="font-size:0.72rem;padding:4px 10px;background:var(--red-100);color:var(--red-500);border:1px solid var(--red-500);">Deactivate</button>`
-                      : `<button class="btn btn-success btn-sm" onclick="activateService('${s.id}')" style="font-size:0.72rem;padding:4px 10px;">Activate</button>`}
+                      ? `<button class="btn btn-sm" onclick="toggleServiceStatus('${s.id}', 'Inactive')" style="font-size:0.72rem;padding:4px 10px;background:var(--red-100);color:var(--red-500);border:1px solid var(--red-500);">Deactivate</button>`
+                      : `<button class="btn btn-success btn-sm" onclick="toggleServiceStatus('${s.id}', 'Active')" style="font-size:0.72rem;padding:4px 10px;">Activate</button>`}
               </div>
           </td>
       </tr>
@@ -337,37 +350,24 @@ export async function initManageServices() {
               if (r.checked && r.value === 'yes') status = 'Active';
           });
 
-          if (currentEditServiceId) {
-              const svcIndex = allServices.findIndex(s => s.id === currentEditServiceId);
-              if (svcIndex !== -1) {
-                  allServices[svcIndex].name = name;
-                  allServices[svcIndex].cat = cat;
-                  allServices[svcIndex].sla = sla;
-                  allServices[svcIndex].fee = fee;
-                  allServices[svcIndex].status = status;
+          try {
+              if (currentEditServiceId) {
+                  await apiUpdateService(currentEditServiceId, { name, cat, sla, fee, status });
+              } else {
+                  const dept = document.getElementById('svcDept').value || 'Unknown';
+                  await apiCreateService({ name, cat, sla, fee, status, dept, docs: defaultDocs, stages: 3, apps: 0, icon: 'cert', color: 'var(--navy-500)' });
               }
-          } else {
-              const dept = document.getElementById('svcDept').value || 'Unknown';
-              allServices.push({
-                  id: 'SVC-' + Math.floor(Math.random() * 900 + 100),
-                  name, cat, sla, fee, status, dept,
-                  docs: defaultDocs, stages: 3, apps: 0, icon: 'cert', color: 'var(--navy-500)'
-              });
+              const res = await apiGetAllServices();
+              allServices = res.data || [];
+              filteredServices = [...allServices];
+              
+              window.closeModal('serviceModal'); 
+              if(window.showToast) window.showToast('Service saved successfully!', 'success'); 
+              window.renderList();
+              window.renderGrid();
+          } catch(e) {
+              if(window.showToast) window.showToast(e.message, 'error');
           }
-          
-          if (currentEditServiceId) {
-             await apiUpdateService(currentEditServiceId, allServices.find(s => s.id === currentEditServiceId));
-          } else {
-             await apiCreateService(allServices[allServices.length - 1]);
-          }
-
-          // Force local filter arrays to mimic new data
-          filteredServices = [...allServices];
-          
-          window.closeModal('serviceModal'); 
-          if(window.showToast) window.showToast('Service saved successfully!', 'success'); 
-          window.renderList();
-          window.renderGrid();
           return; 
       }
       
@@ -388,40 +388,25 @@ export async function initManageServices() {
       document.getElementById('modalNextBtn').textContent = currentModalStep === totalModalSteps ? '✓ Save Service' : 'Continue →';
   };
 
-  let serviceToDeactivate = null;
-
-  window.confirmDelete = (id) => { 
-      const s = allServices.find(x => x.id === id);
-      if(!s) return;
-      serviceToDeactivate = id;
-      document.getElementById('deleteServiceName').textContent = s.name; 
-      document.getElementById('deleteModal').classList.add('active'); 
-  };
-  
-  window.confirmDeactivate = async () => { 
-      document.getElementById('deleteModal').classList.remove('active'); 
-      if (!serviceToDeactivate) return;
-      const sIndex = allServices.findIndex(x => x.id === serviceToDeactivate);
-      if(sIndex !== -1) {
-          allServices[sIndex].status = 'Inactive';
-          await apiToggleService(serviceToDeactivate);
+  window.toggleServiceStatus = async (id, newStatus) => {
+      try {
+          await apiUpdateService(id, { status: newStatus });
+          const res = await apiGetAllServices();
+          allServices = res.data || [];
           filteredServices = [...allServices];
+          
+          // Don't reset filters so the user stays in their current view context
           window.renderGrid();
           window.renderList();
-          if(window.showToast) window.showToast(`"${allServices[sIndex].name}" deactivated successfully.`, 'warning'); 
-      }
-      serviceToDeactivate = null;
-  };
-  
-  window.activateService = async (id) => { 
-      const sIndex = allServices.findIndex(x => x.id === id);
-      if(sIndex !== -1) {
-          allServices[sIndex].status = 'Active';
-          await apiToggleService(id);
-          filteredServices = [...allServices];
-          window.renderGrid();
-          window.renderList();
-          if(window.showToast) window.showToast(`"${allServices[sIndex].name}" activated successfully!`, 'success'); 
+          if(window.showToast) {
+            if (newStatus === 'Active') {
+              window.showToast(`Service activated successfully!`, 'success'); 
+            } else {
+              window.showToast(`Service deactivated. It is now marked Inactive.`, 'warning'); 
+            }
+          }
+      } catch(e) {
+          if(window.showToast) window.showToast(e.message, 'error');
       }
   };
 
@@ -435,59 +420,20 @@ export async function initWorkflowConfig() {
   const session = initPage({ title: 'Workflow Configuration', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Workflow Config' }], requiredRole: 'super_user' });
   if (!session) return;
   
-  const WORKFLOWS = [
-      {
-          id: 1, service: 'Income Certificate', dept: 'Revenue Department', status: 'Active',
-          stages: [
-              { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
-              { name: 'Field Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
-              { name: 'Approval & Issue', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
-          ]
-      },
-      {
-          id: 2, service: 'Caste Certificate', dept: 'Revenue Department', status: 'Active',
-          stages: [
-              { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
-              { name: 'Community Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
-              { name: 'Final Approval', role: 'Dept. Supervisor (MRO)', days: 2, type: 'supervisor' },
-          ]
-      },
-      {
-          id: 3, service: 'Welfare / Subsidy Scheme', dept: 'Welfare Department', status: 'Active',
-          stages: [
-              { name: 'Eligibility Check', role: 'Welfare Officer', days: 3, type: 'officer' },
-              { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 3, type: 'officer' },
-              { name: 'Field Survey', role: 'Dept. Officer (RI)', days: 4, type: 'officer' },
-              { name: 'Approval & Disbursement', role: 'Dept. Supervisor (MRO)', days: 4, type: 'supervisor' },
-          ]
-      },
-      {
-          id: 4, service: 'Event Permission', dept: 'Municipal Corporation', status: 'Active',
-          stages: [
-              { name: 'Application Review', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
-              { name: 'Permission Grant', role: 'Dept. Supervisor (MRO)', days: 3, type: 'supervisor' },
-          ]
-      },
-      {
-          id: 5, service: 'Record Correction', dept: 'Revenue Department', status: 'Active',
-          stages: [
-              { name: 'Document Review', role: 'Dept. Officer (VRO)', days: 3, type: 'officer' },
-              { name: 'Original Record Verification', role: 'Dept. Officer (RI)', days: 3, type: 'officer' },
-              { name: 'Correction Approval', role: 'Dept. Supervisor (MRO)', days: 4, type: 'supervisor' },
-          ]
-      },
-      {
-          id: 6, service: 'Marriage Certificate', dept: 'Revenue Department', status: 'Draft',
-          stages: [
-              { name: 'Document Verification', role: 'Dept. Officer (VRO)', days: 2, type: 'officer' },
-              { name: 'Approval & Issue', role: 'Dept. Supervisor (MRO)', days: 5, type: 'supervisor' },
-          ]
-      },
-  ];
-  const allServicesData = await apiGetAllServices();
+  let WORKFLOWS = [];
+  let allServicesData = [];
+  try {
+      const wfRes = await apiGetWorkflowConfig();
+      WORKFLOWS = wfRes.data || [];
+      const svcRes = await apiGetAllServices();
+      allServicesData = svcRes.data || [];
+  } catch(e) {
+      console.error(e);
+  }
+  
   WORKFLOWS.forEach(w => {
       const dbSvc = allServicesData.find(s => s.name === w.service);
-      if (dbSvc) w.status = dbSvc.status;
+      if (dbSvc) w.status = dbSvc.isActive ? 'Active' : 'Draft';
   });
 
   let filteredWorkflows = [...WORKFLOWS];
@@ -613,7 +559,7 @@ export async function initWorkflowConfig() {
       `);
   }
 
-  window.saveWorkflow = (id) => {
+  window.saveWorkflow = async (id) => {
       const w = WORKFLOWS.find(x => x.id === id);
       if(!w) return;
       
@@ -636,10 +582,16 @@ export async function initWorkflowConfig() {
               }
           });
           w.stages = newStages;
+          
+          try {
+              await apiUpdateWorkflowConfig(w);
+              if(window.showToast) window.showToast('Workflow updated successfully!', 'success');
+          } catch(e) {
+              if(window.showToast) window.showToast(e.message, 'error');
+          }
       }
       
       window.renderWorkflows();
-      if(window.showToast) window.showToast('Workflow updated successfully!', 'success');
   };
 
   window.openEditStage = (name, role, days) => {
@@ -672,26 +624,17 @@ export async function initOfficerOnboarding() {
   const session = initPage({ title: 'Officer Onboarding', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Officer Onboarding' }], requiredRole: 'super_user' });
   if (!session) return;
   
-  const SERVICES_LIST = ['Income Certificate','Caste Certificate','Residence Certificate','Welfare Scheme','Scholarship','Event Permission','Record Correction'];
+  let SERVICES_LIST = [];
   
-  let _allU = await apiGetAllUsers(); 
-  let OFFICERS = _allU.filter(u => ['officer', 'supervisor', 'grievance'].includes(u.role));
-  
+  let OFFICERS = [];
   try {
-    const pendingRes = await apiGetPendingOfficers();
-    if (pendingRes && pendingRes.data) {
-      // API returns pending officers. We ensure their status is 'Pending'
-      const pOfficers = pendingRes.data.map(po => ({ ...po, status: 'Pending', cases: 0, sla: 100 }));
-      // Filter out any that might already exist to prevent duplicates
-      const existingIds = new Set(OFFICERS.map(o => o.id));
-      pOfficers.forEach(po => {
-        if (!existingIds.has(po.id)) OFFICERS.push(po);
-      });
-    }
-  } catch (e) {
-    console.warn("Could not fetch pending officers:", e);
+      const res = await apiGetUsers();
+      OFFICERS = (res.data || []).filter(u => ['officer', 'supervisor', 'grievance'].includes(u.role));
+      const svcRes = await apiGetAllServices();
+      SERVICES_LIST = (svcRes.data || []).filter(s => s.status !== 'Draft').map(s => s.name);
+  } catch(e) {
+      console.error(e);
   }
-
   let filteredOfficers = [...OFFICERS];
 
   const serviceGrid = document.getElementById('serviceAssignGrid');
@@ -738,10 +681,6 @@ export async function initOfficerOnboarding() {
                       <button class="btn-icon" title="Edit" onclick="${isSuspended ? `showToast('Cannot edit a suspended officer.','error')` : `openAddModal('${o.id}')`}" ${isSuspended ? 'style="opacity:0.4;cursor:not-allowed;"' : ''}><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>
                       
                       ${isSuspended ? `<button class="btn-icon" title="Restore" onclick="restoreOfficer('${o.id}')" style="color:var(--green-600);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>` 
-                      : o.status === 'Pending' ? `
-                        <button class="btn-icon" title="Approve" onclick="window.approvePendingOfficer('${o.id}')" style="color:var(--green-600);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></button>
-                        <button class="btn-icon" title="Reject" onclick="window.rejectPendingOfficer('${o.id}')" style="color:var(--red-500);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
-                      ` 
                       : `<button class="btn-icon" title="Suspend" onclick="suspendOfficer('${o.id}')" style="color:var(--red-500);"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg></button>`}
                   </div>
               </td>
@@ -849,69 +788,38 @@ export async function initOfficerOnboarding() {
       if(m) m.classList.add('active');
   }
 
-  window.suspendOfficer = (id) => {
-      const o = OFFICERS.find(x=>x.id===id);
-      if(o) {
-          o.status = 'Suspended';
-          const globalUser = getUsers().find(u => u.id === id);
-          if (globalUser) {
-              globalUser.status = 'Suspended';
-              setUsers(getUsers().map(u => u.id === id ? globalUser : u));
-          }
-          filteredOfficers = [...OFFICERS];
-          window.renderOfficersTable();
-          if(window.updateOfficerStats) window.updateOfficerStats();
-          if(window.showToast) window.showToast(`Officer ${o.name} has been suspended.`, 'warning');
-      }
-  };
-
-  window.restoreOfficer = (id) => {
-      const o = OFFICERS.find(x=>x.id===id);
-      if(o) {
-          o.status = 'Active';
-          const globalUser = getUsers().find(u => u.id === id);
-          if (globalUser) {
-              globalUser.status = 'Active';
-              setUsers(getUsers().map(u => u.id === id ? globalUser : u));
-          }
-          filteredOfficers = [...OFFICERS];
-          window.renderOfficersTable();
-          if(window.updateOfficerStats) window.updateOfficerStats();
-          if(window.showToast) window.showToast(`Officer ${o.name} has been restored to Active.`, 'success');
-      }
-  };
-
-  window.approvePendingOfficer = async (id) => {
+  window.suspendOfficer = async (id) => {
       try {
-          await apiApproveOfficer(id);
-          const o = OFFICERS.find(x => x.id === id);
-          if (o) o.status = 'Active';
+          await apiUpdateUser(id, { status: 'Suspended' });
+          const o = OFFICERS.find(x=>x.id===id);
+          if(o) o.status = 'Suspended';
           filteredOfficers = [...OFFICERS];
           window.renderOfficersTable();
           if(window.updateOfficerStats) window.updateOfficerStats();
-          if(window.showToast) window.showToast(`Pending officer approved successfully.`, 'success');
-      } catch (err) {
-          if(window.showToast) window.showToast(err.message || 'Failed to approve officer.', 'error');
+          if(window.showToast) window.showToast(`Officer has been suspended.`, 'warning');
+      } catch(e) {
+          if(window.showToast) window.showToast(e.message, 'error');
       }
   };
 
-  window.rejectPendingOfficer = async (id) => {
+  window.restoreOfficer = async (id) => {
       try {
-          await apiRejectOfficer(id);
-          OFFICERS = OFFICERS.filter(x => x.id !== id);
+          await apiUpdateUser(id, { status: 'Active' });
+          const o = OFFICERS.find(x=>x.id===id);
+          if(o) o.status = 'Active';
           filteredOfficers = [...OFFICERS];
           window.renderOfficersTable();
           if(window.updateOfficerStats) window.updateOfficerStats();
-          if(window.showToast) window.showToast(`Pending officer rejected.`, 'info');
-      } catch (err) {
-          if(window.showToast) window.showToast(err.message || 'Failed to reject officer.', 'error');
+          if(window.showToast) window.showToast(`Officer has been restored to Active.`, 'success');
+      } catch(e) {
+          if(window.showToast) window.showToast(e.message, 'error');
       }
   };
 
   window.viewOfficerDocs = (name) => { if(window.showToast) window.showToast(`Opening documents for ${name}…`,'info'); }
 
 
-  window.saveOfficer = () => {
+  window.saveOfficer = async () => {
       const fn = document.getElementById('ofFirstName')?.value.trim();
       const ln = document.getElementById('ofLastName')?.value.trim();
       const eid = document.getElementById('ofEmpId')?.value.trim();
@@ -933,51 +841,35 @@ export async function initOfficerOnboarding() {
       if (!email || !email.includes('@')) { if(window.showToast) window.showToast('Enter a valid email address.','error'); return; }
       if (services.length === 0) { if(window.showToast) window.showToast('Assign at least one service.','error'); return; }
 
-      if (currentEditOfficerId) {
-          const o = OFFICERS.find(x => x.id === currentEditOfficerId);
-          if (o) {
-              o.name = fn + ' ' + ln;
-              o.title = role;
-              o.dept = dept;
-              o.jurisdiction = jur;
-              o.phone = phone;
-              o.email = email;
-              o.services = services;
-              
-              const globalUser = getUsers().find(u => u.id === currentEditOfficerId);
-              if (globalUser) {
-                  Object.assign(globalUser, {
-                      name: o.name,
-                      title: o.title,
-                      dept: o.dept,
-                      jurisdiction: o.jurisdiction,
-                      phone: o.phone,
-                      email: o.email,
-                      services: o.services
-                  });
-                  setUsers(getUsers().map(u => u.id === currentEditOfficerId ? globalUser : u));
+      try {
+          if (currentEditOfficerId) {
+              const name = fn + ' ' + ln;
+              await apiUpdateUser(currentEditOfficerId, {
+                  name, title: role, dept, jurisdiction: jur, phone, email, services
+              });
+              const o = OFFICERS.find(x => x.id === currentEditOfficerId);
+              if (o) {
+                  Object.assign(o, { name, title: role, dept, jurisdiction: jur, phone, email, services });
               }
+              if(window.showToast) window.showToast(`Officer updated successfully!`, 'success');
+          } else {
+              const roleMap = {
+                 'Supervisor': 'supervisor',
+                 'Grievance Officer': 'grievance'
+              };
+              const sysRole = roleMap[role] || 'officer';
+              const name = fn + ' ' + ln;
+              await apiCreateUser({
+                  name, email, phone, role: sysRole, title: role, dept, jurisdiction: jur, services, password: 'password123', status: 'Active'
+              });
+              // Refresh officers
+              const res = await apiGetUsers();
+              OFFICERS = (res.data || []).filter(u => ['officer', 'supervisor', 'grievance'].includes(u.role));
+              if(window.showToast) window.showToast(`Officer added successfully! Credentials sent.`, 'success');
           }
-          if(window.showToast) window.showToast(`Officer ${fn} ${ln} updated successfully!`, 'success');
-      } else {
-          const roleMap = {
-             'Supervisor': 'supervisor',
-             'Grievance Officer': 'grievance'
-          };
-          const sysRole = roleMap[role] || 'officer';
-
-          const newUser = {
-              id: eid, name: fn + ' ' + ln, role: sysRole, title: role, dept, jurisdiction: jur,
-              services, cases: 0, sla: 100, status: 'Active',
-              email, phone, joined: new Date().toLocaleDateString('en-GB'),
-              password: 'password123'
-          };
-          OFFICERS.push(newUser);
-          const allU = getUsers();
-          allU.push(newUser);
-          setUsers(allU);
-          
-          if(window.showToast) window.showToast(`Officer ${fn} ${ln} added successfully! Credentials sent.`, 'success');
+      } catch (e) {
+          if(window.showToast) window.showToast(e.message, 'error');
+          return;
       }
 
       filteredOfficers = [...OFFICERS];
@@ -1011,12 +903,18 @@ export async function initAuditLogs() {
   const session = initPage({ title: 'Audit Logs', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Audit Logs' }], requiredRole: 'super_user' });
   if (!session) return;
   
+  let rawLogs = [];
+  try {
+      const res = await apiGetAuditLogs();
+      rawLogs = res.data || [];
+  } catch(e) { console.error(e); }
+
   const getProcessedLogs = () => {
-    return getAuditLogs().map(log => {
+    return rawLogs.map(log => {
       // Infer category for UI icons/filters if missing
       let category = log.category || 'config';
       if (!log.category) {
-        const act = log.action.toLowerCase();
+        const act = String(log.action || '').toLowerCase();
         if (act.includes('approve') || act.includes('resolved') || act.includes('success')) category = 'approve';
         else if (act.includes('reject')) category = 'reject';
         else if (act.includes('login')) category = 'login';
@@ -1029,9 +927,10 @@ export async function initAuditLogs() {
       return {
         ...log,
         category,
+        dateObj: d, // For date filtering
         displayDate: d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         displayTime: d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        ip: log.ip || '192.168.1.' + (log.id ? log.id.charCodeAt(log.id.length-1) % 50 : '10')
+        ip: log.ip || '192.168.1.' + (log.id ? String(log.id).charCodeAt(String(log.id).length-1) % 50 : '10')
       };
     });
   };
@@ -1067,14 +966,30 @@ export async function initAuditLogs() {
   window.filterLogs = () => {
     const search = document.getElementById('logSearch')?.value.toLowerCase() || '';
     const role = document.getElementById('roleFilter')?.value || '';
+    
+    // Read the dates
+    const dateFrom = document.getElementById('dateFrom')?.value;
+    const dateTo = document.getElementById('dateTo')?.value;
+    const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
+    const toTime = dateTo ? new Date(dateTo).getTime() + 86400000 : Infinity; // +1 day to include end date
+
     // LIVE SYNC: Re-fetch latest logs from storage
     const allProcessed = getProcessedLogs(); 
     
     const filtered = allProcessed.filter(log => {
-      const matchSearch = log.actor.toLowerCase().includes(search) || log.action.toLowerCase().includes(search) || (log.details && log.details.toLowerCase().includes(search));
-      const matchRole = role === '' || log.role.toLowerCase() === role.toLowerCase();
+      const actorName = String(log.actor || '').toLowerCase();
+      const actionName = String(log.action || '').toLowerCase();
+      const detailsText = String(log.details || '').toLowerCase();
+      const roleName = String(log.role || '').toLowerCase();
+
+      const matchSearch = actorName.includes(search) || actionName.includes(search) || detailsText.includes(search);
+      const matchRole = role === '' || roleName === role.toLowerCase();
       const matchCat = activeCategory === '' || log.category === activeCategory;
-      return matchSearch && matchRole && matchCat;
+      
+      const logTime = log.dateObj.getTime();
+      const matchDate = logTime >= fromTime && logTime <= toTime;
+
+      return matchSearch && matchRole && matchCat && matchDate;
     });
     window.renderLogs(filtered);
     window.updateAuditLogStats(); // Update stats in real-time too
@@ -1156,8 +1071,12 @@ export async function initSystemSettings() {
   ];
 
   // ── LIVE SYNC: Load Settings ──
-  window.loadSettings = () => {
-      const settings = await apiGetSettings();
+  window.loadSettings = async () => {
+      let settings = {};
+      try {
+          const res = await apiGetSettings();
+          settings = res.data || {};
+      } catch(e) { console.error(e); }
       if (!settings.general) return;
       
       const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
@@ -1200,26 +1119,37 @@ export async function initSystemSettings() {
   ['slaCert', 'slaWelfare', 'slaPermission', 'slaCorrection'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
-          el.addEventListener('change', (e) => {
+          el.addEventListener('change', async (e) => {
               const val = parseInt(e.target.value, 10);
-              const services = getServices();
+              let services = [];
+              try {
+                  const res = await apiGetServices();
+                  services = res.data || [];
+              } catch(e) { console.error(e); }
               let updatedCount = 0;
+              let promises = [];
               
               services.forEach(s => {
+                  let updated = false;
                   if (id === 'slaCert' && ['Income Certificate', 'Caste Certificate', 'Residence Certificate', 'Marriage Certificate'].includes(s.name)) {
-                      s.sla = val; updatedCount++;
+                      s.slaDays = val; s.sla = val; updated = true; updatedCount++;
                   } else if (id === 'slaWelfare' && ['Welfare Scheme', 'Scholarship'].includes(s.name)) {
-                      s.sla = val; updatedCount++;
-                  } else if (id === 'slaPermission' && s.cat === 'Permission') {
-                      s.sla = val; updatedCount++;
+                      s.slaDays = val; s.sla = val; updated = true; updatedCount++;
+                  } else if (id === 'slaPermission' && s.category === 'Permission') {
+                      s.slaDays = val; s.sla = val; updated = true; updatedCount++;
                   } else if (id === 'slaCorrection' && s.name === 'Record Correction') {
-                      s.sla = val; updatedCount++;
+                      s.slaDays = val; s.sla = val; updated = true; updatedCount++;
                   }
+                  if(updated) promises.push(apiUpdateService(s.id, { sla: val, slaDays: val }));
               });
               
               if (updatedCount > 0) {
-                  setServices(services);
-                  if (window.showToast) window.showToast(`SLA pushed: ${val} days configured for ${updatedCount} services!`, 'success');
+                  try {
+                      await Promise.all(promises);
+                      if (window.showToast) window.showToast(`SLA pushed: ${val} days configured for ${updatedCount} services!`, 'success');
+                  } catch(err) {
+                      if (window.showToast) window.showToast('Error updating SLAs', 'error');
+                  }
               }
           });
       }
@@ -1279,15 +1209,9 @@ export async function initSystemSettings() {
       
       try {
           await apiUpdateSettings(newSettings);
-          
-          if (typeof setSettings === 'function') {
-              setSettings(newSettings);
-          }
-          
           if(window.showToast) window.showToast('All system settings saved and synchronized!', 'success');
-          addAuditEntry('Settings Updated', 'Full system configuration update by Super User');
-      } catch (err) {
-          if(window.showToast) window.showToast(err.message || 'Failed to update system settings.', 'error');
+      } catch(e) {
+          if(window.showToast) window.showToast(e.message, 'error');
       }
   };
 

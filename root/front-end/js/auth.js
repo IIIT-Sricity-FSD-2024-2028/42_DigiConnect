@@ -2,12 +2,53 @@
 // auth.js — Authentication & session management
 // ═══════════════════════════════════════════
 
-import { getUsers, setUsers, getSession, setSession, clearSession, getAuditLogs, setAuditLogs, getApplications, getGrievances, getCurrentRole, getCurrentUserName, getCurrentUserId, getNotifications } from './state.js';
 import { showToast, generateId, initEventDelegation, togglePassword, checkStrength, checkUsername, formatAadhaar, nextOtp, setupGlobalClickHandlers, closeAllModals, openModal, closeModal } from './utils.js';
 import { getRoleDashboardPath, getLoginRedirectMap, getRoleConfig } from './role-manager.js';
 import { initPage } from './navigation.js';
 import { renderNotifPanel } from './notifications.js';
-import { apiRequestOtp, apiRegister, apiLogin } from './api.js';
+import { apiLogin, apiRegister } from './api.js';
+
+// ── Session Management ──
+
+export function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem('DigiConnect_session'));
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(sessionData) {
+  localStorage.setItem('DigiConnect_session', JSON.stringify(sessionData));
+}
+
+export function clearSession() {
+  localStorage.removeItem('DigiConnect_session');
+}
+
+export function isLoggedIn() {
+  return getSession() !== null;
+}
+
+export function getCurrentRole() {
+  const session = getSession();
+  return session ? session.role : null;
+}
+
+export function getCurrentUserName() {
+  const session = getSession();
+  return session ? session.name : 'User';
+}
+
+export function getCurrentUserId() {
+  const session = getSession();
+  return session ? session.id : null;
+}
+
+export function getCurrentUserEmail() {
+  const session = getSession();
+  return session ? session.email : null;
+}
 
 /**
  * Attempt login with email and password
@@ -18,46 +59,48 @@ import { apiRequestOtp, apiRegister, apiLogin } from './api.js';
  */
 export async function login(email, password, selectedRole) {
   try {
-    const res = await apiLogin(email, password);
-    const user = res.data;
+      const res = await apiLogin(email, password);
+      const user = res.data;
 
-    // Map selectedRole from form to stored role
-    const roleMap = {
-      'citizen': 'citizen',
-      'officer': 'officer',
-      'supervisor': 'supervisor',
-      'grievance': 'grievance',
-      'super_user': 'super_user',
-      'admin': 'super_user',
-      'super_admin': 'super_admin',
-    };
+      // Map selectedRole from form to stored role
+      const roleMap = {
+        'citizen': 'citizen',
+        'officer': 'officer',
+        'supervisor': 'supervisor',
+        'grievance': 'grievance',
+        'super_user': 'super_user',
+        'admin': 'super_user',
+        'super_admin': 'super_admin',
+      };
 
-    const mappedRole = roleMap[selectedRole] || selectedRole;
+      const mappedRole = roleMap[selectedRole] || selectedRole;
 
-    // Check if user role matches selected role (admin can also be super_admin)
-    if (user.role !== mappedRole && !(mappedRole === 'super_user' && user.role === 'super_admin')) {
-      throw new Error(`This account is not registered as ${selectedRole}. Please select the correct role.`);
-    }
+      // Check if user role matches selected role (admin can also be super_admin)
+      if (user.role !== mappedRole && !(mappedRole === 'super_user' && user.role === 'super_admin')) {
+        return { success: false, message: `This account is not registered as ${selectedRole}. Please select the correct role.` };
+      }
 
-    // Create session
-    const session = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role === 'super_admin' ? 'super_user' : user.role,
-      actualRole: user.role,
-      phone: user.phone,
-      loginTime: new Date().toISOString(),
-    };
+      // Create session
+      const session = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role === 'super_admin' ? 'super_user' : user.role,
+        actualRole: user.role,
+        phone: user.phone,
+        loginTime: new Date().toISOString(),
+      };
 
-    setSession(session);
+      setSession(session);
 
-    // Log audit
-    // addAuditLog('User Login', user.email, user.role, `${user.name} logged in as ${user.role}.`);
+      try {
+        const { addAuditEntry } = await import('./workflow.js');
+        await addAuditEntry('User Login', `User ${session.email} logged in successfully as ${session.role}.`);
+      } catch(e) {}
 
-    return { success: true, message: 'Login successful.', user: session };
-  } catch (err) {
-    throw new Error(err.message || 'Invalid credentials. Please check your email and password.');
+      return { success: true, message: 'Login successful.', user: session };
+  } catch(e) {
+      return { success: false, message: e.message || 'Invalid credentials. Please check your email and password.' };
   }
 }
 
@@ -117,12 +160,18 @@ export function register(userData) {
 /**
  * Logout the current user
  */
-export function logout() {
+export async function logout() {
   const session = getSession();
   if (session) {
-    addAuditLog('User Logout', session.email, session.role, `${session.name} logged out.`);
+    try { 
+      const { addAuditEntry } = await import('./workflow.js');
+      await addAuditEntry('User Logout', `User ${session.email} logged out.`);
+      // await apiLogout(); // If backend logout is needed
+    } catch(e) {}
   }
   clearSession();
+  const base = getBasePath();
+  window.location.href = base + 'index.html';
 }
 
 /**
@@ -140,14 +189,12 @@ export async function changePassword(currentPassword, newPassword) {
   }
 
   try {
-    // Dynamically import apiChangePassword to avoid circular deps if any
-    const { apiChangePassword } = await import('./api.js');
-    await apiChangePassword(session.id, currentPassword, newPassword);
-    
-    // addAuditLog('Password Changed', session.email, session.role, `${session.name} changed password.`);
-    return { success: true, message: 'Password updated successfully!' };
-  } catch (err) {
-    return { success: false, message: err.message || 'Failed to update password.' };
+      // Assuming apiChangePassword is added to api.js (it is, I saw it earlier)
+      const { apiChangePassword } = await import('./api.js');
+      await apiChangePassword(session.id, currentPassword, newPassword);
+      return { success: true, message: 'Password updated successfully!' };
+  } catch(e) {
+      return { success: false, message: e.message || 'Error updating password.' };
   }
 }
 
@@ -191,23 +238,7 @@ function getBasePath() {
   return '';
 }
 
-/**
- * Add an audit log entry
- */
-function addAuditLog(action, actor, role, details) {
-  const logs = getAuditLogs();
-  logs.unshift({
-    id: generateId('LOG'),
-    action,
-    actor,
-    role,
-    date: new Date().toISOString(),
-    details,
-  });
-  // Keep only last 100 logs
-  if (logs.length > 100) logs.length = 100;
-  setAuditLogs(logs);
-}
+
 
 // ══════════════════════════════════════════
 // Page Controllers
@@ -262,16 +293,14 @@ export function initLoginPage() {
       if (btnText) btnText.textContent = 'Signing in...';
 
       setTimeout(async () => {
-        try {
-          const result = await login(emailInput, passwordInput, selectedRole);
-          if (result.success) {
-            const redirectMap = getLoginRedirectMap();
-            const dest = redirectMap[result.user.role] || 'citizen/citizen-dashboard.html';
-            window.location.href = dest;
-          }
-        } catch (err) {
+        const result = await login(emailInput, passwordInput, selectedRole);
+        if (result.success) {
+          const redirectMap = getLoginRedirectMap();
+          const dest = redirectMap[result.user.role] || 'citizen/citizen-dashboard.html';
+          window.location.href = dest;
+        } else {
           if (errBox) { errBox.style.display = 'flex'; }
-          if (errMsg) errMsg.textContent = err.message;
+          if (errMsg) errMsg.textContent = result.message;
           btn.disabled = false;
           if (spinner) spinner.style.display = 'none';
           if (btnText) btnText.textContent = 'Sign In';
@@ -530,9 +559,9 @@ export function initRegisterPage() {
 
   const regBtn = document.getElementById('registerBtn');
   if (regBtn) {
-    regBtn.addEventListener('click', async () => {
+    regBtn.addEventListener('click', () => {
       if (window.validateForm && !window.validateForm('#step3')) return;
-
+      
       const uname = document.getElementById('username')?.value?.trim();
       const pw = document.getElementById('newPassword')?.value;
       const cpw = document.getElementById('confirmPassword')?.value;
@@ -540,8 +569,6 @@ export function initRegisterPage() {
       const secA = document.getElementById('securityAnswer')?.value?.trim();
       const terms = document.getElementById('agreeTerms')?.checked;
       const dataConsent = document.getElementById('agreeData')?.checked;
-      const phone = document.getElementById('phone')?.value?.trim() || '';
-      const aadhaar = document.getElementById('aadhaar')?.value?.trim() || '';
 
       if (!uname || uname.length < 3) { showToast('Username must be at least 3 characters.', 'warning'); return; }
       if (!pw || pw.length < 8) { showToast('Password must be at least 8 characters.', 'warning'); return; }
@@ -554,57 +581,42 @@ export function initRegisterPage() {
       const bt = document.getElementById('registerBtnText');
       regBtn.disabled = true;
       if (sp) sp.style.display = 'flex';
-      if (bt) bt.textContent = 'Requesting OTP...';
+      if (bt) bt.textContent = 'Creating...';
 
-      try {
-        // Step 1: Request OTP from backend simulator
-        const otpRes = await apiRequestOtp(phone, aadhaar);
-        const otp = otpRes.otp;
-        showToast(`Simulation: OTP ${otp} sent to your mobile ${phone}`, 'info');
-
-        if (bt) bt.textContent = 'Creating Account...';
-
-        // Step 2: Register with the backend (includes OTP verification)
-        const result = await apiRegister({
-          name: `${document.getElementById('firstName')?.value?.trim()} ${document.getElementById('lastName')?.value?.trim()}`,
-          email: document.getElementById('email')?.value?.trim() || `${uname}@digiconnect.gov.in`,
-          phone,
-          aadhaar,
-          role: 'citizen',
-          jurisdiction: document.getElementById('district')?.value?.trim() || 'Hyderabad',
+      setTimeout(() => {
+        const result = register({
+          firstName: document.getElementById('firstName')?.value?.trim(),
+          lastName: document.getElementById('lastName')?.value?.trim(),
+          email: document.getElementById('email')?.value?.trim() || '',
+          phone: document.getElementById('phone')?.value?.trim() || '',
           password: pw,
+          aadhaar: document.getElementById('aadhaar')?.value?.trim(),
+          dob: document.getElementById('dob')?.value,
+          gender: document.getElementById('gender')?.value,
+          state: document.getElementById('state')?.value,
+          district: document.getElementById('district')?.value?.trim(),
+          pincode: document.getElementById('pincode')?.value?.trim(),
+          address: document.getElementById('address')?.value?.trim(),
+          username: uname,
           securityQuestion: secQ,
           securityAnswer: secA,
-          otp,
         });
 
-        // Store session from returned user data
-        const newUser = result.data;
-        const session = {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-          role: 'citizen',
-          actualRole: 'citizen',
-          phone: newUser.phone,
-          loginTime: new Date().toISOString(),
-        };
-        setSession(session);
-
-        document.getElementById('step3').style.display = 'none';
-        document.getElementById('successScreen').style.display = 'block';
-        for (let i = 1; i <= 3; i++) {
-          const pill = document.getElementById('pill-' + i);
-          if (pill) pill.style.background = 'var(--green-500)';
+        if (result.success) {
+          document.getElementById('step3').style.display = 'none';
+          document.getElementById('successScreen').style.display = 'block';
+          for (let i = 1; i <= 3; i++) {
+            const pill = document.getElementById('pill-' + i);
+            if (pill) pill.style.background = 'var(--green-500)';
+          }
+          showToast('Account created successfully!', 'success');
+        } else {
+          showToast(result.message, 'error');
+          regBtn.disabled = false;
+          if (sp) sp.style.display = 'none';
+          if (bt) bt.textContent = 'Create Account';
         }
-        showToast('Account created and Aadhaar OTP verified!', 'success');
-
-      } catch (err) {
-        showToast(err.message || 'Registration failed. Please try again.', 'error');
-        regBtn.disabled = false;
-        if (sp) sp.style.display = 'none';
-        if (bt) bt.textContent = 'Create Account';
-      }
+      }, 1500);
     });
   }
 
@@ -622,18 +634,14 @@ export function initRegisterPage() {
 /**
  * Initialize the profile page
  */
-export function initProfilePage() {
+export async function initProfilePage() {
   const session = initPage({ title: 'My Profile', breadcrumbs: [{ label: 'Dashboard' }, { label: 'Profile' }] });
   if (!session) return;
   renderNotifPanel();
 
   const config = getRoleConfig(session.role);
 
-  // ── Load full user data from localStorage ──
-  const users = getUsers();
-  const userData = users.find(u => u.id === session.id) || {};
-
-  // Profile header
+  // ── Profile header from session ──
   const initials = session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const avatarBig = document.getElementById('profileAvatarBig');
   if (avatarBig) avatarBig.textContent = initials;
@@ -642,58 +650,48 @@ export function initProfilePage() {
   const roleBadge = document.getElementById('profileRoleBadge');
   if (roleBadge) { roleBadge.textContent = config.roleLabel; roleBadge.className = `badge ${config.badge}`; }
 
-  // Stats from localStorage
-  const apps = getApplications();
-  const grievances = getGrievances();
-  const myApps = apps.filter(a => a.citizenId === session.id || a.officerId === session.id);
-  const myGrievances = grievances.filter(g => g.citizenId === session.id || g.officerId === session.id);
-
-  setText('statApps', myApps.length);
-  setText('statApproved', myApps.filter(a => a.status === 'approved').length);
-  setText('statPending', myApps.filter(a => a.status !== 'approved' && a.status !== 'rejected').length);
-  setText('statGriev', myGrievances.length);
-
-  // ── Populate Personal Details tab ──
+  // ── Populate form from session (immediate, no spinner needed) ──
   const nameParts = session.name.split(' ');
   setText('pfFirstName', nameParts[0] || '', true);
   setText('pfLastName', nameParts.slice(1).join(' ') || '', true);
-  setText('pfDob', userData.dob || '', true);
+  setText('pfPhone', session.phone || '', true);
+  setText('pfEmail', session.email || '', true);
 
-  // Gender select
-  const genderSel = document.getElementById('pfGender');
-  if (genderSel && userData.gender) {
-    for (const opt of genderSel.options) {
-      if (opt.textContent === userData.gender || opt.value === userData.gender) { opt.selected = true; break; }
+  // ── Try to load extended user data from backend ──
+  try {
+    const { apiGetUserById } = await import('./api.js');
+    const res = await apiGetUserById(session.id);
+    const userData = res.data || res || {};
+    // Fill in extra fields if returned
+    if (userData.dob) setText('pfDob', userData.dob, true);
+    if (userData.gender) {
+      const genderSel = document.getElementById('pfGender');
+      if (genderSel) {
+        for (const opt of genderSel.options) {
+          if (opt.textContent === userData.gender || opt.value === userData.gender) { opt.selected = true; break; }
+        }
+      }
     }
-  }
-
-  // Aadhaar (masked display — show only last 4 digits for all roles)
-  const aadhaarField = document.getElementById('pfAadhaar');
-  if (aadhaarField) {
-    const raw = (userData.aadhaar || '').replace(/\s/g, '');
-    if (raw.length >= 4) {
-      // Format: XXXX XXXX followed by last 4 digits (e.g. XXXX XXXX 4301)
-      aadhaarField.value = 'XXXX XXXX ' + raw.slice(-4);
-    } else if (raw.length > 0) {
-      aadhaarField.value = 'XXXX XXXX ' + raw;
-    } else {
-      aadhaarField.value = '— Not on record —';
+    if (userData.aadhaar) {
+      const raw = (userData.aadhaar || '').replace(/\s/g, '');
+      const aadhaarField = document.getElementById('pfAadhaar');
+      if (aadhaarField) aadhaarField.value = raw.length >= 4 ? 'XXXX XXXX ' + raw.slice(-4) : '— Not on record —';
     }
-  }
-
-  // ── Populate Contact & Address tab ──
-  setText('pfPhone', userData.phone || session.phone || '', true);
-  setText('pfEmail', userData.email || session.email || '', true);
-  setText('pfAddress', userData.address || '', true);
-  setText('pfDistrict', userData.district || '', true);
-  setText('pfPincode', userData.pincode || '', true);
-
-  // State select
-  const stateSel = document.getElementById('pfState');
-  if (stateSel && userData.state) {
-    for (const opt of stateSel.options) {
-      if (opt.textContent === userData.state || opt.value === userData.state) { opt.selected = true; break; }
+    if (userData.address) setText('pfAddress', userData.address, true);
+    if (userData.state) {
+      const stateSel = document.getElementById('pfState');
+      if (stateSel) {
+        for (const opt of stateSel.options) {
+          if (opt.textContent === userData.state || opt.value === userData.state) { opt.selected = true; break; }
+        }
+      }
     }
+    if (userData.district) setText('pfDistrict', userData.district, true);
+    if (userData.mandal) setText('pfMandal', userData.mandal, true);
+    if (userData.pincode) setText('pfPincode', userData.pincode, true);
+  } catch(e) {
+    // Extended user data unavailable — basic session data is already shown
+    console.warn('Extended user data unavailable:', e.message);
   }
 
   // ── Tab switching ──
@@ -709,42 +707,50 @@ export function initProfilePage() {
     });
   });
 
-  // ── Save profile ──
+  // ── Save profile (calls backend API) ──
   const saveBtn = document.querySelector('[data-action="save-profile"]');
   if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      if (window.validateForm && !window.validateForm('.tab-content.active')) return;
-
+    saveBtn.addEventListener('click', async () => {
       const firstName = document.getElementById('pfFirstName')?.value?.trim();
-      const lastName = document.getElementById('pfLastName')?.value?.trim();
+      const lastName  = document.getElementById('pfLastName')?.value?.trim();
       if (!firstName || !lastName) { showToast('First and last name are required.', 'warning'); return; }
 
-      const updatedName = `${firstName} ${lastName}`;
-      const userIdx = users.findIndex(u => u.id === session.id);
-      if (userIdx !== -1) {
-        users[userIdx].name = updatedName;
-        users[userIdx].dob = document.getElementById('pfDob')?.value || users[userIdx].dob;
-        users[userIdx].gender = document.getElementById('pfGender')?.value || users[userIdx].gender;
-        users[userIdx].phone = document.getElementById('pfPhone')?.value?.trim() || users[userIdx].phone;
-        users[userIdx].email = document.getElementById('pfEmail')?.value?.trim() || users[userIdx].email;
-        users[userIdx].address = document.getElementById('pfAddress')?.value?.trim() || users[userIdx].address;
-        users[userIdx].state = document.getElementById('pfState')?.value || users[userIdx].state;
-        users[userIdx].district = document.getElementById('pfDistrict')?.value?.trim() || users[userIdx].district;
-        users[userIdx].pincode = document.getElementById('pfPincode')?.value?.trim() || users[userIdx].pincode;
-        setUsers(users);
+      const updatedData = {
+        name:     `${firstName} ${lastName}`,
+        phone:    document.getElementById('pfPhone')?.value?.trim(),
+        email:    document.getElementById('pfEmail')?.value?.trim(),
+        dob:      document.getElementById('pfDob')?.value,
+        gender:   document.getElementById('pfGender')?.value,
+        address:  document.getElementById('pfAddress')?.value?.trim(),
+        state:    document.getElementById('pfState')?.value,
+        district: document.getElementById('pfDistrict')?.value?.trim(),
+        mandal:   document.getElementById('pfMandal')?.value?.trim(),
+        pincode:  document.getElementById('pfPincode')?.value?.trim(),
+      };
 
-        // Update session name if changed
-        if (session.name !== updatedName) {
-          session.name = updatedName;
-          session.email = users[userIdx].email;
-          session.phone = users[userIdx].phone;
-          setSession(session);
-          if (fullName) fullName.textContent = updatedName;
-          const newInitials = updatedName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-          if (avatarBig) avatarBig.textContent = newInitials;
-        }
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+      try {
+        const { apiUpdateUserProfile } = await import('./api.js');
+        await apiUpdateUserProfile(session.id, updatedData);
+
+        // Update local session with changed name/email/phone
+        session.name  = updatedData.name;
+        session.email = updatedData.email || session.email;
+        session.phone = updatedData.phone || session.phone;
+        setSession(session);
+
+        if (fullName) fullName.textContent = updatedData.name;
+        const newInitials = updatedData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        if (avatarBig) avatarBig.textContent = newInitials;
+
+        showToast('Profile updated successfully!', 'success');
+      } catch(e) {
+        showToast(e.message || 'Failed to update profile.', 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
       }
-      showToast('Profile updated successfully!', 'success');
     });
   }
 
@@ -752,36 +758,37 @@ export function initProfilePage() {
   const changePwBtn = document.querySelector('[data-action="change-password"]');
   if (changePwBtn) changePwBtn.addEventListener('click', () => openModal('changePasswordModal'));
 
+  // Helper: handle password change for either the modal or security tab
+  async function doPasswordChange(currId, newId, confirmId, onSuccess) {
+    const curr    = document.getElementById(currId)?.value?.trim();
+    const newPw   = document.getElementById(newId)?.value?.trim();
+    const confirm = document.getElementById(confirmId)?.value?.trim();
+    if (!curr)                      { showToast('Enter your current password.', 'error'); return; }
+    if (!newPw || newPw.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
+    if (newPw !== confirm)          { showToast('Passwords do not match.', 'error'); return; }
+
+    try {
+      await changePassword(curr, newPw);
+      showToast('Password updated successfully!', 'success');
+      [currId, newId, confirmId].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      if (onSuccess) onSuccess();
+    } catch(e) {
+      showToast(e.message || 'Failed to update password.', 'error');
+    }
+  }
+
   // ── Password update (security tab) ──
   const updatePwBtn = document.getElementById('updatePasswordBtn');
   if (updatePwBtn) {
-    updatePwBtn.addEventListener('click', async () => {
-      const curr = document.getElementById('secCurrPw')?.value?.trim();
-      const newPw = document.getElementById('secNewPw')?.value?.trim();
-      const confirm = document.getElementById('secConfirmPw')?.value?.trim();
-      if (!curr) { showToast('Enter your current password.', 'error'); return; }
-      if (!newPw || newPw.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
-      if (newPw !== confirm) { showToast('Passwords do not match.', 'error'); return; }
-      const result = await changePassword(curr, newPw);
-      showToast(result.message, result.success ? 'success' : 'error');
-      if (result.success) { document.getElementById('secCurrPw').value = ''; document.getElementById('secNewPw').value = ''; document.getElementById('secConfirmPw').value = ''; }
-    });
+    updatePwBtn.addEventListener('click', () =>
+      doPasswordChange('secCurrPw', 'secNewPw', 'secConfirmPw'));
   }
 
   // ── Password update (modal) ──
   const modalPwBtn = document.getElementById('updatePasswordModalBtn');
   if (modalPwBtn) {
-    modalPwBtn.addEventListener('click', async () => {
-      const curr = document.getElementById('modalCurrPw')?.value?.trim();
-      const newPw = document.getElementById('modalNewPw')?.value?.trim();
-      const confirm = document.getElementById('modalConfirmPw')?.value?.trim();
-      if (!curr) { showToast('Enter your current password.', 'error'); return; }
-      if (!newPw || newPw.length < 8) { showToast('New password must be at least 8 characters.', 'error'); return; }
-      if (newPw !== confirm) { showToast('Passwords do not match.', 'error'); return; }
-      const result = await changePassword(curr, newPw);
-      if (result.success) { closeModal('changePasswordModal'); document.getElementById('modalCurrPw').value = ''; document.getElementById('modalNewPw').value = ''; document.getElementById('modalConfirmPw').value = ''; }
-      showToast(result.message, result.success ? 'success' : 'error');
-    });
+    modalPwBtn.addEventListener('click', () =>
+      doPasswordChange('modalCurrPw', 'modalNewPw', 'modalConfirmPw', () => closeModal('changePasswordModal')));
   }
 
   // ── Notification preferences grid ──

@@ -38,7 +38,7 @@ export class GrievancesService {
       description: createGrievanceDto.description,
       relatedAppId: createGrievanceDto.relatedAppId,
       status: GrievanceStatus.OPEN,
-      priority: 'medium', // Default priority, could be determined by category
+      priority: createGrievanceDto.priority || 'medium',
       slaStatus: 'safe',
       filedDate: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),

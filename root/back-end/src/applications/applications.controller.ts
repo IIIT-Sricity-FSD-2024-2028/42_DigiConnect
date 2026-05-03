@@ -96,6 +96,57 @@ export class ApplicationsController {
     };
   }
 
+  @Get('officer-queue')
+  @UseGuards(RolesGuard)
+  @Roles(Role.OFFICER)
+  @ApiOperation({ summary: 'Get officer application queue' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'Officer ID', required: false })
+  @ApiResponse({ status: 200, description: 'Officer queue retrieved' })
+  getOfficerQueue(@Headers('x-user-id') userId?: string) {
+    return { success: true, data: this.applicationsService.getOfficerQueue(userId), message: 'OK' };
+  }
+
+  @Get('officer-queries')
+  @UseGuards(RolesGuard)
+  @Roles(Role.OFFICER)
+  @ApiOperation({ summary: 'Get officer pending queries' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'Officer queries retrieved' })
+  getOfficerQueries(@Headers('x-user-id') userId?: string) {
+    return { success: true, data: this.applicationsService.getOfficerQueries(userId), message: 'OK' };
+  }
+
+  @Get('officer-activity')
+  @UseGuards(RolesGuard)
+  @Roles(Role.OFFICER)
+  @ApiOperation({ summary: 'Get officer recent activity' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'Officer activity retrieved' })
+  getOfficerActivity(@Headers('x-user-id') userId?: string) {
+    return { success: true, data: this.applicationsService.getOfficerActivity(userId), message: 'OK' };
+  }
+
+  @Get('officer-sla-risks')
+  @UseGuards(RolesGuard)
+  @Roles(Role.OFFICER)
+  @ApiOperation({ summary: 'Get SLA at-risk items for officer' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'SLA risks retrieved' })
+  getOfficerSlaRisks(@Headers('x-user-id') userId?: string) {
+    return { success: true, data: this.applicationsService.getOfficerSlaRisks(userId), message: 'OK' };
+  }
+
+  @Get('officer-week-chart')
+  @UseGuards(RolesGuard)
+  @Roles(Role.OFFICER)
+  @ApiOperation({ summary: 'Get officer weekly performance chart data' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'Week chart data retrieved' })
+  getOfficerWeekChart(@Headers('x-user-id') userId?: string) {
+    return { success: true, data: this.applicationsService.getOfficerWeekChart(userId), message: 'OK' };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get application by ID' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
@@ -194,4 +245,6 @@ export class ApplicationsController {
       message: 'OK'
     };
   }
+
+
 }

@@ -19,4 +19,11 @@ export interface User {
   securityAnswer?: string;
   cases?: number;
   sla?: number;
+  dob?: string;
+  gender?: string;
+  address?: string;
+  state?: string;
+  district?: string;
+  mandal?: string;
+  pincode?: string;
 }

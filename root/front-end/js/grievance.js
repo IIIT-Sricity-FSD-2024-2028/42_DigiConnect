@@ -2,7 +2,8 @@
 // grievance.js — Grievance lifecycle management
 // ═══════════════════════════════════════════
 
-import { getSession, getGrievances, setGrievances, getAuditLogs, setAuditLogs, getUsers, getApplications, setApplications } from './state.js';
+import { getSession } from './auth.js';
+import { apiGetMyGrievances, apiGetAllGrievances, apiGetGrievanceById, apiRaiseGrievance, apiUpdateGrievanceStatus, apiReplyGrievance, apiGetUsers, apiGetAllApplications } from './api.js';
 import { initPage } from './navigation.js';
 import { showToast, generateId, formatDate, formatDateTime, getQueryParam, openModal, closeModal } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
@@ -11,7 +12,6 @@ import {
   pushToEscalatedCases, pushToSuperApprovals, updateMasterApp,
   notifyCitizen, notifySupervisor, notifyGrievanceOfficer
 } from './workflow.js';
-import { apiRaiseGrievance, apiGetMyGrievances, apiGetAllGrievances, apiUpdateGrievanceStatus } from './api.js';
 
 // ── Shared helpers ──
 function setTextContent(id, value) {
@@ -54,7 +54,7 @@ export function initRaiseGrievance() {
     if (catErr) catErr.style.display = 'none';
   };
 
-  window.gNextStep = (step) => {
+  window.gNextStep = async (step) => {
     if (step > currentStep && window.validateForm) {
       if (!window.validateForm('#gStep' + currentStep)) return;
     }
@@ -75,16 +75,24 @@ export function initRaiseGrievance() {
         }
         
         // ── Strict Ownership Check ──
-        const apps = getApplications();
-        const app = apps.find(a => a.id.toUpperCase() === appId.toUpperCase());
-        
-        if (!app) {
-          if(window.showToast) window.showToast('Application ID not found in our records.', 'error');
-          return;
+        let app = null;
+        try {
+          // Import from api.js if not already imported
+          const { apiGetMyApplications } = await import('./api.js');
+          const res = await apiGetMyApplications();
+          app = res.data.find(a => a.id.toUpperCase() === appId.toUpperCase());
+        } catch (e) {
+           app = null;
         }
         
-        if (app.citizenId !== session.id) {
-          if(window.showToast) window.showToast('You can only raise grievances for applications submitted through your account.', 'danger');
+        if (!app) {
+          if(window.showToast) window.showToast('Application ID not found in your records.', 'error');
+          return;
+        }
+
+        // ── Do not allow grievances for approved/completed applications ──
+        if (app.status === 'approved' || app.status === 'completed') {
+          if(window.showToast) window.showToast('This application is already approved. You cannot raise a grievance for it.', 'error');
           return;
         }
 
@@ -156,6 +164,7 @@ export function initRaiseGrievance() {
 
   window.submitGrievance = async () => {
     if (window.validateForm && !window.validateForm('#gStep' + currentStep)) return;
+    // Check consent checkboxes
     const c1 = document.getElementById('consent1')?.checked;
     const c2 = document.getElementById('consent2')?.checked;
     const c3 = document.getElementById('consent3')?.checked;
@@ -170,43 +179,43 @@ export function initRaiseGrievance() {
       submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;"></div> Submitting...';
     }
 
-    try {
+    setTimeout(() => {
       const subject = document.getElementById('gTitle')?.value?.trim();
       const description = document.getElementById('gDesc')?.value?.trim();
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
       const priority = document.getElementById('gPriority')?.value || 'medium';
 
-      // Submit to real backend API
-      const result = await apiRaiseGrievance({
+      const newGrievanceData = {
         citizenId: session.id,
         category: selectedCategory || 'delay',
-        subject,
-        description,
-        relatedAppId: relatedApp || null,
-        priority,
+        subject, description,
+        relatedAppId: relatedApp || undefined,
+        priority: priority,
+      };
+
+      apiRaiseGrievance(newGrievanceData).then(res => {
+        const newGrievance = res.data;
+        window.gNextStep(4);
+        
+        const tc = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        tc('newGrvId', newGrievance.id);
+        tc('confCat', getCatLabel(selectedCategory));
+        tc('confApp', relatedApp || '—');
+        tc('confPriority', priority.charAt(0).toUpperCase() + priority.slice(1));
+        tc('confFiled', formatDate(newGrievance.filedDate));
+        
+        const sb = document.getElementById('gSidebar');
+        if (sb) sb.style.display = 'none';
+
+        if(window.showToast) window.showToast('Grievance submitted successfully!', 'success');
+      }).catch(e => {
+        if(window.showToast) window.showToast(e.message || 'Failed to submit grievance', 'error');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Submit Grievance';
+        }
       });
-
-      const newGrievance = result.data;
-
-      window.gNextStep(4);
-      const tc = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      tc('newGrvId', newGrievance.id);
-      tc('confCat', getCatLabel(selectedCategory));
-      tc('confApp', relatedApp || '—');
-      tc('confPriority', priority.charAt(0).toUpperCase() + priority.slice(1));
-      tc('confFiled', formatDate(newGrievance.filedDate));
-
-      const sb = document.getElementById('gSidebar');
-      if (sb) sb.style.display = 'none';
-      if(window.showToast) window.showToast('Grievance submitted successfully!', 'success');
-
-    } catch (err) {
-      showToast(err.message || 'Submission failed. Please try again.', 'error');
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Submit Grievance';
-      }
-    }
+    }, 1200);
   };
 }
 
@@ -219,15 +228,14 @@ export async function initMyGrievances() {
   if (!session) return;
   renderNotifPanel();
 
-  // Fetch from real backend
   let allFiltered = [];
   try {
-    const { apiGetMyGrievances } = await import('./api.js');
-    const res = await apiGetMyGrievances(1, 100);
-    allFiltered = res.data || [];
+    const res = await apiGetMyGrievances();
+    allFiltered = res.data;
   } catch (e) {
-    if(window.showToast) window.showToast('Backend unreachable.', 'error');
+    if(window.showToast) window.showToast('Failed to load grievances', 'error');
   }
+
   const TERMINAL = ['resolved', 'rejected', 'escalated-resolved', 'escalated'];
   
   let currentFilter = 'all';
@@ -348,21 +356,19 @@ export async function initMyGrievances() {
     const input = document.getElementById('replyText');
     const txt = input?.value?.trim();
     if (!txt || !selectedId) return;
-    
+
     try {
-      const { apiReplyToGrievance } = await import('./api.js');
-      const res = await apiReplyToGrievance(selectedId, txt);
-      
-      // Update local item
+      const res = await apiReplyGrievance(selectedId, txt);
+      const updatedGrievance = res.data;
+
+      // Refresh local array
       const localIdx = allFiltered.findIndex(x => x.id === selectedId);
-      if (localIdx > -1) {
-        allFiltered[localIdx] = res.data;
-        window.selectGrv(selectedId);
-      }
+      if (localIdx > -1) allFiltered[localIdx] = updatedGrievance;
+      
+      window.selectGrv(selectedId);
       if(window.showToast) window.showToast('Message sent to officer.', 'success');
-      if (input) input.value = '';
     } catch (e) {
-      if(window.showToast) window.showToast('Failed to send reply.', 'error');
+      if(window.showToast) window.showToast(e.message || 'Failed to send reply', 'error');
     }
   };
 
@@ -395,7 +401,7 @@ export async function initMyGrievances() {
 // Full 4-step workflow: Review → Categorize → Investigate → Resolve/Reject/Escalate
 // ══════════════════════════════════════════
 
-export function initGrievanceDetail() {
+export async function initGrievanceDetail() {
   const session = initPage({ title: 'Grievance Detail', breadcrumbs: [{ label: 'Grievance Portal', href: 'grievance/grievance-dashboard.html' }, { label: 'Grievance Detail' }], requiredRole: 'grievance' });
   if (!session) return;
   renderNotifPanel();
@@ -403,8 +409,24 @@ export function initGrievanceDetail() {
   const grvId = getQueryParam('id');
   const requestedTab = getQueryParam('tab');
 
-  const grievances = getGrievances();
-  const grievance = grvId ? grievances.find(g => g.id === grvId) : grievances.find(g => !['resolved','rejected','escalated-resolved','escalated'].includes(g.status));
+  let grievance = null;
+  try {
+    if (grvId) {
+      // Direct lookup by ID — works regardless of pagination
+      const res = await apiGetGrievanceById(grvId);
+      grievance = res.data || res;
+    } else {
+      // No ID in URL: find the first active grievance assigned to this officer
+      const res = await apiGetAllGrievances(1, 200);
+      const grievances = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      grievance = grievances.find(g =>
+        !['resolved','rejected','escalated-resolved','escalated'].includes(g.status) &&
+        g.officerId === session.id
+      );
+    }
+  } catch(e) {
+    console.error('Failed to load grievance detail:', e.message);
+  }
 
   if (!grievance) {
     const content = document.getElementById('grievanceDetailContent') || document.querySelector('.main-content');
@@ -449,7 +471,11 @@ export function initGrievanceDetail() {
   setTextContent('reviewRelatedApp', grievance.relatedAppId || 'None');
 
   // Look up citizen details
-  const users = getUsers();
+  let users = [];
+  try {
+    const res = await apiGetUsers();
+    users = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+  } catch(e) {}
   const citizen = users.find(u => u.id === grievance.citizenId);
 
   // Populate sidebar citizen panel
@@ -461,7 +487,7 @@ export function initGrievanceDetail() {
     setTextContent('profileDistrict', citizen.jurisdiction && citizen.jurisdiction !== '-' ? citizen.jurisdiction : 'Hyderabad');
     
     // Calculate past grievances by filtering
-    const pastGrievances = getGrievances().filter(g => g.citizenId === grievance.citizenId && g.id !== grievance.id).length;
+    const pastGrievances = grievances.filter(g => g.citizenId === grievance.citizenId && g.id !== grievance.id).length;
     setTextContent('profilePastGrv', pastGrievances.toString());
   }
 
@@ -480,7 +506,11 @@ export function initGrievanceDetail() {
     const linkedAppSection = document.getElementById('linkedAppSection');
     if (linkedAppSection) linkedAppSection.style.display = 'block';
     
-    const apps = getApplications();
+    let apps = [];
+    try {
+      const res = await apiGetAllApplications();
+      apps = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+    } catch(e) {}
     const relatedApp = apps.find(a => a.id === grievance.relatedAppId);
 
     // Populate App blocks & Modal
@@ -737,7 +767,7 @@ export function initGrievanceDetail() {
   // Set accurate visual states on initial load
   window.switchTab(currentActiveTab);
 
-  window.remindOfficer = function() {
+  window.remindOfficer = async function() {
     let count = (grievance.reminders || 0) + 1;
     grievance.reminders = count;
     let suffix = count === 1 ? '1st' : (count === 2 ? '2nd' : (count === 3 ? '3rd' : count + 'th'));
@@ -750,7 +780,10 @@ export function initGrievanceDetail() {
       note: `Automated push notification sent to assigned officer handling ${grievance.relatedAppId || 'application'}.`
     });
     
-    setGrievances(grievances);
+    try {
+      await apiUpdateGrievanceStatus(grievance.id, { remarks: `Officer Reminded (${suffix})` });
+    } catch(e) {}
+    
     window.renderAuditHistory();
     if(window.showToast) window.showToast('Reminder Sent to Officer', 'success');
   };
@@ -763,10 +796,14 @@ export function initGrievanceDetail() {
     if (btn) btn.disabled = !allChecked;
   };
 
-  window.confirmReview = function() {
+  window.confirmReview = async function() {
     completedSteps.add(1);
     grievance.history.push({ step: 1, action: 'Review Completed', date: new Date().toISOString(), actor: session.name, note: 'Citizen details and documents reviewed.' });
-    setGrievances(grievances);
+    
+    try {
+      await apiUpdateGrievanceStatus(grievance.id, { remarks: 'Review Completed' });
+    } catch(e) {}
+    
     window.renderAuditHistory();
     window.switchTab('categorize');
   };
@@ -795,7 +832,7 @@ export function initGrievanceDetail() {
     el.classList.add('selected');
   };
 
-  window.confirmCategorize = function() {
+  window.confirmCategorize = async function() {
     if (!selectedCat) { showToast('Please select a category', 'warning'); return; }
 
     // Update grievance in localStorage
@@ -805,7 +842,10 @@ export function initGrievanceDetail() {
     grievance.lastUpdated = new Date().toISOString().split('T')[0];
     grievance.history.push({ action: 'Categorized as ' + getCatLabel(selectedCat), date: new Date().toISOString(), actor: session.name, note: `Category: ${getCatLabel(selectedCat)}. Priority: ${selectedPriority}. Status → UNDER_INVESTIGATION.` });
     grievance.history.push({ action: 'Investigation Started', date: new Date().toISOString(), actor: session.name, note: `Started formal investigation of application context.` });
-    setGrievances(grievances);
+    
+    try {
+      await apiUpdateGrievanceStatus(grievance.id, { status: 'investigating', remarks: 'Categorized as ' + getCatLabel(selectedCat) });
+    } catch(e) {}
     
     // Dynamically update the audit timeline
     window.renderAuditHistory();
@@ -839,13 +879,16 @@ export function initGrievanceDetail() {
     if (prog) { prog.textContent = `${doneCount} / ${total} Done`; prog.className = doneCount === total ? 'badge badge-success' : 'badge badge-warning'; }
   };
 
-  window.confirmInvestigation = function() {
+  window.confirmInvestigation = async function() {
     const total = document.querySelectorAll('.inv-check-item').length;
     if (doneCount < Math.ceil(total / 2)) { showToast(`Complete at least ${Math.ceil(total / 2)} checklist items before proceeding`, 'warning'); return; }
 
     completedSteps.add(3);
     grievance.history.push({ step: 3, action: 'Investigation Completed', date: new Date().toISOString(), actor: session.name, note: 'All investigation steps completed. Proceeding to resolution.' });
-    setGrievances(grievances);
+    
+    try {
+      await apiUpdateGrievanceStatus(grievance.id, { status: 'investigating', remarks: 'Investigation Completed' });
+    } catch(e) {}
 
     // Dynamic audit update
     window.renderAuditHistory();
@@ -861,6 +904,11 @@ export function initGrievanceDetail() {
   let selectedResType = '';
 
   window.selectResType = function(type) {
+    if (type === 'escalate' && (grievance.category === 'delay' || grievance.category === 'payment')) {
+      showToast('Restricted: Delay and Payment grievances must be resolved locally. Only Rejections or Misconduct can be escalated to the Supervisor.', 'error');
+      return;
+    }
+    
     selectedResType = type;
     document.querySelectorAll('.outcome-btn').forEach(b => b.classList.remove('selected'));
     const resBtn = document.getElementById('res-' + type);
@@ -906,7 +954,7 @@ export function initGrievanceDetail() {
     document.getElementById('confirmResModal')?.classList.add('active');
   };
 
-  window.finalSubmit = function() {
+  window.finalSubmit = async function() {
     document.getElementById('confirmResModal')?.classList.remove('active');
 
     // Collect resolution note
@@ -936,13 +984,10 @@ export function initGrievanceDetail() {
       action: { resolve: 'Resolved', reject: 'Rejected', escalate: 'Escalated to Supervisor' }[selectedResType],
       date: today.toISOString(), actor: session.name, note: resNote,
     });
-
-    // ── Call real backend API ──
-    apiUpdateGrievanceStatus(grievance.id, newStatus, resNote).catch(err => {
-      console.warn('[Grievance API] Status update failed, kept local change:', err.message);
-    });
-
-    setGrievances(grievances);
+    
+    try {
+      await apiUpdateGrievanceStatus(grievance.id, { status: newStatus, remarks: resNote });
+    } catch(e) {}
 
     // Dynamically update the audit timeline
     window.renderAuditHistory();
@@ -952,7 +997,11 @@ export function initGrievanceDetail() {
 
     // ── FIX 5 & 6: Category-based resolution actions ──
     if (selectedResType === 'resolve') {
-      const apps = getApplications();
+      let apps = [];
+      try {
+        const res = await apiGetAllApplications();
+        apps = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      } catch(e) {}
       const relatedApp = grievance.relatedAppId ? apps.find(a => a.id === grievance.relatedAppId) : null;
 
       if (grievance.category === 'rejection' && relatedApp) {
@@ -960,10 +1009,9 @@ export function initGrievanceDetail() {
         updateMasterApp(relatedApp.id, 'supervisor-review', 'Application Reopened by Grievance Resolution', `Grievance ${grievance.id} resolved as unfair rejection. Sent to Supervisor for final decision.`, session.name);
         const supervisorId = getSupervisorByDept(relatedApp.serviceName);
         pushToSuperApprovals({ id: relatedApp.id, service: relatedApp.serviceName, citizen: relatedApp.citizenName, submitted: relatedApp.submittedDate?.split('T')[0] || '—', slaLeft: 3, officerNote: `Reopened via Grievance ${grievance.id} — unfair rejection overturned.`, docs: relatedApp.documents?.map(d => d.name) || [] }, { name: session.name, role: 'Grievance Officer', title: 'GRV' }, relatedApp);
-        notifySupervisor(supervisorId, 'Application Reopened — Grievance Resolution', `${relatedApp.serviceName} (${relatedApp.id}) reopened after grievance ${grievance.id} found rejection was unfair. Your review needed.`, 'warning', `supervisor/supervisor-review.html?id=${relatedApp.id}&mode=final`);
+        // notifySupervisor(supervisorId, 'Application Reopened — Grievance Resolution', `${relatedApp.serviceName} (${relatedApp.id}) reopened after grievance ${grievance.id} found rejection was unfair. Your review needed.`, 'warning', `supervisor/supervisor-review.html?id=${relatedApp.id}&mode=final`);
         addAuditEntry('App Reopened via Grievance', `${session.name} reopened ${relatedApp.id} after grievance ${grievance.id}. Sent to Supervisor.`);
         grievance.history.push({ action: 'Application Reopened → Supervisor', date: today.toISOString(), actor: session.name, note: `Application ${relatedApp.id} escalated to Supervisor for final approval.` });
-        setGrievances(grievances);
 
       } else if (grievance.category === 'delay' && relatedApp) {
         // DELAY resolution: Expedite flag + audit warning against officer
@@ -987,12 +1035,16 @@ export function initGrievanceDetail() {
     if (selectedResType === 'escalate') {
       // ── FIX 5: Grievance Officer → Supervisor escalation ──
       // Only serious misconduct or long SLA cases
-      const apps = getApplications();
+      let apps = [];
+      try {
+        const res = await apiGetAllApplications();
+        apps = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      } catch(e) {}
       const relatedApp = grievance.relatedAppId ? apps.find(a => a.id === grievance.relatedAppId) : null;
       grievance.relatedService = relatedApp?.serviceName || 'Service';
       pushToEscalatedCases(grievance, session, resNote);
       const supervisorId = getSupervisorByDept(relatedApp?.serviceName || '');
-      notifySupervisor(supervisorId, 'Grievance Escalated to You', `Grievance ${grievance.id} from ${grievance.citizenName} escalated by ${session.name}. Immediate action required.`, 'danger', 'supervisor/escalated-cases.html');
+      // notifySupervisor(supervisorId, 'Grievance Escalated to You', `Grievance ${grievance.id} from ${grievance.citizenName} escalated by ${session.name}. Immediate action required.`, 'danger', 'supervisor/escalated-cases.html');
       addAuditEntry('Grievance Escalated to Supervisor', `${session.name} escalated grievance ${grievance.id} to Supervisor. Reason: ${resNote}`);
     }
 
@@ -1043,13 +1095,20 @@ export function initGrievanceDetail() {
 // Shows terminal-state grievances: resolved, rejected, escalated-resolved
 // ══════════════════════════════════════════
 
-export function initGrievanceHistory() {
+export async function initGrievanceHistory() {
   const session = initPage({ title: 'Grievance History', breadcrumbs: [{ label: 'Grievance Portal', href: 'grievance/grievance-dashboard.html' }, { label: 'Grievance History' }], requiredRole: 'grievance' });
   if (!session) return;
   renderNotifPanel();
 
   const TERMINAL = ['resolved', 'rejected', 'escalated-resolved', 'escalated'];
-  const allGrievances = getGrievances();
+  let allGrievances = [];
+  try {
+    const res = await apiGetAllGrievances();
+    allGrievances = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+  } catch (e) {
+    if (window.showToast) window.showToast('Failed to load grievance history', 'error');
+  }
+  
   const terminalGrievances = allGrievances.filter(g => TERMINAL.includes(g.status));
 
   // ── State ──
@@ -1233,12 +1292,18 @@ export function initGrievanceHistory() {
 // Auto-init based on data-page attribute
 // ══════════════════════════════════════════
 
-document.addEventListener('DOMContentLoaded', () => {
-  const page = document.body.dataset.page;
+function initGrievancePages() {
+  const page = document.body?.dataset?.page;
   switch (page) {
     case 'raise-grievance':   initRaiseGrievance();   break;
     case 'my-grievances':     initMyGrievances();     break;
     case 'grievance-detail':  initGrievanceDetail();  break;
     case 'grievance-history': initGrievanceHistory(); break;
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initGrievancePages);
+} else {
+  initGrievancePages();
+}

@@ -8,7 +8,7 @@ import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { generateId } from '../utils/helpers';
 import { paginate } from '../utils/pagination.util';
-import { AppStatus } from '../models/enums';
+import { AppStatus, GrievanceStatus } from '../models/enums';
 
 @Injectable()
 export class ApplicationsService {
@@ -77,7 +77,8 @@ export class ApplicationsService {
       submittedDate: new Date().toISOString(),
       slaDate: new Date(Date.now() + (service ? service.sla : 7) * 24 * 60 * 60 * 1000).toISOString(),
       timeline: [{ action: 'Application Submitted', date: new Date().toISOString(), actor: citizen ? citizen.name : 'Citizen', note: 'Application received' }],
-      documents: createApplicationDto.documents || []
+      documents: createApplicationDto.documents || [],
+      ...(createApplicationDto.formData || {})
     };
 
     if (createApplicationDto.paymentTransactionId) {
@@ -117,6 +118,25 @@ export class ApplicationsService {
     if (appIndex === -1) throw new NotFoundException('Application not found');
 
     const app = db.applications[appIndex];
+
+    // Terminal State Lock
+    if ([AppStatus.APPROVED, AppStatus.REJECTED, AppStatus.COMPLETED].includes(app.status as AppStatus)) {
+      throw new BadRequestException('This application has already been finalized and cannot be modified.');
+    }
+
+    // Grievance API Lock
+    const activeGrievance = db.grievances.find(g => 
+      g.relatedAppId === id && 
+      (g.category === 'misconduct' || g.status === GrievanceStatus.ESCALATED) &&
+      g.status !== GrievanceStatus.RESOLVED && 
+      g.status !== GrievanceStatus.REJECTED &&
+      g.status !== 'escalated-resolved'
+    );
+
+    if (activeGrievance) {
+      throw new BadRequestException('Application Locked: Under review by Grievance/Appellate Authority.');
+    }
+
     app.status = updateStatusDto.status;
     if (updateStatusDto.remarks) app.remarks = updateStatusDto.remarks;
     
@@ -214,14 +234,162 @@ export class ApplicationsService {
     if (appIndex === -1) throw new NotFoundException('Application not found');
     const app = db.applications[appIndex];
     
+    // Check if SLA was breached while waiting for citizen
+    const now = new Date();
+    const currentSla = new Date(app.slaDate);
+    if (now.getTime() > currentSla.getTime()) {
+      // SLA breached during query wait time. Reset it to give officer 3 fresh days.
+      const newSla = new Date();
+      newSla.setDate(newSla.getDate() + 3);
+      app.slaDate = newSla.toISOString();
+      app.timeline.push({
+        action: 'SLA Extended',
+        date: now.toISOString(),
+        actor: 'System',
+        note: 'SLA deadline extended by 3 days following citizen response.'
+      });
+    }
+
     app.status = AppStatus.UNDER_REVIEW;
     app.citizenResponse = response;
     app.timeline.push({
       action: 'Query Responded',
-      date: new Date().toISOString(),
+      date: now.toISOString(),
       actor: 'Citizen',
       note: response
     });
     return app;
+  }
+
+  // ── Officer Dashboard Data ──
+
+  getOfficerQueue(officerId?: string) {
+    let apps = db.applications;
+    if (officerId) apps = apps.filter(a => a.officerId === officerId);
+
+    // Filter out locked applications
+    apps = apps.filter(a => {
+      const activeGrievance = db.grievances.find(g => 
+        g.relatedAppId === a.id && 
+        (g.category === 'misconduct' || g.status === GrievanceStatus.ESCALATED) &&
+        g.status !== GrievanceStatus.RESOLVED && 
+        g.status !== GrievanceStatus.REJECTED &&
+        g.status !== 'escalated-resolved'
+      );
+      return !activeGrievance;
+    });
+
+    return apps.map(a => {
+      const citizenUser = db.users.find(u => u.id === a.citizenId);
+      const submittedDate = new Date(a.submittedDate);
+      const slaDate = new Date(a.slaDate);
+      const totalDays = Math.max(1, Math.ceil((slaDate.getTime() - submittedDate.getTime()) / 86400000));
+      const usedDays = Math.ceil((new Date().getTime() - submittedDate.getTime()) / 86400000);
+      const slaLeft = totalDays - usedDays;
+
+      // Mask aadhaar — show only last 4 digits
+      const rawAadhaar = citizenUser?.aadhaar || '';
+      const maskedAadhaar = rawAadhaar.length >= 4
+        ? 'XXXX XXXX ' + rawAadhaar.slice(-4)
+        : rawAadhaar || 'XXXX XXXX XXXX';
+
+      return {
+        ...a,
+        service: a.serviceName,
+        citizen: a.citizenName,
+        phone: citizenUser ? citizenUser.phone : '',
+        submitted: submittedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        slaLeft,
+        slaTotal: totalDays,
+        status: a.status === AppStatus.PENDING ? 'new' : a.status,
+        // Citizen personal details for officer review
+        aadhaar: maskedAadhaar,
+        dob: citizenUser?.dob || '—',
+        gender: citizenUser?.gender || '—',
+        address: citizenUser?.address
+          ? [citizenUser.address, citizenUser.mandal, citizenUser.district, citizenUser.state, citizenUser.pincode].filter(Boolean).join(', ')
+          : '—',
+      };
+    });
+  }
+
+
+  getOfficerQueries(officerId?: string) {
+    let apps = db.applications.filter(a => a.status === AppStatus.QUERY);
+    if (officerId) apps = apps.filter(a => a.officerId === officerId);
+
+    return apps.map(a => {
+      const queryAction = [...a.timeline].reverse().find(t => t.action.toLowerCase().includes('query'));
+      const sentDate = queryAction ? new Date(queryAction.date) : new Date();
+      const deadlineDate = new Date(sentDate.getTime() + 3 * 86400000);
+
+      return {
+        id: a.id,
+        citizen: a.citizenName,
+        service: a.serviceName,
+        query: queryAction ? queryAction.note : 'Additional details requested',
+        sent: sentDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        deadline: deadlineDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        responded: !!a.citizenResponse
+      };
+    });
+  }
+
+  getOfficerActivity(officerId?: string) {
+    if (!officerId) return [];
+    const officer = db.users.find(u => u.id === officerId);
+    if (!officer) return [];
+
+    return db.auditLogs
+      .filter(log => log.actor === officer.email || log.actor === officer.name)
+      .slice(0, 10)
+      .map(log => {
+        let icon = 'check';
+        let color = 'var(--green-500)';
+        if (log.action.toLowerCase().includes('reject')) { icon = 'reject'; color = 'var(--red-500)'; }
+        if (log.action.toLowerCase().includes('query')) { icon = 'query'; color = 'var(--amber-500)'; }
+        if (log.action.toLowerCase().includes('login')) { icon = 'login'; color = 'var(--navy-500)'; }
+
+        return {
+          icon, color,
+          msg: log.details,
+          time: new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        };
+      });
+  }
+
+  getOfficerSlaRisks(officerId?: string) {
+    let apps = db.applications.filter(a => a.status !== AppStatus.APPROVED && a.status !== AppStatus.COMPLETED && a.status !== AppStatus.REJECTED);
+    if (officerId) apps = apps.filter(a => a.officerId === officerId);
+
+    return apps.map(a => {
+      const submittedDate = new Date(a.submittedDate);
+      const slaDate = new Date(a.slaDate);
+      const totalDays = Math.max(1, Math.ceil((slaDate.getTime() - submittedDate.getTime()) / 86400000));
+      const usedDays = Math.ceil((new Date().getTime() - submittedDate.getTime()) / 86400000);
+      const slaLeft = totalDays - usedDays;
+      const pct = Math.min(100, Math.max(0, (usedDays / totalDays) * 100));
+      
+      return {
+        id: a.id,
+        status: slaLeft < 0 ? 'breach' : slaLeft <= 2 ? 'warn' : 'safe',
+        pct: pct,
+        slaLeft
+      };
+    }).filter(a => a.status === 'breach' || a.status === 'warn').slice(0, 5);
+  }
+
+  getOfficerWeekChart(officerId?: string) {
+    return db.officerWeekChart;
+  }
+
+  // ── Supervisor Dashboard Data ──
+
+  getSupervisorApprovalQueue() {
+    return db.superOfficerApproved;
+  }
+
+  getSuperPendingApps() {
+    return db.superPendingApps;
   }
 }

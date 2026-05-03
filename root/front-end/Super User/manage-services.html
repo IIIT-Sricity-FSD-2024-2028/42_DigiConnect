@@ -287,33 +287,13 @@
         </div>
     </div>
 
-    <!-- Deactivate Confirm Modal -->
-    <div class="modal-overlay" id="deleteModal">
-        <div class="modal" style="max-width:420px;">
-            <div class="modal-header"><span class="modal-title">Confirm Deactivation</span><button class="btn-icon"
-                    onclick="document.getElementById('deleteModal').classList.remove('active')"><svg width="16"
-                        height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg></button></div>
-            <div class="modal-body">
-                <p style="color:var(--color-text-muted);font-size:0.9rem;">Are you sure you want to deactivate <strong
-                        id="deleteServiceName"></strong>? Citizens will no longer be able to apply. Existing
-                    applications will not be affected.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline"
-                    onclick="document.getElementById('deleteModal').classList.remove('active')">Cancel</button>
-                <button class="btn btn-danger" onclick="confirmDeactivate()">Deactivate Service</button>
-            </div>
-        </div>
-    </div>
+
 
     <div id="toast-container"></div>
 
 
 
-    <script type="module" src="../js/admin.js"></script>
+    <script type="module" src="../js/crud.js"></script>
 </body>
-
 
 </html>

@@ -11,6 +11,7 @@
 
 <body data-page="citizen-dashboard">
     <div class="app-layout">
+
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar"></aside>
 
@@ -29,7 +30,7 @@
                     <div class="stat-card-inner">
                         <div>
                             <div class="stat-label">Total Applications</div>
-                            <div class="stat-value" id="statTotalApps">8</div>
+                            <div class="stat-value" id="statTotalApps">0</div>
                         </div>
                         <div class="stat-icon blue"><svg width="22" height="22" fill="none" stroke="currentColor"
                                 stroke-width="2" viewBox="0 0 24 24">
@@ -43,7 +44,7 @@
                     <div class="stat-card-inner">
                         <div>
                             <div class="stat-label">Approved</div>
-                            <div class="stat-value" id="statApproved" style="color:var(--green-500);">5</div>
+                            <div class="stat-value" id="statApproved" style="color:var(--green-500);">0</div>
                         </div>
                         <div class="stat-icon green"><svg width="22" height="22" fill="none" stroke="currentColor"
                                 stroke-width="2" viewBox="0 0 24 24">
@@ -51,14 +52,13 @@
                                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg></div>
                     </div>
-                    <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">62.5% approval rate
-                    </div>
+                    <div id="approvalRate" style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">0% approval rate</div>
                 </div>
                 <div class="stat-card accent">
                     <div class="stat-card-inner">
                         <div>
-                            <div class="stat-label">Pending</div>
-                            <div class="stat-value" id="statPending" style="color:var(--amber-500);">2</div>
+                            <div class="stat-label">Under Review</div>
+                            <div class="stat-value" id="statPending" style="color:var(--amber-500);">0</div>
                         </div>
                         <div class="stat-icon amber"><svg width="22" height="22" fill="none" stroke="currentColor"
                                 stroke-width="2" viewBox="0 0 24 24">
@@ -66,14 +66,27 @@
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg></div>
                     </div>
-                    <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">1 needs your response
+                    <div id="pendingNote" style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">Currently being reviewed</div>
+                </div>
+                <div class="stat-card" style="border-color:var(--amber-200);">
+                    <div class="stat-card-inner">
+                        <div>
+                            <div class="stat-label">Query Raised</div>
+                            <div class="stat-value" id="statQuery" style="color:var(--amber-600);">0</div>
+                        </div>
+                        <div class="stat-icon amber"><svg width="22" height="22" fill="none" stroke="currentColor"
+                                stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg></div>
                     </div>
+                    <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">Needs your response</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-inner">
                         <div>
                             <div class="stat-label">Open Grievances</div>
-                            <div class="stat-value" id="statOpenGrievances">1</div>
+                            <div class="stat-value" id="statOpenGrievances">0</div>
                         </div>
                         <div class="stat-icon amber"><svg width="22" height="22" fill="none" stroke="currentColor"
                                 stroke-width="2" viewBox="0 0 24 24">
@@ -81,8 +94,7 @@
                                     d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg></div>
                     </div>
-                    <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">Under investigation
-                    </div>
+                    <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:4px;">Under investigation</div>
                 </div>
             </div>
 

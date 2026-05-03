@@ -3,6 +3,8 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
+import * as fs from 'fs';
+import * as path from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,6 +35,14 @@ async function bootstrap() {
     .build();
     
   const document = SwaggerModule.createDocument(app, config);
+  
+  // Save swagger.json to docs/ folder
+  const docsDir = path.join(__dirname, '..', 'docs');
+  if (!fs.existsSync(docsDir)) {
+    fs.mkdirSync(docsDir, { recursive: true });
+  }
+  fs.writeFileSync(path.join(docsDir, 'swagger.json'), JSON.stringify(document, null, 2));
+
   SwaggerModule.setup('api/docs', app, document, {
     customSiteTitle: 'DigiConnect API Portal',
     customCss: `

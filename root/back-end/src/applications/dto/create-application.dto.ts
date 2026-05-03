@@ -27,4 +27,7 @@ export class CreateApplicationDto {
 
   @IsOptional()
   documents?: any[]; // Allow generic documents object array
+
+  @IsOptional()
+  formData?: any; // Allow dynamic form data
 }

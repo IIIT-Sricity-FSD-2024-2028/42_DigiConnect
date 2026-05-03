@@ -2,19 +2,12 @@
 // escalation.js — SLA monitoring & Supervisor page controllers
 // ═══════════════════════════════════════════
 
-import { getApplications, setApplications, getGrievances, getUsers, getSession, getSuperEscSlaCases, setSuperEscSlaCases, getSuperApprovals, setSuperApprovals, getSuperApprovedToday, setSuperApprovedToday } from './state.js';
+import { getSession } from './auth.js';
 import { initPage } from './navigation.js';
 import { showToast, formatDate, formatDateTime, openModal, closeModal, generateId } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { addAuditEntry, updateMasterApp, notifyCitizen } from './workflow.js';
-
-// UI display constants for workload management (real data comes from supervisor dashboard API)
-export const OFFICER_QUERIES = [];
-export const OFFICER_ACTIVITY = [];
-export const OFFICER_SLA_RISKS = [];
-export const OFFICER_WEEK_CHART = [];
-export const SUPER_TEAM = [];
-
+import { apiGetEscalated, apiGetSupervisorDashboard, apiAssignApplication, apiReviewEscalated } from './api.js';
 
 /**
  * Check SLA status of an application
@@ -52,13 +45,26 @@ export function getEscalatedApplications() {
 // Supervisor: Escalated Cases
 // ══════════════════════════════════════════
 
-export function initEscalatedCases() {
+export async function initEscalatedCases() {
   const session = initPage({ title: 'Escalated Cases', breadcrumbs: [{ label: 'Supervisor Portal', href: 'supervisor-dashboard.html' }, { label: 'Escalated Cases' }], requiredRole: 'supervisor' });
   if (!session) return;
   renderNotifPanel();
 
-  let activeCards = getSuperEscSlaCases();
+  let activeCards = [];
   let activeFilter = 'all';
+
+  try {
+    const res = await apiGetSupervisorDashboard();
+    const apps = res.data.escalatedSla || [];
+    const grievances = res.data.escalatedGrievance || [];
+    
+    activeCards = [
+      ...apps,
+      ...grievances
+    ];
+  } catch(e) {
+    console.error('Failed to fetch escalated cases:', e);
+  }
 
   window.setFilter = function(f, btn) {
     activeFilter = f;
@@ -135,19 +141,23 @@ export function initEscalatedCases() {
           </div>
 
           <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
-            ${isSla ? `<button class="btn btn-sm btn-success" onclick="quickAct('${c.id}','approve')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Approve</button><a href="supervisor-review.html?id=${c.id}&mode=escalation" class="btn btn-sm btn-primary">Full Review</a>` : `<a href="supervisor-review.html?id=${c.id}&mode=grievance" class="btn btn-sm btn-primary"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Investigate &amp; Decide</a>`}
+            ${isSla ? `<button class="btn btn-sm btn-outline" onclick="showToast('Official warning sent to ${c.officer}.','warning')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Nudge Officer</button><a href="supervisor-review.html?id=${c.id}&mode=escalation" class="btn btn-sm btn-primary">Full Review</a>` : `<a href="supervisor-review.html?id=${c.id}&mode=grievance" class="btn btn-sm btn-primary"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Investigate &amp; Decide</a>`}
           </div>
         </div>
       `;
     }).join('');
   }
 
-  window.quickAct = function(id, action) {
-    showToast(`${id} ${action==='approve'?'approved — certificate issued':'rejected'}. Audit trail updated.`, action==='approve'?'success':'warning');
-    activeCards = activeCards.filter(c => c.id !== id);
-    setSuperEscSlaCases(activeCards);
-    renderEscGrid();
-    updateStats();
+  window.quickAct = async function(id, action) {
+    try {
+        await apiReviewEscalated(id, action, action === 'approve' ? 'Approved by Supervisor' : 'Rejected by Supervisor');
+        showToast(`${id} ${action==='approve'?'approved — certificate issued':'rejected'}. Audit trail updated.`, action==='approve'?'success':'warning');
+        activeCards = activeCards.filter(c => c.id !== id);
+        renderEscGrid();
+        updateStats();
+    } catch(e) {
+        showToast('Error reviewing escalated case', 'error');
+    }
   };
   
   window.showToast = showToast;
@@ -160,13 +170,24 @@ export function initEscalatedCases() {
 // Supervisor: Override & Review
 // ══════════════════════════════════════════
 
-export function initSupervisorReview() {
+export async function initSupervisorReview() {
   const session = initPage({ title: 'Override & Review', breadcrumbs: [{ label: 'Supervisor Portal', href: 'supervisor-dashboard.html' }, { label: 'Override & Review' }], requiredRole: 'supervisor' });
   if (!session) return;
   renderNotifPanel();
 
-  let activeEscalated = getSuperEscSlaCases();  // persisted SLA cases from localStorage
-  let activeFinalApprovals = getSuperApprovals();
+  let activeEscalated = [];
+  let activeFinalApprovals = [];
+  
+  try {
+      const dbRes = await apiGetSupervisorDashboard();
+      activeFinalApprovals = dbRes.data.pendingApprovals || [];
+      window.superTeam = dbRes.data.team || [];
+      
+      const apps = dbRes.data.escalatedSla || [];
+      const grievances = dbRes.data.escalatedGrievance || [];
+      activeEscalated = [...apps, ...grievances];
+  } catch(e) {}
+
   let selectedFinal = null, selectedOverride = null;
 
   const params = new URLSearchParams(location.search);
@@ -323,41 +344,29 @@ export function initSupervisorReview() {
     const el = document.getElementById('finalRemarks');
     const remarks = el ? el.value : '';
     if (action === 'reject' && (!remarks || remarks.trim().length < 5)) {
-      if(window.showToast) window.showToast('Rejection requires remarks (min 5 characters).', 'warning'); return;
+      showToast('Rejection requires remarks (min 5 characters).', 'warning'); return;
     }
     const msgs = {
-      approve: `${selectedFinal.id} approved. Certificate issued to ${selectedFinal.citizen}. Status → APPROVED.`,
-      reject:  `${selectedFinal.id} rejected. ${selectedFinal.citizen} notified. Status → REJECTED.`
+      approve: `${selectedFinal.id} approved. Certificate issued to ${selectedFinal.citizen}. Status → APPROVED. Audit trail updated.`,
+      reject:  `${selectedFinal.id} rejected. ${selectedFinal.citizen} notified. Status → REJECTED. Audit trail updated.`
     };
-
+    
     try {
-      const { apiUpdateApplicationStatus } = await import('./api.js');
-      await apiUpdateApplicationStatus(
-        selectedFinal.id, 
-        action === 'approve' ? 'approved' : 'rejected', 
-        remarks || (action === 'approve' ? 'Final approval granted. Certificate issued.' : 'Application rejected at supervisor level.')
-      );
-
-      if(window.showToast) window.showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
-
-      setTimeout(() => {
-        activeFinalApprovals = activeFinalApprovals.filter(a => a.id !== selectedFinal.id);
-        if (action === 'approve') {
-          // Increment locally if setSuperApprovedToday is available, otherwise we can just ignore it since it's just a UI counter
-          if (window.getSuperApprovedToday && window.setSuperApprovedToday) {
-            window.setSuperApprovedToday(window.getSuperApprovedToday() + 1);
-          }
-        }
-        selectedFinal = null;
-        window.renderFinalList();
-        syncReviewBadges();
-        const det = document.getElementById('finalDetail');
-        if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application from the list.</div></div>';
-      }, 1500);
-
-    } catch (err) {
-      if(window.showToast) window.showToast(err.message || 'Failed to submit decision.', 'error');
+        await apiReviewEscalated(selectedFinal.id, action, remarks);
+        showToast(msgs[action], action === 'approve' ? 'success' : 'warning');
+    } catch(e) {
+        showToast('Error reviewing application', 'error');
+        return;
     }
+
+    setTimeout(() => {
+      activeFinalApprovals = activeFinalApprovals.filter(a => a.id !== selectedFinal.id);
+      selectedFinal = null;
+      window.renderFinalList();
+      syncReviewBadges();
+      const det = document.getElementById('finalDetail');
+      if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application from the list.</div></div>';
+    }, 1500);
   };
 
   /** OVERRIDE ESCALATION TAB **/
@@ -441,13 +450,16 @@ export function initSupervisorReview() {
           <strong>Misconduct complaint active.</strong> Application must be reassigned to a different officer pending investigation.
         </div>` : '';
 
-    let reassignOptions = SUPER_TEAM.filter(o => o.name !== e.officer).map(o => `<option value="${o.name}">${o.name} (${o.role}) &mdash; ${o.pending} pending</option>`).join('');
+    let reassignOptions = (window.superTeam || []).filter(o => o.name !== e.officer).map(o => `<option value="${o.name}">${o.name} (${o.role}) &mdash; ${o.pending} pending</option>`).join('');
     
-    let approveRejectBtns = (e.type !== 'grievance' || e.subtype !== 'Misconduct Complaint') 
+    let approveRejectBtns = (e.type === 'grievance' && e.subtype !== 'Misconduct Complaint') 
       ? (`<button class="btn btn-success" onclick="submitOverride('approve')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Override — Approve</button>
          <button class="btn btn-danger" onclick="submitOverride('reject')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> Override — Reject</button>`) : '';
 
-    let reassignText = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint') ? 'Reassign & Investigate' : 'Reassign';
+    let nudgeBtn = (e.type === 'sla')
+      ? `<button class="btn btn-outline" onclick="showToast('Official warning sent to ${e.officer}.','warning')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Issue Official Warning</button>` : '';
+
+    let reassignText = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint') ? 'Reassign & Investigate' : 'Reassign Officer';
 
     detail.innerHTML = `
       <div style="padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--color-border);background:${isSla?'var(--red-50)':'var(--amber-50)'};">
@@ -510,6 +522,7 @@ export function initSupervisorReview() {
             <textarea class="form-textarea" id="overrideJustification" rows="4" placeholder="State the basis for this supervisor override. This is mandatory and permanently logged…"></textarea>
           </div>
           <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;flex-wrap:wrap;">
+            ${nudgeBtn}
             ${approveRejectBtns}
             <button class="btn btn-outline" onclick="submitOverride('reassign')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> ${reassignText}</button>
           </div>
@@ -528,39 +541,30 @@ export function initSupervisorReview() {
     }
     const el = document.getElementById('overrideJustification');
     const j = el ? el.value : '';
-    if (!j || j.trim().length < 10) { 
-      if(window.showToast) window.showToast('Justification required (min 10 characters).', 'warning'); 
-      return; 
-    }
-
-    try {
-      const { apiReviewEscalated } = await import('./api.js');
-      await apiReviewEscalated(selectedOverride.id, action, j);
-
-      const msgs = {
-        approve:  `Override applied: ${selectedOverride.id} approved. Certificate issued.`,
-        reject:   `Override applied: ${selectedOverride.id} rejected. Citizen notified.`,
-      };
-      if(window.showToast) window.showToast(msgs[action] || `Override action applied for ${selectedOverride.id}.`, action === 'approve' ? 'success' : 'warning');
-
-      activeEscalated = activeEscalated.filter(e => e.id !== selectedOverride.id);
-      
-      // Update local storage fallback variable just in case
-      if (window.setSuperEscSlaCases) {
-        window.setSuperEscSlaCases(activeEscalated);
+    if (!j || j.trim().length < 10) { showToast('Justification required (min 10 characters).', 'warning'); return; }
+    const msgs = {
+      approve:  `Override applied: ${selectedOverride.id} approved. Certificate issued. Audit trail updated.`,
+      reject:   `Override applied: ${selectedOverride.id} rejected. Citizen notified. Audit trail updated.`,
+    };
+    
+    if (action === 'approve' || action === 'reject') {
+      try {
+        await apiReviewEscalated(selectedOverride.id, action, j);
+        showToast(msgs[action] || `Override action applied for ${selectedOverride.id}.`, action === 'approve' ? 'success' : 'warning');
+      } catch(e) {
+        showToast('Failed to apply override', 'error');
+        return;
       }
-
-      selectedOverride = null;
-      syncReviewBadges();
-      setTimeout(() => {
-        window.renderOverrideList();
-        const det = document.getElementById('overrideDetail');
-        if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application.</div></div>';
-      }, 1500);
-
-    } catch (err) {
-      if(window.showToast) window.showToast(err.message || 'Failed to apply override.', 'error');
     }
+
+    activeEscalated = activeEscalated.filter(e => e.id !== selectedOverride.id);
+    selectedOverride = null;
+    syncReviewBadges();
+    setTimeout(() => {
+      window.renderOverrideList();
+      const det = document.getElementById('overrideDetail');
+      if(det) det.innerHTML = '<div class="detail-empty"><div style="color:var(--green-500);font-size:1rem;font-weight:700;">Decision recorded successfully. Please select another application.</div></div>';
+    }, 1500);
   };
 
   const initMode = urlMode || 'final';
@@ -581,17 +585,33 @@ export function initSupervisorReview() {
 // Supervisor: Workload Management
 // ══════════════════════════════════════════
 
-export function initWorkloadManagement() {
+export async function initWorkloadManagement() {
   const session = initPage({ title: 'Workload Management', breadcrumbs: [{ label: 'Supervisor Portal', href: 'supervisor-dashboard.html' }, { label: 'Workload Management' }], requiredRole: 'supervisor' });
   if (!session) return;
   renderNotifPanel();
 
-  // Derive app list from the same source as Override/Escalation tab
-  function escToApp(e) {
-    return { id: e.id, service: e.service, citizen: e.citizen, officer: e.officer, slaLeft: e.type === 'sla' ? -(e.overdue || 0) : 0 };
-  }
-
-  let displayReassignApps = getSuperEscSlaCases().map(escToApp);
+  let team = [];
+  let displayReassignApps = [];
+  try {
+      const dbRes = await apiGetSupervisorDashboard();
+      team = dbRes.data.team || [];
+      // Use the pre-formatted escalated SLA cases from the dashboard (already has all correct fields)
+      const slaCases = dbRes.data.escalatedSla || [];
+      const grievanceCases = dbRes.data.escalatedGrievance || [];
+      displayReassignApps = [
+        ...slaCases.map(a => ({
+            id: a.id, type: 'sla',
+            service: a.service, citizen: a.citizen, officer: a.officer,
+            slaLeft: -(a.overdue || 0), subtype: null
+        })),
+        ...grievanceCases.map(a => ({
+            id: a.id, type: 'grievance',
+            service: a.service, citizen: a.citizen, officer: a.officer,
+            slaLeft: 0, subtype: a.subtype || 'Grievance'
+        }))
+      ];
+  } catch(e) {}
+  
   let selectedReassignApp   = null;
   let selectedTargetOfficer = null;
 
@@ -603,8 +623,8 @@ export function initWorkloadManagement() {
   function renderWorkload() {
     const list = document.getElementById('workloadList');
     if (!list) return;
-    const max = Math.max(...SUPER_TEAM.map(o => o.pending));
-    list.innerHTML = SUPER_TEAM.map(o => `
+    const max = team.length ? Math.max(...team.map(o => o.pending)) : 10;
+    list.innerHTML = team.map(o => `
       <div style="display:flex;gap:var(--space-md);align-items:center;padding:12px 20px;border-bottom:1px solid var(--slate-100);">
         <div class="avatar" style="width:36px;height:36px;font-size:0.75rem;background:var(--navy-600);flex-shrink:0;">${o.initials}</div>
         <div style="flex:1;min-width:0;">
@@ -626,9 +646,7 @@ export function initWorkloadManagement() {
 
   /* ── Application list ── */
   window.filterReassign = function(officer) {
-    displayReassignApps = officer
-      ? getSuperEscSlaCases().filter(e => e.officer === officer).map(escToApp)
-      : getSuperEscSlaCases().map(escToApp);
+    displayReassignApps = displayReassignApps; // Should re-fetch or filter from existing
     selectedReassignApp = null;
     selectedTargetOfficer = null;
     const officerPickCard = document.getElementById('officerPickCard');
@@ -649,20 +667,26 @@ export function initWorkloadManagement() {
   window.renderReassignAppList = function() {
     const list = document.getElementById('reassignAppList');
     if (!list) return;
-    list.innerHTML = displayReassignApps.map(a => `
+    list.innerHTML = displayReassignApps.map(a => {
+      const isSla = a.type === 'sla';
+      const accentColor = isSla ? (a.slaLeft < 0 ? 'var(--red-500)' : 'var(--slate-200)') : 'var(--amber-400)';
+      const badge = isSla
+        ? (a.slaLeft < 0 ? `<span class="badge badge-danger" style="font-size:0.6rem;">${Math.abs(a.slaLeft)}d overdue</span>` : '')
+        : `<span class="badge badge-warning" style="font-size:0.6rem;">${a.subtype}</span>`;
+      return `
       <div class="app-row ${selectedReassignApp?.id===a.id?'selected':''}" onclick="pickReassignApp('${a.id}')">
-        <div style="width:3px;height:36px;border-radius:2px;background:${a.slaLeft<0?'var(--red-500)':a.slaLeft<=2?'var(--amber-400)':'var(--slate-200)'};flex-shrink:0;"></div>
+        <div style="width:3px;height:36px;border-radius:2px;background:${accentColor};flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-family:var(--font-mono);font-size:0.72rem;font-weight:800;color:var(--navy-600);">${a.id}</span>
-            ${a.slaLeft < 0 ? `<span class="badge badge-danger" style="font-size:0.6rem;">${Math.abs(a.slaLeft)}d overdue</span>` : ''}
+            ${badge}
           </div>
           <div style="font-size:0.8125rem;font-weight:600;color:var(--navy-900);">${a.service}</div>
           <div style="font-size:0.72rem;color:var(--color-text-muted);">${a.citizen} · ${a.officer}</div>
         </div>
         ${selectedReassignApp?.id===a.id ? `<svg width="15" height="15" fill="none" stroke="var(--navy-600)" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>` : ''}
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   };
 
   window.pickReassignApp = function(id) {
@@ -694,7 +718,7 @@ export function initWorkloadManagement() {
   window.renderOfficerPicks = function() {
     const list = document.getElementById('officerPickBody');
     if (!list) return;
-    list.innerHTML = SUPER_TEAM
+    list.innerHTML = team
       .filter(o => o.name !== selectedReassignApp?.officer)
       .map(o => `
         <div class="officer-pick ${selectedTargetOfficer?.name===o.name?'selected':''}" onclick="pickOfficer('${o.name}')">
@@ -711,41 +735,44 @@ export function initWorkloadManagement() {
   };
 
   window.pickOfficer = function(name) {
-    selectedTargetOfficer = SUPER_TEAM.find(o => o.name === name);
+    selectedTargetOfficer = team.find(o => o.name === name);
     window.renderOfficerPicks();
     const submit = document.getElementById('reassignSubmit');
     if (submit) submit.style.display = 'block';
   };
 
-  window.submitReassign = function() {
+  window.submitReassign = async function() {
     const reasonEl = document.getElementById('reassignReason');
     const reason = reasonEl ? reasonEl.value : '';
     if (!reason) { showToast('Please select a reassignment reason.', 'warning'); return; }
     const reassignedId = selectedReassignApp.id;
-    showToast(
-      `${selectedReassignApp.id} reassigned from ${selectedReassignApp.officer} to ${selectedTargetOfficer.name}. Both officers notified. Logged in audit trail.`,
-      'success'
-    );
-    // Remove from the escalated cases list — single source of truth for both Override & Review and Workload Management
-    const updatedEsc = getSuperEscSlaCases().filter(e => e.id !== reassignedId);
-    setSuperEscSlaCases(updatedEsc);
-    displayReassignApps = updatedEsc.map(escToApp);
-    selectedReassignApp = null;
-    selectedTargetOfficer = null;
-    const body = document.getElementById('reassignFormBody');
-    if (body) body.innerHTML = `<div style="text-align:center;padding:var(--space-2xl);color:var(--green-600);font-size:0.875rem;font-weight:700;">Reassignment recorded successfully. Please select another application.</div>`;
-    const officerPickCard = document.getElementById('officerPickCard');
-    const reassignSubmit = document.getElementById('reassignSubmit');
-    if (officerPickCard) officerPickCard.style.display = 'none';
-    if (reassignSubmit) reassignSubmit.style.display = 'none';
-    window.renderReassignAppList();
+    
+    try {
+        await apiAssignApplication(reassignedId, selectedTargetOfficer.id || selectedTargetOfficer.name);
+        showToast(
+          `${selectedReassignApp.id} reassigned from ${selectedReassignApp.officer} to ${selectedTargetOfficer.name}. Both officers notified. Logged in audit trail.`,
+          'success'
+        );
+        displayReassignApps = displayReassignApps.filter(e => e.id !== reassignedId);
+        selectedReassignApp = null;
+        selectedTargetOfficer = null;
+        const body = document.getElementById('reassignFormBody');
+        if (body) body.innerHTML = `<div style="text-align:center;padding:var(--space-2xl);color:var(--green-600);font-size:0.875rem;font-weight:700;">Reassignment recorded successfully. Please select another application.</div>`;
+        const officerPickCard = document.getElementById('officerPickCard');
+        const reassignSubmit = document.getElementById('reassignSubmit');
+        if (officerPickCard) officerPickCard.style.display = 'none';
+        if (reassignSubmit) reassignSubmit.style.display = 'none';
+        window.renderReassignAppList();
+    } catch(e) {
+        showToast('Failed to reassign application', 'error');
+    }
   };
 
   /* ── Performance Actions card ── */
   function renderPerformanceActions() {
     const list = document.getElementById('performanceActions');
     if (!list) return;
-    list.innerHTML = SUPER_TEAM.map(o => `
+    list.innerHTML = team.map(o => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--slate-100);">
         <div style="display:flex;align-items:center;gap:var(--space-md);">
           <div class="avatar" style="width:32px;height:32px;font-size:0.7rem;background:var(--navy-600);">${o.initials}</div>

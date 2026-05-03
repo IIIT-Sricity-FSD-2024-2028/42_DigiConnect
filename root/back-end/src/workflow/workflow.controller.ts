@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { WorkflowService } from './workflow.service';
 import { TransitionDto } from './dto/transition.dto';
@@ -14,13 +14,28 @@ export class WorkflowController {
   @Get('config')
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_USER)
-  @ApiOperation({ summary: 'Get workflow transition configuration' })
+  @ApiOperation({ summary: 'Get service-level workflow configurations' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
-  @ApiResponse({ status: 200, description: 'Workflow config map' })
+  @ApiResponse({ status: 200, description: 'Workflow configs retrieved' })
   getConfig() {
     return {
       success: true,
       data: this.workflowService.getConfig(),
+      message: 'OK'
+    };
+  }
+
+  @Patch('config')
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_USER)
+  @ApiOperation({ summary: 'Update a service workflow configuration' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiBody({ schema: { type: 'object' } })
+  @ApiResponse({ status: 200, description: 'Workflow config updated' })
+  updateConfig(@Body() data: any) {
+    return {
+      success: true,
+      data: this.workflowService.updateConfig(data),
       message: 'OK'
     };
   }

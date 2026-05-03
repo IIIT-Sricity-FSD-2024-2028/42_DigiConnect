@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { SuperUserService } from './super-user.service';
 import { RolesGuard } from '../guards/roles.guard';
@@ -95,6 +95,35 @@ export class SuperUserController {
       success: true,
       data: this.superUserService.rejectPendingOfficer(id),
       message: 'OK'
+    };
+  }
+
+  @Get('audit-logs')
+  @ApiOperation({ summary: 'Get system audit logs' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'Audit logs retrieved' })
+  getAuditLogs() {
+    return {
+      success: true,
+      data: this.superUserService.getAuditLogs(),
+      message: 'OK'
+    };
+  }
+
+  @Post('audit-logs')
+  @ApiOperation({ summary: 'Create manual audit log' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
+  @ApiResponse({ status: 201, description: 'Audit log created' })
+  createAuditLog(
+    @Body() data: any,
+    @Headers('x-user-id') userId: string,
+    @Headers('x-role') role: string
+  ) {
+    return {
+      success: true,
+      data: this.superUserService.createAuditLog(data, userId, role),
+      message: 'Created'
     };
   }
 }

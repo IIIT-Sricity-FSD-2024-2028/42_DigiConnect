@@ -391,29 +391,33 @@
                     local sarpanch."
                 </div>
                 <div class="form-group" style="margin-bottom:var(--space-md);">
-                    <label class="form-label">Upload Requested Document(s)</label>
-                    <div class="upload-zone" style="text-align:center;cursor:pointer;"
-                        onclick="simulateResponseUpload()">
+                    <label class="form-label">Upload Requested Document(s) <span style="color:var(--red-500)">*</span></label>
+                    <!-- Hidden real file input -->
+                    <input type="file" id="queryFileInput" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        style="display:none;"
+                        onchange="handleQueryFileSelect(this)" />
+                    <div class="upload-zone" id="queryUploadZone" style="text-align:center;cursor:pointer;"
+                        onclick="document.getElementById('queryFileInput').click()">
                         <svg width="28" height="28" fill="none" stroke="var(--slate-400)" stroke-width="2"
                             viewBox="0 0 24 24" style="margin-bottom:8px;">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        <div style="font-size:0.875rem;color:var(--color-text-muted);">Click to upload or drag & drop
-                            files here</div>
-                        <div id="uploadedFile" style="display:none;margin-top:var(--space-sm);"></div>
+                        <div style="font-size:0.875rem;color:var(--color-text-muted);">Click to upload or drag &amp; drop files here</div>
+                        <div style="font-size:0.75rem;color:var(--slate-400);margin-top:4px;">PDF, JPG, PNG, DOC up to 10MB each</div>
                     </div>
+                    <div id="uploadedFile" style="display:none;margin-top:var(--space-sm);"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Additional Note (Optional)</label>
-                    <textarea class="form-input" rows="3"
+                    <textarea id="queryResponseNote" class="form-input" rows="3"
                         placeholder="Add any clarification or note for the officer…"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline"
                     onclick="document.getElementById('queryModal').classList.remove('active')">Cancel</button>
-                <button class="btn btn-primary" onclick="submitQueryResponse()">Submit Response</button>
+                <button class="btn btn-primary" id="submitResponseBtn" onclick="submitQueryResponse()" disabled>Submit Response</button>
             </div>
         </div>
     </div>
