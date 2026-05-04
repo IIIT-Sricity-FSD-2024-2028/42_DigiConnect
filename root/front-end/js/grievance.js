@@ -10,7 +10,7 @@ import { renderNotifPanel } from './notifications.js';
 import {
   addAuditEntry, assignGrievanceOfficer, getSupervisorByDept,
   pushToEscalatedCases, pushToSuperApprovals, updateMasterApp,
-  notifyCitizen, notifySupervisor, notifyGrievanceOfficer
+  notifyCitizen, notifySupervisor, notifyGrievanceOfficer, notifyOfficer
 } from './workflow.js';
 
 // ── Shared helpers ──
@@ -719,9 +719,40 @@ export async function initGrievanceDetail() {
   const completedSteps = new Set();
   
   if (grievance) {
-    if (grievance.status === 'investigating') { currentMaxStep = 3; completedSteps.add(1); completedSteps.add(2); }
-    if (grievance.status === 'resolved' || grievance.status === 'escalated' || grievance.status === 'rejected') { currentMaxStep = 4; completedSteps.add(1); completedSteps.add(2); completedSteps.add(3); }
+    if (grievance.status === 'investigating' || grievance.status === 'under-review') { 
+      currentMaxStep = 3; 
+      completedSteps.add(1); 
+      completedSteps.add(2); 
+      setTimeout(() => {
+        ['chk1', 'chk2', 'chk3', 'chk4'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.checked = true;
+        });
+        if (window.checkReviewReady) window.checkReviewReady();
+      }, 100);
+    }
+    if (grievance.status === 'resolved' || grievance.status === 'escalated' || grievance.status === 'rejected') { 
+      currentMaxStep = 4; completedSteps.add(1); completedSteps.add(2); completedSteps.add(3); 
+    }
     
+    // Render dynamic documents
+    const docsList = document.getElementById('reviewDocsList');
+    if (docsList && grievance.documents && grievance.documents.length) {
+      docsList.innerHTML = grievance.documents.map(d => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--slate-200);border-radius:8px;cursor:pointer;background:white;" onclick="window.showToast&&window.showToast('Opening ${d.name}','info')">
+          <div style="width:40px;height:40px;border-radius:8px;background:var(--navy-100);color:var(--navy-600);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+          </div>
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">${d.name}</div>
+            <div style="font-size:0.75rem;color:var(--slate-500);">${d.type || 'Document'}</div>
+          </div>
+        </div>
+      `).join('');
+    } else if (docsList) {
+      docsList.innerHTML = '<div style="font-size:0.85rem;color:var(--slate-500);">No supporting documents submitted.</div>';
+    }
+
     if (currentMaxStep === 3) currentActiveTab = 'investigate';
     if (currentMaxStep === 4) currentActiveTab = 'resolve';
 
@@ -795,6 +826,16 @@ export async function initGrievanceDetail() {
     
     try {
       await apiUpdateGrievanceStatus(grievance.id, { remarks: `Officer Reminded (${suffix})` });
+      let apps = [];
+      try {
+        const res = await apiGetAllApplications();
+        apps = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      } catch(e) {}
+      const relatedApp = apps.find(a => a.id === grievance.relatedAppId);
+      const targetOfficerId = relatedApp ? relatedApp.officerId : null;
+      if (targetOfficerId) {
+        await notifyOfficer(targetOfficerId, `Reminder: Application ${grievance.relatedAppId}`, `A grievance has been raised and the officer is reminding you to prioritize application ${grievance.relatedAppId}.`, grievance.relatedAppId);
+      }
     } catch(e) {}
     
     window.renderAuditHistory();

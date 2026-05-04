@@ -94,6 +94,7 @@ export class SupervisorService {
           service: a.serviceName,
           citizen: a.citizenName,
           officer: a.officerName,
+          officerId: a.officerId,
           overdue: `${overdue} days`,
           on: new Date(a.slaDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
         };
@@ -110,6 +111,7 @@ export class SupervisorService {
           service: a.serviceName,
           citizen: a.citizenName,
           officer: a.officerName,
+          officerId: a.officerId,
           overdue,
           on: new Date(a.slaDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
           urgent: overdue > 5,
@@ -263,7 +265,7 @@ export class SupervisorService {
     const appIndex = db.applications.findIndex(a => a.id === appId);
     if (appIndex === -1) throw new NotFoundException('Application not found');
 
-    const status = action === 'approve' ? AppStatus.APPROVED : AppStatus.REJECTED;
+    const status = action === 'approve' ? AppStatus.COMPLETED : AppStatus.REJECTED;
     db.applications[appIndex].status = status;
     db.applications[appIndex].remarks = remarks;
 

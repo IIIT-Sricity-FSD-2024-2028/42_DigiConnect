@@ -14,7 +14,7 @@ import {
   apiGetSupervisorDashboard,
   apiGetAdminDashboard, apiGetServices, apiGetAuditLogs,
   apiGetAllGrievances, apiReviewEscalated,
-  apiMarkAllNotificationsRead
+  apiMarkAllNotificationsRead, apiCreateNotification
 } from './api.js';
 
 // ══════════════════════════════════════════
@@ -720,8 +720,8 @@ export async function initSupervisorDashboard() {
     const app = pendingApprovals.find(a => a.id === id);
     try {
       await apiUpdateApplicationStatus(id, {
-        status: 'approved',
-        remarks: `Quick approved by ${session.name} from dashboard.`
+        status: 'completed',
+        remarks: `Final approved by ${session.name} from dashboard.`
       });
       showToast(`${id} approved. Certificate issued to ${citizen}.`, 'success');
 
@@ -733,6 +733,21 @@ export async function initSupervisorDashboard() {
       updateStats();
     } catch (e) {
       showToast('Error approving application', 'error');
+    }
+  };
+
+  window.remindOfficer = async function (officerId, context = '') {
+    try {
+      await apiCreateNotification({
+        userId: officerId,
+        title: 'SLA / Performance Reminder',
+        message: context ? `Please review ${context} immediately as it requires your attention.` : `Please review your pending applications and SLA breaches. Supervisor requested priority handling.`,
+        type: 'warning',
+        link: '#'
+      });
+      showToast('Reminder sent to officer successfully.', 'success');
+    } catch(e) {
+      showToast('Error sending reminder.', 'error');
     }
   };
 
@@ -754,7 +769,7 @@ export async function initSupervisorDashboard() {
         <td>
           <div style="display:flex;gap:4px;">
             <a href="supervisor-review.html?id=${b.id}&mode=escalation" class="btn btn-sm btn-primary" style="font-size:0.7rem;">Review</a>
-            <button class="btn btn-sm btn-outline" style="font-size:0.7rem;" onclick="showToast('Reminder sent to ${b.officer}.','warning')">Remind</button>
+            <button class="btn btn-sm btn-outline" style="font-size:0.7rem;" onclick="window.remindOfficer('${b.officerId}', '${b.id}')">Remind</button>
           </div>
         </td>
       </tr>
@@ -820,7 +835,7 @@ export async function initSupervisorDashboard() {
           <div style="background:${o.breach > 0 ? 'var(--red-50)' : 'var(--slate-50)'};padding:8px;border-radius:var(--radius-sm);"><div style="font-size:1.125rem;font-weight:800;color:${o.breach > 0 ? 'var(--red-600)' : 'var(--slate-400)'}">${o.breach}</div><div style="font-size:0.65rem;color:var(--color-text-muted);font-weight:600;">BREACHED</div></div>
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="window.showToast('Reminder sent to ${o.name}.','info')">Remind</button>
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="window.remindOfficer('${o.officerId}')">Remind</button>
           <a href="workload-management.html" class="btn btn-outline btn-sm" style="flex:1;text-align:center;">Reassign</a>
         </div>
         ${o.breach > 0 ? `<div style="margin-top:8px;font-size:0.72rem;color:var(--red-600);text-align:center;font-weight:600;">${o.breach} breach${o.breach > 1 ? 'es' : ''} — action needed</div>` : ''}
@@ -1005,7 +1020,7 @@ export async function initAdminDashboard() {
               <td>
                   <div style="display:flex;gap:4px;">
                       <button class="btn btn-sm btn-danger" onclick="window.escalateAdminSla('${r.id}')" style="font-size:0.72rem;padding:4px 10px;">Escalate</button>
-                      <button class="btn btn-sm btn-outline" onclick="showToast('Reminder sent to officer!','info')" style="font-size:0.72rem;padding:4px 10px;">Remind</button>
+                      <button class="btn btn-sm btn-outline" onclick="window.remindOfficer('${r.officerId || ''}', '${r.id}')" style="font-size:0.72rem;padding:4px 10px;">Remind</button>
                   </div>
               </td>
           </tr>

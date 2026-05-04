@@ -84,7 +84,13 @@ export class ApplicationsService {
     };
 
     if (createApplicationDto.paymentTransactionId) {
-      newApp.timeline.push({ action: 'Payment Confirmed', date: new Date().toISOString(), actor: 'System', note: `Payment of ₹${createApplicationDto.fee} received via Razorpay simulator. TXN: ${createApplicationDto.paymentTransactionId}` });
+      const pMethod = createApplicationDto.paymentMethod || 'online';
+      newApp.timeline.push({ 
+        action: 'Payment Confirmed', 
+        date: new Date().toISOString(), 
+        actor: 'System', 
+        note: `Payment of ₹${createApplicationDto.fee} received via ${pMethod}. TXN: ${createApplicationDto.paymentTransactionId}` 
+      });
     }
 
     db.applications.unshift(newApp); // Add to beginning
@@ -122,7 +128,7 @@ export class ApplicationsService {
     const app = db.applications[appIndex];
 
     // Terminal State Lock
-    if ([AppStatus.APPROVED, AppStatus.REJECTED, AppStatus.COMPLETED].includes(app.status as AppStatus)) {
+    if ([AppStatus.REJECTED, AppStatus.COMPLETED].includes(app.status as AppStatus)) {
       throw new BadRequestException('This application has already been finalized and cannot be modified.');
     }
 

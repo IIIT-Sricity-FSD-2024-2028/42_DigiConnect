@@ -7,7 +7,7 @@ import { initPage } from './navigation.js';
 import { showToast, formatDate, formatDateTime, openModal, closeModal, generateId } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { addAuditEntry, updateMasterApp, notifyCitizen } from './workflow.js';
-import { apiGetEscalated, apiGetSupervisorDashboard, apiAssignApplication, apiReviewEscalated } from './api.js';
+import { apiGetEscalated, apiGetSupervisorDashboard, apiAssignApplication, apiReviewEscalated, apiCreateNotification } from './api.js';
 
 /**
  * Check SLA status of an application
@@ -141,7 +141,7 @@ export async function initEscalatedCases() {
           </div>
 
           <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
-            ${isSla ? `<button class="btn btn-sm btn-outline" onclick="showToast('Official warning sent to ${c.officer}.','warning')"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Nudge Officer</button><a href="supervisor-review.html?id=${c.id}&mode=escalation" class="btn btn-sm btn-primary">Full Review</a>` : `<a href="supervisor-review.html?id=${c.id}&mode=grievance" class="btn btn-sm btn-primary"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Investigate &amp; Decide</a>`}
+            ${isSla ? `<button class="btn btn-sm btn-outline" onclick="window.warnOfficer('${c.officerId || c.officer}', '${c.id}', true)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Nudge Officer</button><a href="supervisor-review.html?id=${c.id}&mode=escalation" class="btn btn-sm btn-primary">Full Review</a>` : `<a href="supervisor-review.html?id=${c.id}&mode=grievance" class="btn btn-sm btn-primary"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Investigate &amp; Decide</a>`}
           </div>
         </div>
       `;
@@ -457,12 +457,13 @@ export async function initSupervisorReview() {
          <button class="btn btn-danger" onclick="submitOverride('reject')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> Override — Reject</button>`) : '';
 
     let nudgeBtn = (e.type === 'sla')
-      ? `<button class="btn btn-outline" onclick="showToast('Official warning sent to ${e.officer}.','warning')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Issue Official Warning</button>` : '';
+      ? `<button class="btn btn-outline" onclick="window.warnOfficer('${e.officerId || e.officer}', '${e.id}', false)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Issue Official Warning</button>` : '';
 
     let reassignText = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint') ? 'Reassign & Investigate' : 'Reassign Officer';
 
     let suspendBtn = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint')
-      ? `<button class="btn btn-danger" onclick="requestSuspension('${e.grievanceId || e.id}', '${e.officerId || e.officer}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Request Suspension</button>` : '';
+      ? `<button class="btn btn-outline" onclick="window.warnOfficer('${e.officerId || e.officer}', '${e.id}', false)"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg> Warn Officer</button>
+         <button class="btn btn-danger" onclick="requestSuspension('${e.grievanceId || e.id}', '${e.officerId || e.officer}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Request Suspension</button>` : '';
 
     detail.innerHTML = `
       <div style="padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--color-border);background:${isSla?'var(--red-50)':'var(--amber-50)'};">
@@ -534,12 +535,23 @@ export async function initSupervisorReview() {
       </div>`;
   };
 
-  window.requestSuspension = async function(grievanceId, officerId) {
-    const reason = prompt('Please enter the reason for requesting suspension for this officer:');
-    if (!reason || reason.trim().length < 5) {
-      showToast('A valid reason is required to request suspension.', 'error');
-      return;
+  window.warnOfficer = async function(officerId, appId, isNudge = false) {
+    try {
+      await apiCreateNotification({
+        userId: officerId,
+        title: isNudge ? 'SLA Reminder' : 'Official Warning',
+        message: isNudge ? `Please prioritize application ${appId} as it is nearing or has breached its SLA.` : `You have received an official warning regarding your handling of application/grievance ${appId}. Please ensure compliance with protocols.`,
+        type: isNudge ? 'warning' : 'danger',
+        link: '#'
+      });
+      showToast(isNudge ? 'Nudge sent to officer successfully' : 'Official warning sent to officer successfully', 'success');
+    } catch(e) {
+      showToast('Error sending warning notification', 'error');
     }
+  };
+
+  window.requestSuspension = async function(grievanceId, officerId) {
+    const reason = "Suspension requested by Supervisor due to misconduct investigation.";
     try {
       const res = await fetch('/api/supervisor/request-suspension', {
         method: 'POST',
@@ -552,7 +564,7 @@ export async function initSupervisorReview() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('Suspension Request successfully submitted.', 'success');
+        showToast('Suspension Request successfully submitted to Super User.', 'success');
       } else {
         showToast(data.message || 'Error submitting request', 'error');
       }

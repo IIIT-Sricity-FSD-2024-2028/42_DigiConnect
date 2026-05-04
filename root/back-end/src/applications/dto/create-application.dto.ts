@@ -26,6 +26,10 @@ export class CreateApplicationDto {
   paymentTransactionId?: string;
 
   @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
   documents?: any[]; // Allow generic documents object array
 
   @IsOptional()
