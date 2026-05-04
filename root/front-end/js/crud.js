@@ -12,6 +12,30 @@ window.showToast = showToast;
 window.openModal = function(id) { if(typeof openModal === 'function') openModal(id); else document.getElementById(id).style.display = 'flex'; };
 window.closeModal = function(id) { if(typeof closeModal === 'function') closeModal(id); else document.getElementById(id).style.display = 'none'; };
 
+window.fetchServicesForDept = async (dept, gridId, assignedServices = []) => {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    grid.innerHTML = '<div style="grid-column: 1/-1; font-size: 0.8rem;">Loading services...</div>';
+    try {
+        const res = await apiGetAllServices();
+        const allServices = res.data || [];
+        const deptServices = allServices.filter(s => s.status !== 'Draft' && (!dept || s.dept === dept));
+        
+        if (deptServices.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; color: var(--color-text-muted); font-size: 0.8rem;">No active services found for this department.</div>';
+            return;
+        }
+
+        grid.innerHTML = deptServices.map(s => `
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8125rem;padding:6px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm);">
+                <input type="checkbox" style="accent-color:var(--navy-600);" value="${s.name}" ${assignedServices.includes(s.name) ? 'checked' : ''} /> ${s.name}
+            </label>
+        `).join('');
+    } catch(e) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; color:var(--red-500);font-size:0.8rem;">Failed to fetch services</div>';
+    }
+};
+
 // Manage Users
 export async function initManageUsers() {
   const session = initPage({ title: 'Manage Users', breadcrumbs: [{ label: 'Super User Portal', href: 'Super User/dashboard.html' }, { label: 'Manage Users' }], requiredRole: 'super_user' });
@@ -87,6 +111,11 @@ export async function initManageUsers() {
     document.getElementById('uRole').value = user.role.charAt(0).toUpperCase() + user.role.slice(1);
     document.getElementById('uPhone').value = user.phone || '';
     document.getElementById('uStatus').value = user.status || 'Active';
+    document.getElementById('uDept').value = user.dept || '';
+    document.getElementById('uJurisdiction').value = user.jurisdiction || '';
+    document.getElementById('uDesignation').value = user.title || '';
+    document.getElementById('uEmpId').value = user.id || '';
+    window.fetchServicesForDept(user.dept || '', 'uServiceAssignGrid', user.services || []);
     document.getElementById('addUserModalTitle').textContent = 'Edit User';
     window.openModal('addUserModal');
   };
@@ -97,6 +126,11 @@ export async function initManageUsers() {
     document.getElementById('uRole').value = '';
     document.getElementById('uPhone').value = '';
     document.getElementById('uStatus').value = 'Active';
+    document.getElementById('uDept').value = '';
+    document.getElementById('uJurisdiction').value = '';
+    document.getElementById('uDesignation').value = '';
+    document.getElementById('uEmpId').value = '';
+    window.fetchServicesForDept('', 'uServiceAssignGrid');
     document.getElementById('addUserModalTitle').textContent = 'Add New User';
     window.openModal('addUserModal');
   };
@@ -106,17 +140,22 @@ export async function initManageUsers() {
     const role = document.getElementById('uRole').value.toLowerCase();
     const phone = document.getElementById('uPhone').value.trim();
     const status = document.getElementById('uStatus').value;
+    const dept = document.getElementById('uDept').value;
+    const jurisdiction = document.getElementById('uJurisdiction').value.trim();
+    const title = document.getElementById('uDesignation').value;
+    const services = [...document.querySelectorAll('#uServiceAssignGrid input:checked')].map(c => c.value);
+
     if (!name || !email || !role) { if(window.showToast) window.showToast('Fill required fields','warning'); return; }
     
     try {
         if (editModeUserId) {
-          const res = await apiUpdateUser(editModeUserId, {name, email, role, phone, status});
+          const res = await apiUpdateUser(editModeUserId, {name, email, role, phone, status, dept, jurisdiction, title, services});
           const updatedUser = res.data;
           const idx = users.findIndex(u => u.id === editModeUserId);
           if (idx !== -1) users[idx] = updatedUser;
           if(window.showToast) window.showToast('User updated','success');
         } else {
-          const res = await apiCreateUser({ name, email, role, phone, status, password: 'password123' });
+          const res = await apiCreateUser({ name, email, role, phone, status, dept, jurisdiction, title, services, password: 'password123' });
           users.push(res.data);
           if(window.showToast) window.showToast('User created','success');
         }
@@ -639,11 +678,7 @@ export async function initOfficerOnboarding() {
 
   const serviceGrid = document.getElementById('serviceAssignGrid');
   if (serviceGrid) {
-      serviceGrid.innerHTML = SERVICES_LIST.map(s => `
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8125rem;padding:6px 10px;border:1px solid var(--color-border);border-radius:var(--radius-sm);">
-              <input type="checkbox" style="accent-color:var(--navy-600);" /> ${s}
-          </label>
-      `).join('');
+      window.fetchServicesForDept('', 'serviceAssignGrid');
   }
 
 
@@ -711,7 +746,7 @@ export async function initOfficerOnboarding() {
       document.getElementById('ofJurisdiction').value = '';
       document.getElementById('ofPhone').value = '';
       document.getElementById('ofEmail').value = '';
-      document.querySelectorAll('#serviceAssignGrid input').forEach(c => c.checked = false);
+      window.fetchServicesForDept('', 'serviceAssignGrid');
 
       if (currentEditOfficerId) {
           if (title) title.textContent = 'Edit Officer Details';
@@ -732,12 +767,7 @@ export async function initOfficerOnboarding() {
               document.getElementById('ofPhone').value = o.phone;
               document.getElementById('ofEmail').value = o.email;
               
-              const checkboxes = document.querySelectorAll('#serviceAssignGrid label');
-              checkboxes.forEach(lbl => {
-                  if(o.services.includes(lbl.textContent.trim())) {
-                      lbl.querySelector('input').checked = true;
-                  }
-              });
+              window.fetchServicesForDept(o.dept, 'serviceAssignGrid', o.services || []);
           }
       } else {
           if (title) title.textContent = 'Add New Officer';
@@ -830,7 +860,7 @@ export async function initOfficerOnboarding() {
       const jur = document.getElementById('ofJurisdiction')?.value.trim();
       const phone = document.getElementById('ofPhone')?.value.trim();
       const email = document.getElementById('ofEmail')?.value.trim();
-      const services = [...document.querySelectorAll('#serviceAssignGrid input:checked')].map(c=>c.parentElement.textContent.trim());
+      const services = [...document.querySelectorAll('#serviceAssignGrid input:checked')].map(c => c.value);
 
       if (!fn || !ln) { if(window.showToast) window.showToast('First and last name are required.','error'); return; }
       if (!eid) { if(window.showToast) window.showToast('Employee ID is required.','error'); return; }

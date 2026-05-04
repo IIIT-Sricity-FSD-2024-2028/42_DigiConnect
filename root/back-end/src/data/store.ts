@@ -65,7 +65,7 @@ export interface OfficerQueueItem {
 
 const MOCK_USERS = [
   {
-    "id": "ADM-001",
+    "id": "ADM-1001",
     "name": "Super User",
     "role": "super_user",
     "title": "Super User",
@@ -91,7 +91,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "CIT-001",
+    "id": "CIT-1001",
     "name": "Ravi Kumar",
     "role": "citizen",
     "email": "ravi.k@gmail.com",
@@ -113,7 +113,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "CIT-002",
+    "id": "CIT-1002",
     "name": "Sunita Verma",
     "role": "citizen",
     "email": "sunita.v@gmail.com",
@@ -135,7 +135,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "CIT-003",
+    "id": "CIT-1003",
     "name": "Kaveri Devi",
     "role": "citizen",
     "email": "kaveri.d@gmail.com",
@@ -157,7 +157,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "GRV-001",
+    "id": "GRV-1001",
     "name": "Nalini Rao",
     "role": "grievance",
     "title": "Grievance Officer",
@@ -183,7 +183,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "SUP-001",
+    "id": "SUP-1001",
     "name": "Deepak Verma",
     "role": "supervisor",
     "title": "MRO",
@@ -209,7 +209,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-001",
+    "id": "EMP-1001",
     "name": "Suresh Reddy",
     "role": "officer",
     "title": "VRO",
@@ -240,7 +240,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-002",
+    "id": "EMP-1002",
     "name": "Anita Sharma",
     "role": "officer",
     "title": "VRO",
@@ -271,7 +271,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "EMP-003",
+    "id": "EMP-1003",
     "name": "Ravi Teja",
     "role": "officer",
     "title": "VRO",
@@ -302,7 +302,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "SUP-002",
+    "id": "SUP-1002",
     "name": "Kavitha Reddy",
     "role": "supervisor",
     "title": "DWO",
@@ -328,7 +328,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "EMP-004",
+    "id": "EMP-1004",
     "name": "Priya Nair",
     "role": "officer",
     "title": "Welfare Officer",
@@ -357,7 +357,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "EMP-005",
+    "id": "EMP-1005",
     "name": "Kiran Babu",
     "role": "officer",
     "title": "Welfare Officer",
@@ -386,7 +386,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-006",
+    "id": "EMP-1006",
     "name": "Aruna Kumari",
     "role": "officer",
     "title": "Welfare Officer",
@@ -415,7 +415,7 @@ const MOCK_USERS = [
     "gender": "Female"
   },
   {
-    "id": "SUP-003",
+    "id": "SUP-1003",
     "name": "Lakshmi Narayana",
     "role": "supervisor",
     "title": "Zonal Commissioner",
@@ -441,7 +441,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-007",
+    "id": "EMP-1007",
     "name": "Mohan Das",
     "role": "officer",
     "title": "Sanitary Inspector",
@@ -471,7 +471,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-008",
+    "id": "EMP-1008",
     "name": "Praveen Kumar",
     "role": "officer",
     "title": "Sanitary Inspector",
@@ -501,7 +501,7 @@ const MOCK_USERS = [
     "gender": "Male"
   },
   {
-    "id": "EMP-009",
+    "id": "EMP-1009",
     "name": "Rekha Singh",
     "role": "officer",
     "title": "Sanitary Inspector",
@@ -666,14 +666,14 @@ const MOCK_WORKFLOW_CONFIG = [
 
 const MOCK_APPLICATIONS = [
   {
-    "id": "APP-REV-001",
+    "id": "APP-1001",
     "serviceId": "SVC-001",
     "serviceName": "Income Certificate",
     "serviceType": "certificate",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-001",
+    "officerId": "EMP-1001",
     "officerName": "Suresh Reddy",
     "dept": "Revenue Department",
     "status": "completed",
@@ -718,14 +718,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-04-27T09:00:00.000Z"
   },
   {
-    "id": "APP-WEL-001",
+    "id": "APP-1002",
     "serviceId": "SVC-005",
     "serviceName": "Scholarship Application",
     "serviceType": "welfare",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-004",
+    "officerId": "EMP-1004",
     "officerName": "Priya Nair",
     "dept": "Welfare Department",
     "status": "rejected",
@@ -758,14 +758,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-13T09:00:00.000Z"
   },
   {
-    "id": "APP-MUN-001",
+    "id": "APP-1003",
     "serviceId": "SVC-006",
     "serviceName": "Event Permission",
     "serviceType": "permission",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-007",
+    "officerId": "EMP-1007",
     "officerName": "Mohan Das",
     "dept": "Municipal Corporation",
     "status": "under-review",
@@ -792,14 +792,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-08T05:58:07.178Z"
   },
   {
-    "id": "APP-REV-002",
+    "id": "APP-1004",
     "serviceId": "SVC-002",
     "serviceName": "Caste Certificate",
     "serviceType": "certificate",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-001",
+    "officerId": "EMP-1001",
     "officerName": "Suresh Reddy",
     "dept": "Revenue Department",
     "status": "approved",
@@ -832,14 +832,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-09T05:58:07.178Z"
   },
   {
-    "id": "APP-WEL-002",
+    "id": "APP-1005",
     "serviceId": "SVC-004",
     "serviceName": "Welfare / Subsidy Scheme",
     "serviceType": "welfare",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-004",
+    "officerId": "EMP-1004",
     "officerName": "Priya Nair",
     "dept": "Welfare Department",
     "status": "query",
@@ -872,14 +872,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-15T05:58:07.178Z"
   },
   {
-    "id": "APP-MUN-002",
+    "id": "APP-1006",
     "serviceId": "SVC-007",
     "serviceName": "Vendor License",
     "serviceType": "permission",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-007",
+    "officerId": "EMP-1007",
     "officerName": "Mohan Das",
     "dept": "Municipal Corporation",
     "status": "query",
@@ -912,14 +912,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-04-26T05:58:07.178Z"
   },
   {
-    "id": "APP-REV-003",
+    "id": "APP-1007",
     "serviceId": "SVC-008",
     "serviceName": "Record Correction",
     "serviceType": "correction",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-001",
+    "officerId": "EMP-1001",
     "officerName": "Suresh Reddy",
     "dept": "Revenue Department",
     "status": "escalated",
@@ -958,14 +958,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-02T05:58:07.178Z"
   },
   {
-    "id": "APP-WEL-003",
+    "id": "APP-1008",
     "serviceId": "SVC-004",
     "serviceName": "Welfare / Subsidy Scheme",
     "serviceType": "welfare",
-    "citizenId": "CIT-002",
+    "citizenId": "CIT-1002",
     "citizenName": "Sunita Verma",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-004",
+    "officerId": "EMP-1004",
     "officerName": "Priya Nair",
     "dept": "Welfare Department",
     "status": "escalated",
@@ -1004,14 +1004,14 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-04-30T05:58:07.178Z"
   },
   {
-    "id": "APP-MUN-003",
+    "id": "APP-1009",
     "serviceId": "SVC-007",
     "serviceName": "Vendor License",
     "serviceType": "permission",
-    "citizenId": "CIT-003",
+    "citizenId": "CIT-1003",
     "citizenName": "Kaveri Devi",
     "jurisdiction": "Secunderabad",
-    "officerId": "EMP-007",
+    "officerId": "EMP-1007",
     "officerName": "Mohan Das",
     "dept": "Municipal Corporation",
     "status": "under-review",
@@ -1049,17 +1049,17 @@ const MOCK_APPLICATIONS = [
 
 const MOCK_GRIEVANCES = [
   {
-    "id": "GRV-001",
+    "id": "GRV-1001",
     "subject": "Payment Receipt Missing",
     "category": "payment",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-MUN-001",
+    "relatedAppId": "APP-1003",
     "description": "Amount deducted but receipt not generated.",
     "filedDate": "2026-05-03T18:45:19.670Z",
     "status": "investigating",
     "priority": "low",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1076,17 +1076,17 @@ const MOCK_GRIEVANCES = [
     ]
   },
   {
-    "id": "GRV-002",
+    "id": "GRV-1002",
     "subject": "Severe SLA Delay",
     "category": "delay",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-REV-003",
+    "relatedAppId": "APP-1007",
     "description": "Application is overdue by several days.",
     "filedDate": "2026-05-03T06:45:19.670Z",
     "status": "investigating",
     "priority": "high",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1103,17 +1103,17 @@ const MOCK_GRIEVANCES = [
     ]
   },
   {
-    "id": "GRV-003",
+    "id": "GRV-1003",
     "subject": "Processing is slow",
     "category": "delay",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-REV-002",
+    "relatedAppId": "APP-1004",
     "description": "Officer is taking too much time.",
     "filedDate": "2026-05-03T18:45:19.671Z",
     "status": "investigating",
     "priority": "medium",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1130,17 +1130,17 @@ const MOCK_GRIEVANCES = [
     ]
   },
   {
-    "id": "GRV-004",
+    "id": "GRV-1004",
     "subject": "Unfair Rejection",
     "category": "rejection",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-WEL-001",
+    "relatedAppId": "APP-1002",
     "description": "Officer incorrectly calculated my income.",
     "filedDate": "2026-05-02T06:45:19.671Z",
     "status": "investigating",
     "priority": "medium",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1157,17 +1157,17 @@ const MOCK_GRIEVANCES = [
     ]
   },
   {
-    "id": "GRV-005",
+    "id": "GRV-1005",
     "subject": "Officer asked for bribe",
     "category": "misconduct",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-MUN-002",
+    "relatedAppId": "APP-1006",
     "description": "Officer asked for a bribe for vendor license.",
     "filedDate": "2026-05-01T06:45:19.671Z",
     "status": "investigating",
     "priority": "high",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1187,14 +1187,14 @@ const MOCK_GRIEVANCES = [
     "id": "GRV-006",
     "subject": "Portal Error Resolved",
     "category": "other",
-    "citizenId": "CIT-001",
+    "citizenId": "CIT-1001",
     "citizenName": "Ravi Kumar",
-    "relatedAppId": "APP-REV-001",
+    "relatedAppId": "APP-1001",
     "description": "I was not able to download my certificate.",
     "filedDate": "2026-04-24T06:45:19.671Z",
     "status": "resolved",
     "priority": "low",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "daysTaken": 3,
@@ -1215,14 +1215,14 @@ const MOCK_GRIEVANCES = [
     "id": "GRV-007",
     "subject": "Corruption Allegation",
     "category": "misconduct",
-    "citizenId": "CIT-003",
+    "citizenId": "CIT-1003",
     "citizenName": "Kaveri Devi",
-    "relatedAppId": "APP-MUN-003",
+    "relatedAppId": "APP-1009",
     "description": "Officer demanded money.",
     "filedDate": "2026-04-30T06:45:19.671Z",
     "status": "escalated",
     "priority": "high",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1242,14 +1242,14 @@ const MOCK_GRIEVANCES = [
     "id": "GRV-008",
     "subject": "Application not moving",
     "category": "delay",
-    "citizenId": "CIT-002",
+    "citizenId": "CIT-1002",
     "citizenName": "Sunita Verma",
-    "relatedAppId": "APP-WEL-003",
+    "relatedAppId": "APP-1008",
     "description": "My application is breached and officer is ignoring.",
     "filedDate": "2026-05-04T05:45:19.671Z",
     "status": "open",
     "priority": "high",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1269,14 +1269,14 @@ const MOCK_GRIEVANCES = [
     "id": "GRV-009",
     "subject": "Unfair scheme rejection",
     "category": "rejection",
-    "citizenId": "CIT-002",
+    "citizenId": "CIT-1002",
     "citizenName": "Sunita Verma",
-    "relatedAppId": "APP-WEL-001",
+    "relatedAppId": "APP-1002",
     "description": "I have all docs but got rejected.",
     "filedDate": "2026-05-04T04:45:19.671Z",
     "status": "open",
     "priority": "medium",
-    "officerId": "GRV-001",
+    "officerId": "GRV-1001",
     "officerName": "Nalini Rao",
     "jurisdiction": "Secunderabad",
     "history": [
@@ -1297,57 +1297,57 @@ const MOCK_GRIEVANCES = [
 const MOCK_NOTIFICATIONS = [
   {
     "id": "NOT-001",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "Application Approved!",
-    "message": "Your Income Certificate (APP-REV-001) has been approved. Download now.",
+    "message": "Your Income Certificate (APP-1001) has been approved. Download now.",
     "type": "success",
     "read": false,
     "date": "2026-05-04T06:45:19.671Z",
-    "link": "citizen/track-application.html?id=APP-REV-001"
+    "link": "citizen/track-application.html?id=APP-1001"
   },
   {
     "id": "NOT-002",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "Query Raised",
-    "message": "Officer has requested additional documents for APP-WEL-002. Please respond.",
+    "message": "Officer has requested additional documents for APP-1005. Please respond.",
     "type": "warning",
     "read": false,
     "date": "2026-05-04T05:45:19.671Z",
-    "link": "citizen/track-application.html?id=APP-WEL-002"
+    "link": "citizen/track-application.html?id=APP-1005"
   },
   {
     "id": "NOT-002b",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "Query Raised",
-    "message": "Officer has requested a shop photo for APP-MUN-002. Please respond.",
+    "message": "Officer has requested a shop photo for APP-1006. Please respond.",
     "type": "warning",
     "read": false,
     "date": "2026-04-24T06:45:19.671Z",
-    "link": "citizen/track-application.html?id=APP-MUN-002"
+    "link": "citizen/track-application.html?id=APP-1006"
   },
   {
     "id": "NOT-002c",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "Application Rejected",
-    "message": "Your Scholarship Application (APP-WEL-001) has been rejected.",
+    "message": "Your Scholarship Application (APP-1002) has been rejected.",
     "type": "danger",
     "read": false,
     "date": "2026-05-02T06:45:19.671Z",
-    "link": "citizen/track-application.html?id=APP-WEL-001"
+    "link": "citizen/track-application.html?id=APP-1002"
   },
   {
     "id": "NOT-002d",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "SLA Breach",
-    "message": "Your Record Correction (APP-REV-003) is delayed. Escalated to higher authorities.",
+    "message": "Your Record Correction (APP-1007) is delayed. Escalated to higher authorities.",
     "type": "info",
     "read": false,
     "date": "2026-05-02T06:45:19.671Z",
-    "link": "citizen/track-application.html?id=APP-REV-003"
+    "link": "citizen/track-application.html?id=APP-1007"
   },
   {
     "id": "NOT-003",
-    "userId": "CIT-001",
+    "userId": "CIT-1001",
     "title": "New Scheme Available",
     "message": "PM Kisan Scholarship 2026 applications are now open. Check eligibility.",
     "type": "info",
@@ -1357,9 +1357,9 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-004",
-    "userId": "EMP-007",
+    "userId": "EMP-1007",
     "title": "New Application Assigned",
-    "message": "Event Permission application (APP-MUN-001) assigned to you.",
+    "message": "Event Permission application (APP-1003) assigned to you.",
     "type": "info",
     "read": false,
     "date": "2026-05-03T06:45:19.671Z",
@@ -1367,9 +1367,9 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-005",
-    "userId": "SUP-001",
+    "userId": "SUP-1001",
     "title": "SLA Breach Auto-Escalation",
-    "message": "Application APP-REV-003 has breached SLA and is escalated to you.",
+    "message": "Application APP-1007 has breached SLA and is escalated to you.",
     "type": "danger",
     "read": false,
     "date": "2026-05-02T06:45:19.671Z",
@@ -1377,7 +1377,7 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-006",
-    "userId": "GRV-001",
+    "userId": "GRV-1001",
     "title": "New Grievance Assigned",
     "message": "Grievance GRV-008 regarding application delay assigned to you.",
     "type": "info",
@@ -1387,7 +1387,7 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-007",
-    "userId": "SUP-003",
+    "userId": "SUP-1003",
     "title": "Grievance Escalation Alert",
     "message": "Grievance GRV-006 (Misconduct) has been escalated to you by GO.",
     "type": "danger",
@@ -1397,9 +1397,9 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-008",
-    "userId": "SUP-002",
+    "userId": "SUP-1002",
     "title": "SLA Breach Auto-Escalation",
-    "message": "Application APP-WEL-003 has breached SLA.",
+    "message": "Application APP-1008 has breached SLA.",
     "type": "danger",
     "read": false,
     "date": "2026-04-30T06:45:19.671Z",
@@ -1407,13 +1407,13 @@ const MOCK_NOTIFICATIONS = [
   },
   {
     "id": "NOT-009",
-    "userId": "SUP-001",
+    "userId": "SUP-1001",
     "title": "Approval Required",
-    "message": "Officer approved APP-REV-002. Awaiting your final signature.",
+    "message": "Officer approved APP-1004. Awaiting your final signature.",
     "type": "info",
     "read": false,
     "date": "2026-05-04T05:45:19.671Z",
-    "link": "supervisor/pending-approvals.html"
+    "link": "supervisor/supervisor-dashboard.html"
   }
 ];
 
@@ -1434,7 +1434,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "s.reddy@gov.in",
     "role": "officer",
     "date": "2026-05-04T07:00:00Z",
-    "details": "Officer Suresh Reddy approved APP-REV-001 (Income Certificate) for citizen Ravi Kumar."
+    "details": "Officer Suresh Reddy approved APP-1001 (Income Certificate) for citizen Ravi Kumar."
   },
   {
     "id": "LOG-003",
@@ -1442,7 +1442,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "d.verma@gov.in",
     "role": "supervisor",
     "date": "2026-05-04T06:00:00Z",
-    "details": "Supervisor Deepak Verma issued final approval for APP-REV-001. Certificate issued to Ravi Kumar."
+    "details": "Supervisor Deepak Verma issued final approval for APP-1001. Certificate issued to Ravi Kumar."
   },
   {
     "id": "LOG-004",
@@ -1450,7 +1450,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "ravi.k@gmail.com",
     "role": "citizen",
     "date": "2026-05-04T05:00:00Z",
-    "details": "Citizen Ravi Kumar filed grievance regarding delay in Income Certificate (APP-REV-003)."
+    "details": "Citizen Ravi Kumar filed grievance regarding delay in Income Certificate (APP-1007)."
   },
   {
     "id": "LOG-005",
@@ -1458,7 +1458,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "System Daemon",
     "role": "system",
     "date": "2026-05-04T04:00:00Z",
-    "details": "APP-REV-003 auto-escalated to Supervisor Deepak Verma after SLA breach."
+    "details": "APP-1007 auto-escalated to Supervisor Deepak Verma after SLA breach."
   },
   {
     "id": "LOG-006",
@@ -1466,7 +1466,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "n.rao@gov.in",
     "role": "grievance",
     "date": "2026-05-04T03:00:00Z",
-    "details": "Grievance Officer Nalini Rao escalated GRV-004 (Wrongful Rejection) to Supervisor."
+    "details": "Grievance Officer Nalini Rao escalated GRV-1004 (Wrongful Rejection) to Supervisor."
   },
   {
     "id": "LOG-007",
@@ -1474,7 +1474,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "d.verma@gov.in",
     "role": "supervisor",
     "date": "2026-05-04T02:00:00Z",
-    "details": "Supervisor Deepak Verma issued SLA warning to Officer Suresh Reddy for APP-REV-003."
+    "details": "Supervisor Deepak Verma issued SLA warning to Officer Suresh Reddy for APP-1007."
   },
   {
     "id": "LOG-008",
@@ -1482,7 +1482,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "p.nair@gov.in",
     "role": "officer",
     "date": "2026-05-04T01:00:00Z",
-    "details": "Officer Priya Nair rejected APP-WEL-001 (Scholarship) - Income exceeds limit."
+    "details": "Officer Priya Nair rejected APP-1002 (Scholarship) - Income exceeds limit."
   },
   {
     "id": "LOG-009",
@@ -1490,7 +1490,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "superuser@gov.in",
     "role": "super_user",
     "date": "2026-05-03T08:00:00Z",
-    "details": "Super User onboarded Officer Rekha Singh (EMP-009) for Municipal Corporation, Secunderabad."
+    "details": "Super User onboarded Officer Rekha Singh (EMP-1009) for Municipal Corporation, Secunderabad."
   },
   {
     "id": "LOG-010",
@@ -1506,7 +1506,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "p.nair@gov.in",
     "role": "officer",
     "date": "2026-05-01T08:00:00Z",
-    "details": "Officer Priya Nair raised document query on APP-WEL-002 (Subsidy Scheme) for Citizen Ravi Kumar."
+    "details": "Officer Priya Nair raised document query on APP-1005 (Subsidy Scheme) for Citizen Ravi Kumar."
   },
   {
     "id": "LOG-012",
@@ -1514,7 +1514,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "ravi.k@gmail.com",
     "role": "citizen",
     "date": "2026-05-01T09:00:00Z",
-    "details": "Citizen Ravi Kumar responded to officer query on APP-WEL-002. SLA timer reset."
+    "details": "Citizen Ravi Kumar responded to officer query on APP-1005. SLA timer reset."
   },
   {
     "id": "LOG-013",
@@ -1522,7 +1522,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "n.rao@gov.in",
     "role": "grievance",
     "date": "2026-05-01T10:00:00Z",
-    "details": "Grievance Officer Nalini Rao investigating GRV-001 - Checking payment gateway logs."
+    "details": "Grievance Officer Nalini Rao investigating GRV-1001 - Checking payment gateway logs."
   },
   {
     "id": "LOG-014",
@@ -1530,7 +1530,7 @@ const MOCK_AUDIT_LOGS = [
     "actor": "l.narayana@gov.in",
     "role": "supervisor",
     "date": "2026-04-30T08:00:00Z",
-    "details": "Supervisor Lakshmi Narayana overrode officer decision on APP-MUN-001, approving Event Permission."
+    "details": "Supervisor Lakshmi Narayana overrode officer decision on APP-1003, approving Event Permission."
   },
   {
     "id": "LOG-015",

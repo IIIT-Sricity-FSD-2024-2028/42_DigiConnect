@@ -259,7 +259,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label class="form-label">Department <span class="required">*</span></label>
-                                <select class="form-input" id="uDept">
+                                <select class="form-input" id="uDept" onchange="window.fetchServicesForDept(this.value, 'uServiceAssignGrid')">
                                     <option value="">Select department</option>
                                     <option>Revenue Department</option>
                                     <option>Welfare Department</option>
@@ -285,6 +285,10 @@
                             <div class="form-group">
                                 <label class="form-label">Employee ID</label>
                                 <input type="text" class="form-input" id="uEmpId" placeholder="e.g. EMP-042" />
+                            </div>
+                            <div class="form-group col-span-full">
+                                <label class="form-label">Services to Assign</label>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;" id="uServiceAssignGrid"></div>
                             </div>
                         </div>
                     </div>

@@ -6,7 +6,7 @@ import { showToast, generateId, initEventDelegation, togglePassword, checkStreng
 import { getRoleDashboardPath, getLoginRedirectMap, getRoleConfig } from './role-manager.js';
 import { initPage } from './navigation.js';
 import { renderNotifPanel } from './notifications.js';
-import { apiLogin, apiRegister } from './api.js';
+import { apiLogin, apiRegister, apiGetUsers } from './api.js';
 
 // ── Session Management ──
 
@@ -343,7 +343,7 @@ export function initLoginPage() {
   // Step 1: Find account
   const fpFindBtn = document.getElementById('fpFindAccountBtn');
   if (fpFindBtn) {
-    fpFindBtn.addEventListener('click', () => {
+    fpFindBtn.addEventListener('click', async () => {
       const identity = document.getElementById('fpIdentity')?.value?.trim();
       const errBox = document.getElementById('fpStep1Error');
       const errMsg = document.getElementById('fpStep1ErrorMsg');
@@ -354,38 +354,31 @@ export function initLoginPage() {
         return;
       }
 
-      const users = getUsers();
-      const identityLower = identity.toLowerCase();
-      const identityDigits = identity.replace(/\D/g, '');
+      fpFindBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Searching...';
+      fpFindBtn.disabled = true;
 
-      const user = users.find(u =>
-        (u.username && u.username.toLowerCase() === identityLower) ||
-        (u.email && u.email.toLowerCase() === identityLower) ||
-        (u.phone && u.phone.replace(/\D/g, '') === identityDigits && identityDigits.length >= 10)
-      );
+      try {
+        const { apiFetch } = await import('./api.js');
+        const res = await apiFetch(`/users/find-account/${encodeURIComponent(identity)}`);
+        const user = res.data;
 
-      if (!user) {
+        // Account found — advance to step 2
+        fpTargetUser = user;
+        document.getElementById('fpStep1').style.display = 'none';
+        document.getElementById('fpStep2').style.display = 'block';
+        if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 2 of 3 — Verify Identity';
+        if (document.getElementById('fpPill-2')) document.getElementById('fpPill-2').style.background = 'var(--navy-500)';
+        document.getElementById('fpFoundName').textContent = user.name;
+        document.getElementById('fpSecurityQuestion').textContent = user.securityQuestion;
+        document.getElementById('fpSecurityAnswer').value = '';
+        document.getElementById('fpStep2Error').style.display = 'none';
+      } catch (e) {
         if (errBox) errBox.style.display = 'flex';
-        if (errMsg) errMsg.textContent = 'No account found with that username, email or phone number.';
-        return;
+        if (errMsg) errMsg.textContent = e.message || 'Error connecting to server. Please try again.';
+      } finally {
+        fpFindBtn.innerHTML = 'Find My Account';
+        fpFindBtn.disabled = false;
       }
-
-      if (!user.securityQuestion || !user.securityAnswer) {
-        if (errBox) errBox.style.display = 'flex';
-        if (errMsg) errMsg.textContent = 'This account does not have a security question set up. Please contact support.';
-        return;
-      }
-
-      // Account found — advance to step 2
-      fpTargetUser = user;
-      document.getElementById('fpStep1').style.display = 'none';
-      document.getElementById('fpStep2').style.display = 'block';
-      if (document.getElementById('fpSubtitle')) document.getElementById('fpSubtitle').textContent = 'Step 2 of 3 — Verify Identity';
-      if (document.getElementById('fpPill-2')) document.getElementById('fpPill-2').style.background = 'var(--navy-500)';
-      document.getElementById('fpFoundName').textContent = user.name;
-      document.getElementById('fpSecurityQuestion').textContent = user.securityQuestion;
-      document.getElementById('fpSecurityAnswer').value = '';
-      document.getElementById('fpStep2Error').style.display = 'none';
     });
   }
 
@@ -433,7 +426,7 @@ export function initLoginPage() {
   // Step 3: Reset password
   const fpResetBtn = document.getElementById('fpResetPasswordBtn');
   if (fpResetBtn) {
-    fpResetBtn.addEventListener('click', () => {
+    fpResetBtn.addEventListener('click', async () => {
       const newPw = document.getElementById('fpNewPassword')?.value;
       const confirmPw = document.getElementById('fpConfirmPassword')?.value;
 
@@ -446,17 +439,24 @@ export function initLoginPage() {
         return;
       }
 
-      // Update user password in localStorage
-      const users = getUsers();
-      const idx = users.findIndex(u => u.id === fpTargetUser.id);
-      if (idx !== -1) {
-        users[idx].password = newPw;
-        setUsers(users);
-      }
+      fpResetBtn.disabled = true;
+      fpResetBtn.textContent = 'Resetting...';
 
-      fpTargetUser = null;
-      closeModal('forgotPasswordModal');
-      showToast('Password reset successfully! You can now sign in with your new password.', 'success');
+      try {
+        const { apiUpdateUserProfile } = await import('./api.js');
+        // Because the user is not logged in, we update the password directly using the update user endpoint
+        // apiUpdateUser/apiUpdateUserProfile allows this if the API logic accepts it
+        await apiUpdateUserProfile(fpTargetUser.id, { password: newPw });
+        
+        fpTargetUser = null;
+        closeModal('forgotPasswordModal');
+        showToast('Password reset successfully! You can now sign in with your new password.', 'success');
+      } catch (e) {
+        showToast(e.message || 'Failed to reset password.', 'error');
+      } finally {
+        fpResetBtn.disabled = false;
+        fpResetBtn.textContent = 'Reset Password';
+      }
     });
   }
 }

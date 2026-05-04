@@ -49,6 +49,17 @@ export class UsersController {
     };
   }
 
+  @Get('find-account/:identity')
+  @ApiOperation({ summary: 'Find user account by identity for password reset' })
+  @ApiResponse({ status: 200, description: 'Return user details for password reset' })
+  findAccount(@Param('identity') identity: string) {
+    return {
+      success: true,
+      data: this.usersService.findAccountForReset(identity),
+      message: 'OK'
+    };
+  }
+
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.SUPER_USER)

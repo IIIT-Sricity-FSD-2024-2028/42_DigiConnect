@@ -133,7 +133,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Department <span class="required">*</span></label>
-                        <select class="form-input" id="ofDept">
+                        <select class="form-input" id="ofDept" onchange="window.fetchServicesForDept(this.value, 'serviceAssignGrid')">
                             <option value="">Select department</option>
                             <option value="Revenue Department">Revenue Department</option>
                             <option value="Welfare Department">Welfare Department</option>

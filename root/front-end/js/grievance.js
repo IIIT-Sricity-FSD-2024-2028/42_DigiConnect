@@ -185,12 +185,15 @@ export function initRaiseGrievance() {
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
       const priority = document.getElementById('gPriority')?.value || 'medium';
 
+      const attachments = Array.from(document.querySelectorAll('#evidenceList span')).map(s => ({ name: s.textContent.trim(), type: 'evidence' }));
+
       const newGrievanceData = {
         citizenId: session.id,
         category: selectedCategory || 'delay',
         subject, description,
         relatedAppId: relatedApp || undefined,
         priority: priority,
+        attachments: attachments,
       };
 
       apiRaiseGrievance(newGrievanceData).then(res => {

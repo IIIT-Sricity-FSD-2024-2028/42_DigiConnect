@@ -455,7 +455,11 @@ export async function initApplyService() {
         dept: selectedService.dept,
         fee: selectedService.fee,
         paymentTransactionId: paymentTxnId,
-        documents: selectedService.docs.map(d => ({ name: d + '.pdf', type: d, date: new Date().toISOString(), status: 'pending' })),
+        documents: selectedService.docs.map((d, i) => {
+          const fileInput = document.getElementById('fileInput_' + i);
+          const actualName = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : d + '.pdf';
+          return { name: actualName, type: d, date: new Date().toISOString(), status: 'pending' };
+        }),
         formData: {
           dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
           phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,

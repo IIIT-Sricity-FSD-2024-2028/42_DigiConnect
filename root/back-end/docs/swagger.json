@@ -92,6 +92,30 @@
         ]
       }
     },
+    "/api/v1/users/find-account/{identity}": {
+      "get": {
+        "operationId": "UsersController_findAccount",
+        "parameters": [
+          {
+            "name": "identity",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return user details for password reset"
+          }
+        },
+        "summary": "Find user account by identity for password reset",
+        "tags": [
+          "users"
+        ]
+      }
+    },
     "/api/v1/users": {
       "get": {
         "operationId": "UsersController_findAll",

@@ -24,7 +24,7 @@ function getHeaders() {
 /**
  * Generic fetch wrapper — returns parsed JSON or throws on error
  */
-async function apiFetch(path, options = {}) {
+export async function apiFetch(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     headers: { ...getHeaders(), ...(options.headers || {}) },

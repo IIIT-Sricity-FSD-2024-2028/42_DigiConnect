@@ -38,6 +38,26 @@ export class UsersService {
     return db.users.filter(u => u.role === 'officer');
   }
 
+  findAccountForReset(identity: string): any {
+    const identityLower = identity.toLowerCase();
+    const identityDigits = identity.replace(/\D/g, '');
+
+    const user = db.users.find(u =>
+      (u.email && u.email.toLowerCase() === identityLower) ||
+      (u.phone && u.phone.replace(/\D/g, '') === identityDigits && identityDigits.length >= 10)
+    );
+
+    if (!user) throw new NotFoundException('Account not found');
+    if (!user.securityQuestion) throw new BadRequestException('Security question not set');
+
+    return {
+      id: user.id,
+      name: user.name,
+      securityQuestion: user.securityQuestion,
+      securityAnswer: user.securityAnswer
+    };
+  }
+
   findAllOfficers(): User[] {
     return db.users.filter(u => u.role === 'officer');
   }
