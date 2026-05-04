@@ -505,7 +505,7 @@
                                     <div class="form-group">
                                         <label class="form-label">Card Number</label>
                                         <input type="text" class="form-input" placeholder="1234 5678 9012 3456"
-                                            maxlength="19" oninput="formatCard(this)" />
+                                            maxlength="19" oninput="formatCard(this);this.value=this.value.replace(/[^0-9\s]/g,'')" />
                                     </div>
                                     <div class="form-grid">
                                         <div class="form-group">
@@ -562,20 +562,20 @@
                                 <div class="payment-summary-title">Payment Summary</div>
                                 <div class="payment-summary-row">
                                     <span>Application Fee</span>
-                                    <span id="ps_fee">₹50.00</span>
+                                    <span id="ps_fee">₹0.00</span>
                                 </div>
                                 <div class="payment-summary-row">
                                     <span>Processing Charge</span>
-                                    <span>₹5.00</span>
+                                    <span id="ps_processing">₹0.00</span>
                                 </div>
                                 <div class="payment-summary-row">
                                     <span>GST (18%)</span>
-                                    <span>₹9.90</span>
+                                    <span id="ps_gst">₹0.00</span>
                                 </div>
                                 <div class="payment-summary-divider"></div>
                                 <div class="payment-summary-total">
                                     <span>Total Payable</span>
-                                    <span id="ps_total">₹64.90</span>
+                                    <span id="ps_total">Free</span>
                                 </div>
                                 <div
                                     style="margin-top:var(--space-lg);padding:var(--space-md);background:var(--navy-50);border-radius:var(--radius-md);border:1px solid var(--navy-100);">
@@ -583,7 +583,7 @@
                                         style="font-size:0.75rem;font-weight:600;color:var(--navy-600);margin-bottom:6px;">
                                         Application Reference</div>
                                     <div style="font-family:var(--font-mono);font-size:0.9rem;font-weight:700;color:var(--navy-900);"
-                                        id="appRefId">APP-2501</div>
+                                        id="appRefId">Generating...</div>
                                     <div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:2px;">Save
                                         this for tracking</div>
                                 </div>
@@ -638,7 +638,7 @@
                                 style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--navy-500);margin-bottom:4px;">
                                 Application ID</div>
                             <div style="font-family:var(--font-mono);font-size:1.5rem;font-weight:800;color:var(--navy-900);"
-                                id="successAppId">APP-2501</div>
+                                id="successAppId">...</div>
                             <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:4px;">Expected
                                 completion: <strong>7 working days</strong></div>
                         </div>

@@ -116,6 +116,67 @@ export async function initCitizenDashboard() {
     `).join('') || '<div style="padding:var(--space-md);text-align:center;color:var(--color-text-muted);">No open grievances</div>';
   }
 
+  // Render latest application progress card dynamically
+  const latestCard = document.getElementById('latestAppProgressCard');
+  if (latestCard && apps.length > 0) {
+    const latest = [...apps].sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate))[0];
+    const statusBadge = latest.status === 'approved' || latest.status === 'completed'
+      ? '<span class="badge badge-success">Approved</span>'
+      : latest.status === 'rejected'
+      ? '<span class="badge badge-danger">Rejected</span>'
+      : latest.status === 'query'
+      ? '<span class="badge badge-warning">Query Raised</span>'
+      : latest.status === 'escalated'
+      ? '<span class="badge badge-danger">Escalated</span>'
+      : '<span class="badge badge-info">In Progress</span>';
+
+    const timelineItems = (latest.timeline || []).map(t => {
+      const dotClass = t.action?.toLowerCase().includes('reject') ? 'danger'
+        : t.action?.toLowerCase().includes('approve') || t.action?.toLowerCase().includes('issued') || t.action?.toLowerCase().includes('completed') ? 'success'
+        : t.action?.toLowerCase().includes('query') || t.action?.toLowerCase().includes('escalat') ? 'warning'
+        : 'default';
+      const icon = dotClass === 'success'
+        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />'
+        : dotClass === 'danger'
+        ? '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />'
+        : '<circle cx="12" cy="12" r="4" fill="currentColor"/>';
+      return `
+        <div class="timeline-item">
+          <div class="timeline-dot ${dotClass}">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">${icon}</svg>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-label">${t.action}</div>
+            <div class="timeline-time">${formatDate(t.date)}${t.note ? ' · ' + t.note : ''}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    const canDownload = latest.status === 'approved' || latest.status === 'completed';
+
+    latestCard.innerHTML = `
+      <div class="card-header">
+        <span class="card-title">${latest.id} – Progress</span>
+        ${statusBadge}
+      </div>
+      <div class="card-body">
+        <div style="font-size:0.8rem;color:var(--color-text-muted);margin-bottom:var(--space-md);">${latest.serviceName} · ${latest.dept}</div>
+        <div class="timeline">${timelineItems || '<div style="color:var(--color-text-muted);font-size:0.875rem;">No timeline events yet.</div>'}</div>
+        ${canDownload ? `
+        <div style="margin-top:var(--space-lg);">
+          <button class="btn btn-primary w-full" onclick="window.showToast && window.showToast('Certificate downloaded!','success')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download Certificate
+          </button>
+        </div>` : `
+        <div style="margin-top:var(--space-lg);">
+          <a href="track-application.html?id=${latest.id}" class="btn btn-outline w-full">View Full Details →</a>
+        </div>`}
+      </div>`;
+  }
+
   document.querySelectorAll('[data-action="download-cert"]').forEach(btn => {
     btn.addEventListener('click', () => showToast('Certificate downloaded!', 'success'));
   });

@@ -958,6 +958,58 @@ const MOCK_APPLICATIONS = [
     "slaDate": "2026-05-02T05:58:07.178Z"
   },
   {
+    "id": "APP-2456",
+    "serviceId": "SVC-008",
+    "serviceName": "Record Correction",
+    "serviceType": "correction",
+    "citizenId": "CIT-1001",
+    "citizenName": "Ravi Kumar",
+    "jurisdiction": "Secunderabad",
+    "officerId": "EMP-1001",
+    "officerName": "Suresh Reddy",
+    "dept": "Revenue Department",
+    "status": "rejected",
+    "remarks": "DOB mismatch between Aadhaar and certificate. UIDAI cross-verification required.",
+    "fee": 100,
+    "paymentStatus": "paid",
+    "documents": [
+      {
+        "name": "Aadhaar Card.pdf",
+        "type": "Identity Proof",
+        "date": "2026-01-18T05:58:07.178Z",
+        "status": "uploaded"
+      },
+      {
+        "name": "Original Certificate.pdf",
+        "type": "Certificate",
+        "date": "2026-01-18T05:58:07.178Z",
+        "status": "uploaded"
+      }
+    ],
+    "timeline": [
+      {
+        "action": "Application Submitted",
+        "date": "2026-01-18T05:58:07.178Z",
+        "actor": "Ravi Kumar",
+        "note": ""
+      },
+      {
+        "action": "Assigned to Officer",
+        "date": "2026-01-19T05:58:07.178Z",
+        "actor": "System",
+        "note": "Assigned to Suresh Reddy"
+      },
+      {
+        "action": "Application Rejected",
+        "date": "2026-01-21T05:58:07.178Z",
+        "actor": "Suresh Reddy",
+        "note": "DOB mismatch detected between Aadhaar and certificate"
+      }
+    ],
+    "submittedDate": "2026-01-18T05:58:07.178Z",
+    "slaDate": "2026-01-25T05:58:07.178Z"
+  },
+  {
     "id": "APP-1008",
     "serviceId": "SVC-004",
     "serviceName": "Welfare / Subsidy Scheme",

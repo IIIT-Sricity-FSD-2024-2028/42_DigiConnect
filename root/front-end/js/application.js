@@ -32,6 +32,26 @@ export async function initApplyService() {
     renderServiceCards(services);
   }
 
+  // Pre-filter by URL ?type= param (from dashboard category shortcut buttons)
+  const urlType = getQueryParam('type');
+  if (urlType) {
+    const catMap = {
+      'certificate': 'Certificate',
+      'welfare':     'Welfare',
+      'permission':  'Permission',
+      'correction':  'Correction'
+    };
+    const catName = catMap[urlType.toLowerCase()];
+    if (catName) {
+      // Activate the matching tab button
+      document.querySelectorAll('.tabs .tab-btn').forEach(b => {
+        const matches = b.textContent.trim().toLowerCase().startsWith(catName.toLowerCase());
+        b.classList.toggle('active', matches);
+      });
+      renderServiceCards(services.filter(s => s.cat === catName));
+    }
+  }
+
   function renderServiceCards(list) {
     if (!serviceGrid) return;
     const iconMap = { Certificate: 'cert', Welfare: 'welfare', Permission: 'permission', Correction: 'correction' };
@@ -132,9 +152,29 @@ export async function initApplyService() {
     setTC('ps_fee', selectedService.feeLabel);
     setTC('rev_svc', selectedService.name);
     setTC('rev_fee', selectedService.feeLabel);
-    // Generate app reference
-    const appRef = 'APP-' + (Math.floor(1000 + Math.random() * 9000));
-    setTC('appRefId', appRef);
+    // Application reference will be assigned by backend on submission
+    setTC('appRefId', 'Pending...');
+    setTC('successAppId', '...');
+
+    // Dynamic payment summary
+    const fee = selectedService.fee || 0;
+    const processing = fee > 0 ? 5 : 0;
+    const gst = fee > 0 ? Math.round((fee + processing) * 0.18) : 0;
+    const total = fee + processing + gst;
+    setTC('ps_fee', fee > 0 ? '\u20B9' + fee.toFixed(2) : 'Free');
+    setTC('ps_processing', fee > 0 ? '\u20B9' + processing.toFixed(2) : '\u20B90.00');
+    setTC('ps_gst', fee > 0 ? '\u20B9' + gst.toFixed(2) : '\u20B90.00');
+    setTC('ps_total', fee > 0 ? '\u20B9' + total.toFixed(2) : 'Free');
+
+    // Show/hide payment method options based on fee
+    const freeCard = document.getElementById('pm_free');
+    const upiCard  = document.getElementById('pm_upi');
+    if (freeCard) freeCard.style.display = fee === 0 ? 'flex' : 'none';
+    if (upiCard)  upiCard.style.display  = fee === 0 ? 'none' : 'flex';
+    const pm_card      = document.getElementById('pm_card');
+    const pm_netbanking= document.getElementById('pm_netbanking');
+    if (pm_card)       pm_card.style.display       = fee === 0 ? 'none' : 'flex';
+    if (pm_netbanking) pm_netbanking.style.display  = fee === 0 ? 'none' : 'flex';
     
     // Populate service specific fields
     const specificBody = document.getElementById('specificBody');
@@ -335,9 +375,17 @@ export async function initApplyService() {
         tc('rev_fee', selectedService.feeLabel);
       }
 
-      const uploaded = document.querySelectorAll('#docUploadList .upload-slot.uploaded .doc-name');
-      tc('rev_docs', uploaded.length > 0 
-        ? Array.from(uploaded).map(n => n.textContent).join(', ') 
+      // Count uploaded slots by checking for the 'uploaded' class
+      const uploadedSlots = document.querySelectorAll('#docUploadList .upload-slot.uploaded');
+      const uploadedNames = Array.from(uploadedSlots).map(slot => {
+        const statusEl = slot.querySelector('[id^="slot_status_"]');
+        if (statusEl && statusEl.textContent.startsWith('\u2713')) {
+          return statusEl.textContent.replace(/^\u2713\s*/, '').replace(/\s*\(.*\)$/, '').trim();
+        }
+        return slot.querySelector('[style*="font-weight:600"]')?.textContent || 'document';
+      });
+      tc('rev_docs', uploadedSlots.length > 0
+        ? `${uploadedSlots.length} document(s): ${uploadedNames.join(', ')}`
         : 'No documents uploaded');
     }
   }
@@ -348,12 +396,26 @@ export async function initApplyService() {
     const d3 = document.getElementById('decl3')?.checked;
     if (!d1 || !d2 || !d3) { if(window.showToast) window.showToast('Please accept all declarations before proceeding.', 'warning'); return; }
     goToFormStep(4);
+
+    // Reset payment UI to correct default based on service fee
+    document.querySelectorAll('.payment-method-card').forEach(c => c.classList.remove('active'));
+    ['upiForm', 'cardForm', 'netbankingForm', 'freeForm'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+
     if (selectedService && selectedService.fee === 0) {
-      document.querySelectorAll('.payment-method-card').forEach(c => c.classList.remove('active'));
+      // Free service — show Free panel, activate Free tab
       const freeCard = document.getElementById('pm_free');
       if (freeCard) freeCard.classList.add('active');
-      document.getElementById('upiForm').style.display = 'none';
-      document.getElementById('freeForm').style.display = 'block';
+      const freeForm = document.getElementById('freeForm');
+      if (freeForm) freeForm.style.display = 'block';
+    } else {
+      // Paid service — show UPI panel by default, activate UPI tab
+      const upiCard = document.getElementById('pm_upi');
+      if (upiCard) upiCard.classList.add('active');
+      const upiForm = document.getElementById('upiForm');
+      if (upiForm) upiForm.style.display = 'block';
     }
   };
 
@@ -384,13 +446,45 @@ export async function initApplyService() {
 
   // Submit application
   window.submitApplication = () => {
-    if (window.validateForm && !window.validateForm('#applicationForm')) return;
     const submitBtn = document.getElementById('submitBtn');
     if (!selectedService) { if(window.showToast) window.showToast('No service selected.', 'error'); return; }
-    
-    // Sync application reference ID with what is already displayed in Payment Summary
-    const appRefEl = document.getElementById('appRefId');
-    const existingRefId = (appRefEl && appRefEl.textContent) ? appRefEl.textContent : ('APP-' + (Math.floor(1000 + Math.random() * 9000)));
+
+    // Only validate the VISIBLE payment form panel, not all hidden ones
+    const activePaymentMethod = document.querySelector('.payment-method-card.active');
+    const pmType = activePaymentMethod?.id?.replace('pm_', '') || 'upi';
+
+    if (selectedService.fee > 0 && pmType !== 'free') {
+      if (pmType === 'upi') {
+        const upiVal = document.getElementById('upiId')?.value?.trim();
+        if (!upiVal) {
+          if (window.showToast) window.showToast('Please enter your UPI ID to proceed.', 'warning');
+          document.getElementById('upiId')?.focus();
+          return;
+        }
+      } else if (pmType === 'card') {
+        const cardNum = document.querySelector('#cardForm input[placeholder="1234 5678 9012 3456"]')?.value?.replace(/\s/g,'');
+        if (!cardNum || cardNum.length < 16) {
+          if (window.showToast) window.showToast('Please enter a valid 16-digit card number.', 'warning');
+          return;
+        }
+        const expiry = document.querySelector('#cardForm input[placeholder="MM/YY"]')?.value?.trim();
+        if (!expiry || expiry.length < 5) {
+          if (window.showToast) window.showToast('Please enter a valid expiry date (MM/YY).', 'warning');
+          return;
+        }
+        const cvv = document.querySelector('#cardForm input[placeholder="•••"]')?.value?.trim();
+        if (!cvv || cvv.length < 3) {
+          if (window.showToast) window.showToast('Please enter the CVV to proceed.', 'warning');
+          return;
+        }
+      } else if (pmType === 'netbanking') {
+        const bank = document.querySelector('#netbankingForm select')?.value;
+        if (!bank) {
+          if (window.showToast) window.showToast('Please select your bank to proceed.', 'warning');
+          return;
+        }
+      }
+    }
 
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -448,6 +542,11 @@ export async function initApplyService() {
       }
 
       const paymentTxnId = selectedService.fee === 0 ? null : (window.mockPaymentTxn || `TXN-${Math.floor(1000000+Math.random()*9000000)}`);
+      const paymentMethodLabel = selectedService.fee === 0 ? 'Free'
+        : pmType === 'card' ? 'Debit/Credit Card'
+        : pmType === 'netbanking' ? 'Net Banking'
+        : pmType === 'upi' ? 'UPI'
+        : 'Other';
       
       const newAppDto = {
         serviceId: selectedService.id,
@@ -455,6 +554,7 @@ export async function initApplyService() {
         dept: selectedService.dept,
         fee: selectedService.fee,
         paymentTransactionId: paymentTxnId,
+        paymentMethod: paymentMethodLabel,
         documents: selectedService.docs.map((d, i) => {
           const fileInput = document.getElementById('fileInput_' + i);
           const actualName = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : d + '.pdf';
@@ -486,9 +586,11 @@ export async function initApplyService() {
         if (headerBtns && headerBtns.parentElement) headerBtns.parentElement.style.display = 'none';
 
         const success = document.getElementById('successScreen');
-        if (success) { 
-          success.style.display = 'block'; 
-          setTC('successAppId', newApp.id); 
+        if (success) {
+          success.style.display = 'block';
+          // Use real backend-assigned ID for both displays
+          setTC('successAppId', newApp.id);
+          setTC('appRefId', newApp.id);
         }
         
         if (window.showToast) window.showToast('Application submitted successfully!', 'success');
@@ -799,9 +901,32 @@ export async function initTrackApplication() {
     // Status badge
     const badge = document.getElementById('detailBadge');
     if (badge) {
-      const cls = app.status === 'approved' ? 'badge-success' : app.status === 'rejected' ? 'badge-danger' : app.status === 'query' ? 'badge-warning' : 'badge-info';
+      const cls = app.status === 'approved' ? 'badge-success'
+        : app.status === 'rejected' ? 'badge-danger'
+        : app.status === 'query' ? 'badge-warning'
+        : 'badge-info';
       badge.className = `badge ${cls}`;
-      badge.textContent = app.status === 'under-review' ? 'Under Review' : app.status.charAt(0).toUpperCase() + app.status.slice(1);
+      badge.textContent = app.status === 'under-review' ? 'Under Review'
+        : app.status.charAt(0).toUpperCase() + app.status.slice(1);
+    }
+
+    // Payment status badge — show green tick when paid, amber when pending
+    let payBadge = document.getElementById('paymentStatusBadge');
+    if (!payBadge) {
+      payBadge = document.createElement('span');
+      payBadge.id = 'paymentStatusBadge';
+      payBadge.style.marginLeft = '6px';
+      badge?.parentNode?.insertBefore(payBadge, badge.nextSibling);
+    }
+    if (app.fee === 0) {
+      payBadge.className = 'badge badge-success';
+      payBadge.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="vertical-align:-1px;margin-right:3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Free / No Fee`;
+    } else if (app.paymentStatus === 'paid') {
+      payBadge.className = 'badge badge-success';
+      payBadge.innerHTML = `<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" style="vertical-align:-1px;margin-right:3px;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Payment Confirmed`;
+    } else {
+      payBadge.className = 'badge badge-warning';
+      payBadge.textContent = 'Payment Pending';
     }
 
     // Days left & SLA bar
@@ -825,52 +950,57 @@ export async function initTrackApplication() {
     }
 
     // Stage bar — maps all real statuses to progress steps
-    // Steps: 1=Submitted, 2=Officer Verified, 3=Supervisor Review, 4=Approved/Completed
+    // Steps: 1=Submitted, 2=Payment, 3=Officer Verified, 4=Supervisor Review, 5=Approved/Completed
     const STATUS_STEP = {
       'pending':              1,
-      'submitted':            1,
-      'under-review':         1,
-      'query':                1,
-      'pending_external_verification': 1,
-      'officer-approved':     2,
-      'escalated':            2,  // escalated means officer stage failed → supervisor takes over
-      'supervisor-review':    3,
-      'approved':             4,
-      'completed':            4,
+      'submitted':            2,  // submitted means payment was done
+      'under-review':         3,
+      'query':                3,
+      'pending_external_verification': 3,
+      'officer-approved':     3,
+      'escalated':            4,
+      'supervisor-review':    4,
+      'approved':             5,
+      'completed':            5,
       'rejected':             -1,
     };
+
+    // Payment step is done when fee=0 (free) or paymentStatus=paid
+    const paymentDone = app.fee === 0 || app.paymentStatus === 'paid';
 
     // Helper: map a timeline action string to a step number
     function actionToStep(action) {
       const a = (action || '').toLowerCase();
-      if (a.includes('approv') && (a.includes('officer') || a.includes('final'))) return 2;
-      if (a.includes('supervisor') || a.includes('final approv')) return 3;
-      if ((a.includes('approv') || a.includes('complet')) && !a.includes('officer')) return 4;
-      if (a.includes('officer-approved') || a.includes('officer_approved')) return 2;
-      if (a.includes('escalat')) return 2;  // escalation reached officer decision level
-      if (a.includes('under') || a.includes('review') || a.includes('query') || a.includes('pending')) return 1;
-      if (a.includes('submit')) return 1;
+      if (a.includes('submit')) return 2;
+      if (a.includes('payment') || a.includes('paid')) return 2;
+      if (a.includes('approv') && (a.includes('officer') || a.includes('final'))) return 3;
+      if (a.includes('supervisor') || a.includes('final approv')) return 4;
+      if ((a.includes('approv') || a.includes('complet')) && !a.includes('officer')) return 5;
+      if (a.includes('officer-approved') || a.includes('officer_approved')) return 3;
+      if (a.includes('escalat')) return 4;
+      if (a.includes('under') || a.includes('review') || a.includes('query') || a.includes('pending')) return 3;
       if (a.includes('reject')) return -1;
       return 0;
     }
 
     // ── Derive the highest step ever reached from the full timeline ──
-    // This ensures stage nodes stay "done" even if the app cycled back (e.g. escalated → under-review)
     let maxStepReached = STATUS_STEP[app.status] ?? 0;
+    // Payment step is always done if fee paid
+    if (paymentDone && maxStepReached >= 1) maxStepReached = Math.max(maxStepReached, 2);
     if (app.timeline && app.timeline.length) {
       for (const t of app.timeline) {
         const s = actionToStep(t.action);
         if (s > maxStepReached) maxStepReached = s;
       }
     }
-    // currentStep is what the app is at RIGHT NOW (may be lower than max if cycled back)
     const currStep = STATUS_STEP[app.status] ?? 0;
 
     const stages = [
-      { label: 'Application\nSubmitted',  step: 1 },
-      { label: 'Officer\nVerified',        step: 2 },
-      { label: 'Supervisor\nReview',       step: 3 },
-      { label: 'Approved /\nCompleted',    step: 4 },
+      { label: 'Application\nSubmitted',   step: 1 },
+      { label: 'Payment\nConfirmed',        step: 2 },
+      { label: 'Officer\nVerified',         step: 3 },
+      { label: 'Supervisor\nReview',        step: 4 },
+      { label: 'Approved /\nCompleted',     step: 5 },
     ];
 
     const stageBar = document.getElementById('stageBar');
@@ -882,10 +1012,10 @@ export async function initTrackApplication() {
           // Mark all stages up to the point of rejection as done, rest empty
           stStatus = s.step <= maxStepReached ? 'done' : '';
         } else if (app.status === 'escalated') {
-          // Officer stage shown as breach (failed), supervisor is now active
-          if (s.step < 2) stStatus = 'done';
-          else if (s.step === 2) stStatus = 'breach';
-          else if (s.step === 3) stStatus = 'active';
+          // Steps 1 (Submitted) and 2 (Payment) are done, Officer(3) is breach, Supervisor(4) is active
+          if (s.step <= 2) stStatus = 'done';
+          else if (s.step === 3) stStatus = 'breach';
+          else if (s.step === 4) stStatus = 'active';
           else stStatus = '';
         } else {
           // General case: use the high-water mark from timeline
