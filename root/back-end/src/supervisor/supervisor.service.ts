@@ -101,6 +101,7 @@ export class SupervisorService {
 
     const escalatedSlaCases = apps
       .filter(a => activeStatuses.includes(a.status) && a.slaDate && new Date(a.slaDate) < now)
+      .filter(a => !grievances.some(g => g.relatedAppId === a.id && g.status === 'escalated'))
       .map(a => {
         const overdue = Math.ceil((now.getTime() - new Date(a.slaDate).getTime()) / (1000 * 3600 * 24));
         return {
@@ -148,11 +149,13 @@ export class SupervisorService {
         const app = db.applications.find(a => a.id === g.relatedAppId);
         return {
           id: app?.id || g.relatedAppId,
+          grievanceId: g.id,
           type: 'grievance',
           subtype: g.category === 'misconduct' ? 'Misconduct Complaint' : 'Rejection Dispute',
           service: app?.serviceName || 'Unknown',
           citizen: g.citizenName,
           officer: app?.officerName || 'Unknown',
+          officerId: app?.officerId,
           on: new Date(g.filedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
           urgent: g.priority === 'high',
           officerDecision: 'Escalated to Supervisor',

@@ -1862,6 +1862,61 @@
         ]
       }
     },
+    "/api/v1/supervisor/request-suspension": {
+      "post": {
+        "operationId": "SupervisorController_requestSuspension",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "officerId": {
+                    "type": "string"
+                  },
+                  "grievanceId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Suspension request sent to Super User"
+          }
+        },
+        "summary": "Request suspension of an officer for misconduct",
+        "tags": [
+          "supervisor"
+        ]
+      }
+    },
     "/api/v1/super-user/dashboard": {
       "get": {
         "operationId": "SuperUserController_getDashboardStats",

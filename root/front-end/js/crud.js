@@ -896,6 +896,26 @@ export async function initOfficerOnboarding() {
 
   window.renderOfficersTable();
   window.updateOfficerStats();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const highlightId = urlParams.get('highlight');
+  if (highlightId) {
+      setTimeout(() => {
+          const rows = document.querySelectorAll('#officersTable tr');
+          for (let row of rows) {
+              if (row.innerHTML.includes(highlightId)) {
+                  row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  row.style.transition = 'background-color 0.5s ease';
+                  const oldBg = row.style.backgroundColor;
+                  row.style.backgroundColor = 'var(--red-100)';
+                  setTimeout(() => {
+                      row.style.backgroundColor = oldBg || '';
+                  }, 3000);
+                  break;
+              }
+          }
+      }, 300);
+  }
 }
 
 // Audit Logs

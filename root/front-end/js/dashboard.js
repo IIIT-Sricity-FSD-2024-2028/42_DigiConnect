@@ -239,6 +239,27 @@ export async function initOfficerDashboard() {
     const container = document.getElementById('queriesList');
     if (!container) return;
     const queries = window._officerQueries || [];
+
+    window.sendQueryReminder = async function(appId, citizenName) {
+      try {
+        const { apiGetAllApplications, apiCreateNotification } = await import('./api.js');
+        const appsRes = await apiGetAllApplications();
+        const app = (appsRes.data || []).find(a => a.id === appId);
+        if (!app) throw new Error('App not found');
+
+        await apiCreateNotification({
+          userId: app.citizenId,
+          title: 'Query Reminder',
+          message: `Reminder: Please respond to the pending query for your application (${appId}).`,
+          type: 'warning',
+          link: `citizen/track-application.html?id=${appId}`
+        });
+        window.showToast(`SMS & Portal reminder sent to ${citizenName}.`, 'success');
+      } catch (e) {
+        window.showToast('Failed to send reminder', 'error');
+      }
+    };
+
     container.innerHTML = queries.map(q => `
       <div class="app-row">
         <div style="width:36px;height:36px;border-radius:50%;background:${q.responded ? 'var(--green-100)' : 'var(--amber-100)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -254,7 +275,7 @@ export async function initOfficerDashboard() {
           <div style="font-size:0.72rem;color:var(--color-text-muted);margin-top:3px;">Sent ${q.sent} · Response deadline: <strong>${q.deadline}</strong></div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
-          ${q.responded ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();window.location.href='review-application.html?id=${q.id}'">Review</button>` : `<button class="btn btn-outline btn-sm" onclick="window.showToast('SMS reminder sent to ${q.citizen}.','info')">Send Reminder</button>`}
+          ${q.responded ? `<button class="btn btn-success btn-sm" onclick="event.stopPropagation();window.location.href='review-application.html?id=${q.id}'">Review</button>` : `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();window.sendQueryReminder('${q.id}', '${q.citizen}')">Send Reminder</button>`}
         </div>
       </div>
     `).join('') || '<div style="padding:var(--space-xl);text-align:center;color:var(--color-text-muted);">No active queries</div>';

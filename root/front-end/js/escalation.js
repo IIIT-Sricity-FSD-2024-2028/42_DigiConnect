@@ -461,6 +461,9 @@ export async function initSupervisorReview() {
 
     let reassignText = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint') ? 'Reassign & Investigate' : 'Reassign Officer';
 
+    let suspendBtn = (e.type === 'grievance' && e.subtype === 'Misconduct Complaint')
+      ? `<button class="btn btn-danger" onclick="requestSuspension('${e.grievanceId || e.id}', '${e.officerId || e.officer}')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> Request Suspension</button>` : '';
+
     detail.innerHTML = `
       <div style="padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--color-border);background:${isSla?'var(--red-50)':'var(--amber-50)'};">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -524,10 +527,38 @@ export async function initSupervisorReview() {
           <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;flex-wrap:wrap;">
             ${nudgeBtn}
             ${approveRejectBtns}
+            ${suspendBtn}
             <button class="btn btn-outline" onclick="submitOverride('reassign')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> ${reassignText}</button>
           </div>
         </div>
       </div>`;
+  };
+
+  window.requestSuspension = async function(grievanceId, officerId) {
+    const reason = prompt('Please enter the reason for requesting suspension for this officer:');
+    if (!reason || reason.trim().length < 5) {
+      showToast('A valid reason is required to request suspension.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/api/supervisor/request-suspension', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-role': 'supervisor',
+          'x-user-id': window.sessionStorage.getItem('userId') || 'SUP-001'
+        },
+        body: JSON.stringify({ officerId, grievanceId, reason })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Suspension Request successfully submitted.', 'success');
+      } else {
+        showToast(data.message || 'Error submitting request', 'error');
+      }
+    } catch(e) {
+      showToast('Network error during suspension request', 'error');
+    }
   };
 
   window.submitOverride = async function(action) {

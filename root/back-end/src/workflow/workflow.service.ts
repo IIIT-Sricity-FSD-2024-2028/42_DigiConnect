@@ -2,8 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { db } from '../data/store';
 import { TransitionDto } from './dto/transition.dto';
-import { AppStatus } from '../models/enums';
-
+import { AppStatus, GrievanceStatus } from '../models/enums';
 @Injectable()
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
@@ -91,6 +90,16 @@ export class WorkflowService {
     for (let i = 0; i < db.applications.length; i++) {
       const app = db.applications[i];
       if (app.status === AppStatus.PENDING || app.status === AppStatus.UNDER_REVIEW) {
+        // Skip SLA auto-escalation if the application is locked by a grievance
+        const isLocked = db.grievances.some(g => 
+          g.relatedAppId === app.id && 
+          (g.category === 'misconduct' || g.status === GrievanceStatus.ESCALATED) &&
+          g.status !== GrievanceStatus.RESOLVED && 
+          g.status !== GrievanceStatus.REJECTED &&
+          g.status !== GrievanceStatus.ESCALATED_RESOLVED
+        );
+        if (isLocked) continue;
+
         const slaTime = new Date(app.slaDate).getTime();
         if (now > slaTime) {
           app.status = AppStatus.ESCALATED;

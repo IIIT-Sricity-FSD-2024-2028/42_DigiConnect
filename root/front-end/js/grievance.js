@@ -549,6 +549,16 @@ export async function initGrievanceDetail() {
            slaEl.style.color = 'var(--navy-900)';
         }
       }
+      
+      if (grievance.category === 'payment' && relatedApp.paymentTransactionId) {
+        const infoBody = document.querySelector('#linkedAppSection .info-block-body');
+        if (infoBody && !document.getElementById('modalAppTxn')) {
+          const txnRow = document.createElement('div');
+          txnRow.className = 'info-row';
+          txnRow.innerHTML = '<span class="info-key">Payment TXN</span><span class="info-val" id="modalAppTxn" style="font-family:var(--font-mono);font-size:0.82rem;color:var(--navy-600);">' + relatedApp.paymentTransactionId + '</span>';
+          infoBody.insertBefore(txnRow, infoBody.lastElementChild);
+        }
+      }
     }
     
     window.openLinkedAppBtn = function() {

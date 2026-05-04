@@ -83,4 +83,19 @@ export class SupervisorController {
       message: 'OK'
     };
   }
+  @Post('request-suspension')
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPERVISOR)
+  @ApiOperation({ summary: 'Request suspension of an officer for misconduct' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
+  @ApiBody({ schema: { type: 'object', properties: { officerId: { type: 'string' }, grievanceId: { type: 'string' }, reason: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Suspension request sent to Super User' })
+  requestSuspension(@Headers('x-user-id') supervisorId: string, @Body() body: { officerId: string, grievanceId: string, reason: string }) {
+    return {
+      success: true,
+      data: this.supervisorService.requestSuspension(body.officerId, supervisorId, body.grievanceId, body.reason),
+      message: 'OK'
+    };
+  }
 }

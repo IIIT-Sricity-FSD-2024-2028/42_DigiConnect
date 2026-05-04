@@ -607,7 +607,7 @@ export async function initMyApplications() {
         const typeLabel = a.serviceType ? a.serviceType.charAt(0).toUpperCase() + a.serviceType.slice(1) : 'Service';
         
         const sla = checkSLA(a);
-        const isClosed = ['approved', 'completed', 'rejected', 'escalated'].includes(a.status);
+        const isClosed = ['approved', 'completed', 'rejected'].includes(a.status);
         const slaText = isClosed ? 'Closed' : (sla.daysLeft !== null ? (sla.daysLeft >= 0 ? `${sla.daysLeft} days left` : `${Math.abs(sla.daysLeft)} days overdue`) : '—');
         const slaCls = isClosed ? (a.status === 'rejected' ? 'breach' : 'safe') : (sla.daysLeft === null ? '' : sla.daysLeft > 4 ? 'safe' : sla.daysLeft >= 0 ? 'warn' : 'breach');
         const slaWidth = isClosed ? 100 : Math.max(0, sla.daysLeft||0) * 10;
@@ -802,7 +802,7 @@ export async function initTrackApplication() {
 
     // Days left & SLA bar
     const slaCheck = checkSLA(app);
-    const isClosed = ['approved', 'completed', 'rejected', 'escalated'].includes(app.status);
+    const isClosed = ['approved', 'completed', 'rejected'].includes(app.status);
     const slaCls = isClosed ? (app.status === 'rejected' ? 'breach' : 'safe') : (slaCheck.daysLeft === null ? '' : slaCheck.daysLeft > 4 ? 'safe' : slaCheck.daysLeft >= 0 ? 'warn' : 'breach');
     
     setTC('detailDaysLeft', isClosed ? '—' : (slaCheck.daysLeft !== null ? Math.abs(slaCheck.daysLeft) : '—'));

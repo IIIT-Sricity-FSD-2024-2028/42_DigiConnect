@@ -38,4 +38,5 @@ export interface Application {
   timeline: TimelineEntry[];
   documents: Document[];
   citizenResponse?: string;
+  paymentTransactionId?: string;
 }
