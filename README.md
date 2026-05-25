@@ -1,4 +1,4 @@
-# 🚀 DigiConnect
+# 🚀 DigiConnect — Digital Governance and E-Services
 > **Unified Citizen Service Delivery Platform (UCSDP)**
 
 DigiConnect is a comprehensive, centralized digital governance and e-services platform designed to streamline and unify citizen service delivery. The application brings together certificate issuance, welfare scheme eligibility, permission approvals, and grievance redressal under a single portal, replacing fragmented legacy government workflows with an automated, transparent, and SLA-monitored system.
