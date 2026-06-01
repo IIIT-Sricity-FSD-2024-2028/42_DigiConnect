@@ -48,17 +48,29 @@ export class NotificationsService {
    * Called internally by ApplicationsService.
    */
   pushApplicationNotification(citizenId: string, appId: string, newStatus: string, officerRemark: string) {
-    const statusConfig: Record<string, { title: string; type: Notification['type'] }> = {
-      'approved':   { title: '✅ Application Approved!',     type: 'success' },
-      'rejected':   { title: '❌ Application Rejected',      type: 'danger'  },
-      'query':      { title: '❓ Query Raised on Application', type: 'warning' },
-      'escalated':  { title: '⚠️ Application Escalated',     type: 'warning' },
-      'completed':  { title: '🎉 Service Completed',          type: 'success' },
-      'under-review': { title: 'ℹ️ Application Under Review', type: 'info'   },
-    };
-
-    const config = statusConfig[newStatus];
-    if (!config) return; // Don't push for unknown statuses
+    let config: { title: string; type: Notification['type'] } | undefined;
+    switch (newStatus) {
+      case 'approved':
+        config = { title: '✅ Application Approved!', type: 'success' };
+        break;
+      case 'rejected':
+        config = { title: '❌ Application Rejected', type: 'danger' };
+        break;
+      case 'query':
+        config = { title: '❓ Query Raised on Application', type: 'warning' };
+        break;
+      case 'escalated':
+        config = { title: '⚠️ Application Escalated', type: 'warning' };
+        break;
+      case 'completed':
+        config = { title: '🎉 Service Completed', type: 'success' };
+        break;
+      case 'under-review':
+        config = { title: 'ℹ️ Application Under Review', type: 'info' };
+        break;
+      default:
+        return; // Don't push for unknown statuses
+    }
 
     const notification: Notification = {
       id: `NOT-${Math.floor(Math.random() * 90000 + 10000)}`,
@@ -78,16 +90,26 @@ export class NotificationsService {
    * Auto-push a notification when a grievance status changes.
    */
   pushGrievanceNotification(citizenId: string, grievanceId: string, newStatus: string) {
-    const statusConfig: Record<string, { title: string; type: Notification['type'] }> = {
-      'resolved':          { title: '✅ Grievance Resolved',            type: 'success' },
-      'rejected':          { title: '❌ Grievance Rejected',            type: 'danger'  },
-      'escalated':         { title: '⚠️ Grievance Escalated to Supervisor', type: 'warning' },
-      'escalated-resolved':{ title: '✅ Grievance Closed by Supervisor', type: 'success' },
-      'investigating':     { title: 'ℹ️ Grievance Under Investigation', type: 'info'   },
-    };
-
-    const config = statusConfig[newStatus];
-    if (!config) return;
+    let config: { title: string; type: Notification['type'] } | undefined;
+    switch (newStatus) {
+      case 'resolved':
+        config = { title: '✅ Grievance Resolved', type: 'success' };
+        break;
+      case 'rejected':
+        config = { title: '❌ Grievance Rejected', type: 'danger' };
+        break;
+      case 'escalated':
+        config = { title: '⚠️ Grievance Escalated to Supervisor', type: 'warning' };
+        break;
+      case 'escalated-resolved':
+        config = { title: '✅ Grievance Closed by Supervisor', type: 'success' };
+        break;
+      case 'investigating':
+        config = { title: 'ℹ️ Grievance Under Investigation', type: 'info' };
+        break;
+      default:
+        return; // Don't push for unknown statuses
+    }
 
     const notification: Notification = {
       id: `NOT-${Math.floor(Math.random() * 90000 + 10000)}`,

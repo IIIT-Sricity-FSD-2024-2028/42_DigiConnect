@@ -999,6 +999,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1013,7 +1022,17 @@
       },
       "post": {
         "operationId": "NotificationsController_createNotification",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "Notification created"
@@ -1034,6 +1053,15 @@
             "required": true,
             "in": "header",
             "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -1062,6 +1090,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1083,6 +1120,15 @@
             "name": "id",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
             "schema": {
               "type": "string"
             }

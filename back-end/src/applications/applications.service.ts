@@ -19,6 +19,9 @@ export class ApplicationsService {
 
   submit(createApplicationDto: CreateApplicationDto): Application {
     const service = db.services.find(s => s.id === createApplicationDto.serviceId);
+    if (!service) {
+      throw new NotFoundException(`Service not found with ID: ${createApplicationDto.serviceId}`);
+    }
     let citizen: User | null = null;
     try {
       citizen = this.usersService.findById(createApplicationDto.citizenId);
@@ -121,7 +124,7 @@ export class ApplicationsService {
     return paginate(apps, page, limit);
   }
 
-  updateStatus(id: string, updateStatusDto: UpdateStatusDto, actorName: string): Application {
+  updateStatus(id: string, updateStatusDto: UpdateStatusDto, actorUserId: string): Application {
     const appIndex = db.applications.findIndex(a => a.id === id);
     if (appIndex === -1) throw new NotFoundException('Application not found');
 
@@ -148,10 +151,20 @@ export class ApplicationsService {
     app.status = updateStatusDto.status;
     if (updateStatusDto.remarks) app.remarks = updateStatusDto.remarks;
     
+    let resolvedActorName = actorUserId || 'Officer';
+    if (actorUserId && actorUserId !== 'System' && actorUserId !== 'Officer') {
+      try {
+        const user = this.usersService.findById(actorUserId);
+        resolvedActorName = user.name;
+      } catch (e) {
+        // Fallback
+      }
+    }
+
     app.timeline.push({
       action: `Status updated to ${updateStatusDto.status}`,
       date: new Date().toISOString(),
-      actor: actorName,
+      actor: resolvedActorName,
       note: updateStatusDto.remarks || ''
     });
 
@@ -168,7 +181,7 @@ export class ApplicationsService {
     return app;
   }
 
-  requestVerification(appId: string, targetDept: string, reason: string, actorName: string): Application {
+  requestVerification(appId: string, targetDept: string, reason: string, actorUserId: string): Application {
     const mainApp = this.findById(appId);
     if (mainApp.status === AppStatus.PENDING_EXTERNAL_VERIFICATION) {
       throw new BadRequestException('Application is already pending verification');
@@ -186,19 +199,29 @@ export class ApplicationsService {
     const subApp = this.submit(subAppDto);
     subApp.parentAppId = mainApp.id;
 
+    let resolvedActorName = actorUserId || 'Officer';
+    if (actorUserId && actorUserId !== 'System' && actorUserId !== 'Officer') {
+      try {
+        const user = this.usersService.findById(actorUserId);
+        resolvedActorName = user.name;
+      } catch (e) {
+        // Fallback
+      }
+    }
+
     // Update Main App
     mainApp.status = AppStatus.PENDING_EXTERNAL_VERIFICATION;
     mainApp.timeline.push({
       action: `External Verification Requested`,
       date: new Date().toISOString(),
-      actor: actorName,
+      actor: resolvedActorName,
       note: `Sent to ${targetDept}. Reason: ${reason}. Sub-Task ID: ${subApp.id}`
     });
 
     return mainApp;
   }
 
-  resolveVerification(subAppId: string, remarks: string, actorName: string): Application {
+  resolveVerification(subAppId: string, remarks: string, actorUserId: string): Application {
     const subAppIndex = db.applications.findIndex(a => a.id === subAppId);
     if (subAppIndex === -1) throw new NotFoundException('Sub-task not found');
     const subApp = db.applications[subAppIndex];
@@ -209,13 +232,23 @@ export class ApplicationsService {
     if (mainAppIndex === -1) throw new NotFoundException('Main application not found');
     const mainApp = db.applications[mainAppIndex];
 
+    let resolvedActorName = actorUserId || 'Officer';
+    if (actorUserId && actorUserId !== 'System' && actorUserId !== 'Officer') {
+      try {
+        const user = this.usersService.findById(actorUserId);
+        resolvedActorName = user.name;
+      } catch (e) {
+        // Fallback
+      }
+    }
+
     // Complete Sub-Task
     subApp.status = AppStatus.COMPLETED;
     subApp.remarks = remarks;
     subApp.timeline.push({
       action: 'Verification Completed',
       date: new Date().toISOString(),
-      actor: actorName,
+      actor: resolvedActorName,
       note: remarks
     });
 

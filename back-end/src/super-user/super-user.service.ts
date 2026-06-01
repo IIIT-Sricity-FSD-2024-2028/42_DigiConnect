@@ -76,6 +76,7 @@ export class SuperUserService {
   }
 
   onboardOfficer(data: any) {
+    const formattedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const newOfficer = {
       id: generateId('EMP'),
       name: data.name,
@@ -84,7 +85,8 @@ export class SuperUserService {
       email: data.email,
       phone: data.phone,
       aadhaar: 'XXXX XXXX XXXX', // Placeholder
-      joinedDate: new Date().toLocaleDateString('en-GB'),
+      joined: formattedDate,
+      joinedDate: formattedDate,
       status: 'Active',
       dept: data.dept,
       jurisdiction: data.jurisdiction,

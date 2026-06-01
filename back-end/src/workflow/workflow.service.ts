@@ -1,27 +1,43 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { db } from '../data/store';
 import { TransitionDto } from './dto/transition.dto';
 import { AppStatus, GrievanceStatus } from '../models/enums';
+import { UsersService } from '../users/users.service';
+import { NotificationsService } from '../notifications/notifications.service';
+
 @Injectable()
 export class WorkflowService {
   private readonly logger = new Logger(WorkflowService.name);
+
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
   getConfig() {
     // Return service-level workflow configs for the UI workflow-config page
     return db.workflowConfig || [];
   }
 
-  getTransitionMap(): Record<AppStatus, AppStatus[]> {
-    return {
-      [AppStatus.PENDING]: [AppStatus.UNDER_REVIEW, AppStatus.REJECTED, AppStatus.PENDING_EXTERNAL_VERIFICATION],
-      [AppStatus.UNDER_REVIEW]: [AppStatus.APPROVED, AppStatus.REJECTED, AppStatus.QUERY, AppStatus.ESCALATED, AppStatus.PENDING_EXTERNAL_VERIFICATION],
-      [AppStatus.QUERY]: [AppStatus.UNDER_REVIEW],
-      [AppStatus.PENDING_EXTERNAL_VERIFICATION]: [AppStatus.UNDER_REVIEW],
-      [AppStatus.ESCALATED]: [AppStatus.UNDER_REVIEW, AppStatus.APPROVED, AppStatus.REJECTED],
-      [AppStatus.APPROVED]: [AppStatus.COMPLETED],
-      [AppStatus.REJECTED]: [],
-      [AppStatus.COMPLETED]: []
-    };
+  getValidNextStatuses(status: string): AppStatus[] {
+    switch (status) {
+      case AppStatus.PENDING:
+        return [AppStatus.UNDER_REVIEW, AppStatus.REJECTED, AppStatus.PENDING_EXTERNAL_VERIFICATION];
+      case AppStatus.UNDER_REVIEW:
+        return [AppStatus.APPROVED, AppStatus.REJECTED, AppStatus.QUERY, AppStatus.ESCALATED, AppStatus.PENDING_EXTERNAL_VERIFICATION];
+      case AppStatus.QUERY:
+        return [AppStatus.UNDER_REVIEW];
+      case AppStatus.PENDING_EXTERNAL_VERIFICATION:
+        return [AppStatus.UNDER_REVIEW];
+      case AppStatus.ESCALATED:
+        return [AppStatus.UNDER_REVIEW, AppStatus.APPROVED, AppStatus.REJECTED];
+      case AppStatus.APPROVED:
+        return [AppStatus.COMPLETED];
+      case AppStatus.REJECTED:
+      case AppStatus.COMPLETED:
+      default:
+        return [];
+    }
   }
 
   updateConfig(updatedWorkflow: any) {
@@ -39,20 +55,31 @@ export class WorkflowService {
     const app = db.applications[appIndex];
     
     // Check if transition is valid
-    const config = this.getTransitionMap();
-    const validNextStatuses = config[app.status] || [];
+    const validNextStatuses = this.getValidNextStatuses(app.status);
     
     if (!validNextStatuses.includes(transitionDto.newStatus)) {
-      throw new Error(`Invalid transition from ${app.status} to ${transitionDto.newStatus}`);
+      throw new BadRequestException(`Invalid transition from ${app.status} to ${transitionDto.newStatus}`);
     }
 
     app.status = transitionDto.newStatus;
     if (transitionDto.remarks) app.remarks = transitionDto.remarks;
     
+    let resolvedActorName = transitionDto.actorName || 'System';
+    let resolvedRole = 'System';
+    if (transitionDto.actorName && transitionDto.actorName !== 'System') {
+      try {
+        const user = this.usersService.findById(transitionDto.actorName);
+        resolvedActorName = user.name;
+        resolvedRole = user.role.toUpperCase();
+      } catch (e) {
+        // Fallback to original value
+      }
+    }
+
     app.timeline.push({
       action: `Status transitioned to ${transitionDto.newStatus}`,
       date: new Date().toISOString(),
-      actor: transitionDto.actorName || 'System',
+      actor: resolvedActorName,
       note: transitionDto.remarks || ''
     });
 
@@ -62,8 +89,8 @@ export class WorkflowService {
     db.auditLogs.unshift({
       id: `LOG-${Math.floor(Math.random() * 10000)}`,
       action: 'Application Status Transition',
-      actor: transitionDto.actorName || 'System',
-      role: 'System', // Could determine role but leaving generic for now
+      actor: resolvedActorName,
+      role: resolvedRole,
       date: new Date().toISOString(),
       details: `Application ${app.id} moved to ${transitionDto.newStatus}`
     });
@@ -87,8 +114,7 @@ export class WorkflowService {
     const now = new Date().getTime();
     let escalatedCount = 0;
 
-    for (let i = 0; i < db.applications.length; i++) {
-      const app = db.applications[i];
+    for (const app of db.applications) {
       if (app.status === AppStatus.PENDING || app.status === AppStatus.UNDER_REVIEW) {
         // Skip SLA auto-escalation if the application is locked by a grievance
         const isLocked = db.grievances.some(g => 
@@ -118,6 +144,18 @@ export class WorkflowService {
             date: new Date().toISOString(),
             details: `Application ${app.id} auto-escalated (SLA Breached)`
           });
+
+          // Auto-push notification to citizen
+          try {
+            this.notificationsService.pushApplicationNotification(
+              app.citizenId,
+              app.id,
+              AppStatus.ESCALATED,
+              'Auto-Escalated due to SLA breach'
+            );
+          } catch (e) {
+            this.logger.error(`Failed to push SLA escalation notification for ${app.id}: ${e.message}`);
+          }
           
           escalatedCount++;
         }
@@ -136,8 +174,7 @@ export class WorkflowService {
     const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
     let rejectedCount = 0;
 
-    for (let i = 0; i < db.applications.length; i++) {
-      const app = db.applications[i];
+    for (const app of db.applications) {
       if (app.status === AppStatus.QUERY) {
         const slaTime = new Date(app.slaDate).getTime();
         const slaBreach = now - slaTime;
@@ -153,16 +190,17 @@ export class WorkflowService {
             note: 'Citizen failed to respond to officer query within 3 days of SLA breach.'
           });
 
-          db.notifications.unshift({
-            id: `NOT-${Math.floor(Math.random() * 90000 + 10000)}`,
-            userId: app.citizenId,
-            title: '❌ Application Auto-Rejected',
-            message: `Your application (${app.id}) for "${app.serviceName}" was auto-rejected. You did not respond to the officer's query within 3 days after SLA breach.`,
-            type: 'danger',
-            read: false,
-            date: new Date().toISOString(),
-            link: `citizen/track-application.html?id=${app.id}`
-          } as any);
+          // Auto-push notification to citizen
+          try {
+            this.notificationsService.pushApplicationNotification(
+              app.citizenId,
+              app.id,
+              AppStatus.REJECTED,
+              'Auto-rejected due to citizen query timeout after SLA breach.'
+            );
+          } catch (e) {
+            this.logger.error(`Failed to push query timeout rejection notification for ${app.id}: ${e.message}`);
+          }
 
           db.auditLogs.unshift({
             id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,

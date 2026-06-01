@@ -53,18 +53,11 @@ export class WorkflowController {
       transitionDto.actorName = userId || 'Officer';
     }
     
-    try {
-      return {
-        success: true,
-        data: this.workflowService.transition(transitionDto),
-        message: 'Status transition successful'
-      };
-    } catch (e) {
-      return {
-        success: false,
-        message: e.message
-      };
-    }
+    return {
+      success: true,
+      data: this.workflowService.transition(transitionDto),
+      message: 'Status transition successful'
+    };
   }
 
   @Get('history/:appId')
