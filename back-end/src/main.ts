@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { appLogger } from './utils/winston-logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -62,7 +63,8 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger Docs available at: http://localhost:${port}/api/docs`);
+  appLogger.info(`Application is running on: http://localhost:${port}`);
+  appLogger.info(`Swagger Docs available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();
+

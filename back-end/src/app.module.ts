@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from './users/users.module';
@@ -9,6 +9,8 @@ import { WorkflowModule } from './workflow/workflow.module';
 import { SupervisorModule } from './supervisor/supervisor.module';
 import { SuperUserModule } from './super-user/super-user.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { LoggingMiddleware } from './middlewares/logging.middleware';
+import { LogManagementService } from './tasks/log-management.service';
 
 @Module({
   imports: [
@@ -24,6 +26,12 @@ import { NotificationsModule } from './notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [LogManagementService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Apply LoggingMiddleware across all routes
+    consumer.apply(LoggingMiddleware).forRoutes('*');
+  }
+}
+
