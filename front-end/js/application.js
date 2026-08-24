@@ -548,29 +548,59 @@ export async function initApplyService() {
         : pmType === 'upi' ? 'UPI'
         : 'Other';
       
-      const newAppDto = {
-        serviceId: selectedService.id,
-        citizenId: session.id,
-        dept: selectedService.dept,
-        fee: selectedService.fee,
-        paymentTransactionId: paymentTxnId,
-        paymentMethod: paymentMethodLabel,
-        documents: selectedService.docs.map((d, i) => {
-          const fileInput = document.getElementById('fileInput_' + i);
-          const actualName = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : d + '.pdf';
-          return { name: actualName, type: d, date: new Date().toISOString(), status: 'pending' };
-        }),
-        formData: {
-          dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
-          phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
-          street: formStreet, village: formVillage, mandal: formMandal,
-          district: formDistrict, state: formState,
-          ...svcFields
+      // Collect ALL uploaded files from every doc slot + additional input
+      const allUploadedFiles = [];
+      if (selectedService.docs) {
+        for (let i = 0; i < selectedService.docs.length; i++) {
+          const fi = document.getElementById('fileInput_' + i);
+          if (fi && fi.files && fi.files[0]) {
+            allUploadedFiles.push(fi.files[0]);
+          }
         }
-      };
+      }
+      const additionalFi = document.getElementById('additionalFileInput');
+      if (additionalFi && additionalFi.files) {
+        Array.from(additionalFi.files).forEach(f => allUploadedFiles.push(f));
+      }
+
+      let payload;
+      if (allUploadedFiles.length > 0) {
+        const fd = new FormData();
+        fd.append('serviceId', selectedService.id);
+        fd.append('citizenId', session.id);
+        fd.append('dept', selectedService.dept);
+        fd.append('fee', selectedService.fee || 0);
+        if (paymentTxnId) fd.append('paymentTransactionId', paymentTxnId);
+        if (paymentMethodLabel) fd.append('paymentMethod', paymentMethodLabel);
+        fd.append('remarks', `Applied for ${selectedService.name}`);
+        // Append every file under the same field name 'documents' — multer FilesInterceptor collects them all
+        allUploadedFiles.forEach(f => fd.append('documents', f));
+        payload = fd;
+      } else {
+        payload = {
+          serviceId: selectedService.id,
+          citizenId: session.id,
+          dept: selectedService.dept,
+          fee: selectedService.fee,
+          paymentTransactionId: paymentTxnId,
+          paymentMethod: paymentMethodLabel,
+          documents: selectedService.docs.map((d, i) => {
+            const fileInput = document.getElementById('fileInput_' + i);
+            const actualName = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : d + '.pdf';
+            return { name: actualName, type: d, date: new Date().toISOString(), status: 'pending' };
+          }),
+          formData: {
+            dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
+            phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
+            street: formStreet, village: formVillage, mandal: formMandal,
+            district: formDistrict, state: formState,
+            ...svcFields
+          }
+        };
+      }
 
       try {
-        const res = await apiSubmitApplication(newAppDto);
+        const res = await apiSubmitApplication(payload);
         const newApp = res.data;
         
         // Show success screen

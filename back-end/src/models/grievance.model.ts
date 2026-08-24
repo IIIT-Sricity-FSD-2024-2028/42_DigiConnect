@@ -27,5 +27,6 @@ export interface Grievance {
   daysTaken?: number;
   resolvedBy?: string;
   resolutionNote?: string;
+  evidence?: string[];
   history: HistoryEntry[];
 }

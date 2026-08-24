@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { serviceUploadConfig } from '../middlewares/file-upload.config';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { UploadTemplateDto } from './dto/upload-template.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../guards/roles.decorator';
 import { Role } from '../models/enums';
@@ -60,6 +63,30 @@ export class ServicesController {
       success: true,
       data: this.servicesService.create(createServiceDto),
       message: 'OK'
+    };
+  }
+
+  @Post(':id/upload-template')
+  @UseGuards(RolesGuard)
+  @Roles(Role.SUPER_USER)
+  @UseInterceptors(FileInterceptor('file', serviceUploadConfig))
+  @ApiOperation({ summary: 'Upload Scheme guideline or certificate template for a service' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller (must be super_user)', required: true })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UploadTemplateDto })
+  @ApiResponse({ status: 201, description: 'Template uploaded successfully' })
+  uploadTemplate(
+    @Param('id') id: string,
+    @Body() dto: UploadTemplateDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required for upload');
+    }
+    return {
+      success: true,
+      data: this.servicesService.uploadTemplate(id, file, dto.docType),
+      message: `${dto.docType === 'guideline' ? 'Guideline' : 'Template'} uploaded successfully`
     };
   }
 

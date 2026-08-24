@@ -7,6 +7,7 @@ export interface Document {
   status: string;
   size?: string;
   icon?: string;
+  path?: string;
 }
 
 export interface TimelineEntry {

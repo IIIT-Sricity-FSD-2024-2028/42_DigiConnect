@@ -121,3 +121,5 @@ Thumbs.db
 
 # NestJS
 dist/
+uploads/
+back-end/uploads/

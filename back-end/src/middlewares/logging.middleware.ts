@@ -13,6 +13,12 @@ export class LoggingMiddleware implements NestMiddleware {
 
     res.on('finish', () => {
       const { statusCode } = res;
+
+      // Skip 304 Not Modified responses to prevent infinite file-watcher loops with Live Server
+      if (statusCode === 304) {
+        return;
+      }
+
       const duration = Date.now() - startTime;
       const logMessage = `HTTP ${method} ${originalUrl} ${statusCode} - ${duration}ms [User: ${userId}, Role: ${role}]`;
 

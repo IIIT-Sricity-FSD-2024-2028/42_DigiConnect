@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers, Delete, UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { documentUploadConfig } from '../middlewares/file-upload.config';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
@@ -15,15 +17,35 @@ export class ApplicationsController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles(Role.CITIZEN)
+  @UseInterceptors(FilesInterceptor('documents', 10, documentUploadConfig))
   @ApiOperation({ summary: 'Submit a new application' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiBody({ type: CreateApplicationDto })
   @ApiResponse({ status: 201, description: 'Application submitted successfully' })
-  submit(@Body() createApplicationDto: CreateApplicationDto) {
+  submit(
+    @Body() createApplicationDto: CreateApplicationDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    if (files && files.length > 0) {
+      const uploadedDocs = files.map(f => ({
+        name: f.originalname,
+        type: f.mimetype,
+        date: new Date().toISOString(),
+        status: 'Uploaded',
+        size: `${(f.size / 1024).toFixed(1)} KB`,
+        path: f.path,
+      }));
+      if (createApplicationDto.documents && Array.isArray(createApplicationDto.documents)) {
+        createApplicationDto.documents.push(...uploadedDocs);
+      } else {
+        createApplicationDto.documents = uploadedDocs;
+      }
+    }
     return {
       success: true,
       data: this.applicationsService.submit(createApplicationDto),
-      message: 'OK'
+      message: 'Application submitted successfully'
     };
   }
 

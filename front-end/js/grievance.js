@@ -140,6 +140,8 @@ export function initRaiseGrievance() {
     currentStep = step;
   };
 
+  let _selectedEvidenceFiles = [];
+
   window.addEvidenceFile = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -149,13 +151,18 @@ export function initRaiseGrievance() {
       const list = document.getElementById('evidenceFiles');
       if (!list) return;
       Array.from(e.target.files).forEach(f => {
+        _selectedEvidenceFiles.push(f);
         const div = document.createElement('div');
         div.style.display = 'flex';
         div.style.alignItems = 'center';
         div.style.gap = '8px';
         div.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg> 
                          <span style="font-size:0.8rem;">${f.name}</span>
-                         <button style="margin-left:auto;background:none;border:none;color:var(--red-500);cursor:pointer;" onclick="this.parentElement.remove()">✕</button>`;
+                         <button type="button" style="margin-left:auto;background:none;border:none;color:var(--red-500);cursor:pointer;">✕</button>`;
+        div.querySelector('button').onclick = () => {
+          _selectedEvidenceFiles = _selectedEvidenceFiles.filter(item => item !== f);
+          div.remove();
+        };
         list.appendChild(div);
       });
     };
@@ -185,18 +192,28 @@ export function initRaiseGrievance() {
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
       const priority = document.getElementById('gPriority')?.value || 'medium';
 
-      const attachments = Array.from(document.querySelectorAll('#evidenceList span')).map(s => ({ name: s.textContent.trim(), type: 'evidence' }));
+      let payload;
+      if (_selectedEvidenceFiles && _selectedEvidenceFiles.length > 0) {
+        const fd = new FormData();
+        fd.append('citizenId', session.id);
+        fd.append('category', selectedCategory || 'delay');
+        fd.append('subject', subject);
+        fd.append('description', description);
+        if (relatedApp) fd.append('relatedAppId', relatedApp);
+        fd.append('priority', priority);
+        fd.append('evidence', _selectedEvidenceFiles[0]);
+        payload = fd;
+      } else {
+        payload = {
+          citizenId: session.id,
+          category: selectedCategory || 'delay',
+          subject, description,
+          relatedAppId: relatedApp || undefined,
+          priority: priority,
+        };
+      }
 
-      const newGrievanceData = {
-        citizenId: session.id,
-        category: selectedCategory || 'delay',
-        subject, description,
-        relatedAppId: relatedApp || undefined,
-        priority: priority,
-        attachments: attachments,
-      };
-
-      apiRaiseGrievance(newGrievanceData).then(res => {
+      apiRaiseGrievance(payload).then(res => {
         const newGrievance = res.data;
         window.gNextStep(4);
         

@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateApplicationDto {
   @IsNotEmpty()
@@ -14,6 +15,7 @@ export class CreateApplicationDto {
   dept: string;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   fee?: number;
 
@@ -31,6 +33,9 @@ export class CreateApplicationDto {
 
   @IsOptional()
   documents?: any[]; // Allow generic documents object array
+
+  @IsOptional()
+  document?: any; // Single uploaded document field
 
   @IsOptional()
   formData?: any; // Allow dynamic form data

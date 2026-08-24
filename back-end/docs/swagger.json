@@ -362,6 +362,11 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApplicationDto"
+              }
+            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateApplicationDto"
@@ -1162,6 +1167,11 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrievanceDto"
+              }
+            },
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateGrievanceDto"
@@ -1553,6 +1563,49 @@
           }
         },
         "summary": "Update an existing service",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}/upload-template": {
+      "post": {
+        "operationId": "ServicesController_uploadTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller (must be super_user)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template uploaded successfully"
+          }
+        },
+        "summary": "Upload Scheme guideline or certificate template for a service",
         "tags": [
           "services"
         ]
@@ -2324,6 +2377,28 @@
       "CreateServiceDto": {
         "type": "object",
         "properties": {}
+      },
+      "UploadTemplateDto": {
+        "type": "object",
+        "properties": {
+          "docType": {
+            "type": "string",
+            "description": "Type of uploaded document",
+            "enum": [
+              "template",
+              "guideline"
+            ],
+            "default": "template"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The template or guideline file to upload (.pdf, .jpg, .png)"
+          }
+        },
+        "required": [
+          "file"
+        ]
       },
       "UpdateServiceDto": {
         "type": "object",

@@ -40,6 +40,7 @@ export class GrievancesService {
       status: GrievanceStatus.OPEN,
       priority: createGrievanceDto.priority || 'medium',
       slaStatus: 'safe',
+      evidence: createGrievanceDto.evidence || [],
       filedDate: new Date().toISOString(),
       lastUpdated: new Date().toISOString(),
       history: [{ action: 'Grievance Filed', date: new Date().toISOString(), actor: citizen ? citizen.name : 'Citizen', note: 'Grievance submitted' }]

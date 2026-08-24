@@ -45,4 +45,29 @@ export class ServicesService {
     service.status = service.status === 'Active' ? 'Inactive' : 'Active';
     return service;
   }
+
+  uploadTemplate(id: string, file: Express.Multer.File, docType: 'template' | 'guideline' | string = 'template'): GovtService {
+    const service = this.findById(id);
+
+    const attachment = {
+      name: file.originalname,
+      path: file.path,
+      type: file.mimetype,
+      docType: docType || 'template',
+      uploadedAt: new Date().toISOString(),
+    };
+
+    if (docType === 'guideline') {
+      service.guidelineDoc = file.path;
+    } else {
+      service.templateDoc = file.path;
+    }
+
+    if (!service.attachments) {
+      service.attachments = [];
+    }
+    service.attachments.push(attachment);
+
+    return service;
+  }
 }

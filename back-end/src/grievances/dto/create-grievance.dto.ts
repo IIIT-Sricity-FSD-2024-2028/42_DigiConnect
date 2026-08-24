@@ -25,4 +25,7 @@ export class CreateGrievanceDto {
   @IsOptional()
   @IsString()
   priority?: string;
+
+  @IsOptional()
+  evidence?: any;
 }

@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { evidenceUploadConfig } from '../middlewares/file-upload.config';
 import { GrievancesService } from './grievances.service';
 import { CreateGrievanceDto } from './dto/create-grievance.dto';
 import { UpdateGrievanceDto } from './dto/update-grievance.dto';
@@ -15,15 +17,23 @@ export class GrievancesController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles(Role.CITIZEN)
+  @UseInterceptors(FileInterceptor('evidence', evidenceUploadConfig))
   @ApiOperation({ summary: 'Raise a new grievance' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiBody({ type: CreateGrievanceDto })
   @ApiResponse({ status: 201, description: 'Grievance raised successfully' })
-  raise(@Body() createGrievanceDto: CreateGrievanceDto) {
+  raise(
+    @Body() createGrievanceDto: CreateGrievanceDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (file) {
+      createGrievanceDto.evidence = [file.path];
+    }
     return {
       success: true,
       data: this.grievancesService.raise(createGrievanceDto),
-      message: 'OK'
+      message: 'Grievance raised successfully'
     };
   }
 

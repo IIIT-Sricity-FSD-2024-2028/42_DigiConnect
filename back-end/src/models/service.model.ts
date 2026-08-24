@@ -13,4 +13,13 @@ export interface GovtService {
   status: 'Active' | 'Inactive' | 'Draft' | string;
   apps: number; // total applications count
   color?: string;
+  templateDoc?: string; // Path to certificate template or scheme form
+  guidelineDoc?: string; // Path to service guideline PDF
+  attachments?: Array<{
+    name: string;
+    path: string;
+    type: string;
+    docType: string;
+    uploadedAt: string;
+  }>;
 }

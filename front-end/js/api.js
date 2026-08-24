@@ -25,9 +25,13 @@ function getHeaders() {
  * Generic fetch wrapper — returns parsed JSON or throws on error
  */
 export async function apiFetch(path, options = {}) {
+  const headers = { ...getHeaders(), ...(options.headers || {}) };
+  if (options.body instanceof FormData) {
+    delete headers['Content-Type']; // Browser will automatically set multipart/form-data boundary
+  }
   const res = await fetch(`${BASE}${path}`, {
     ...options,
-    headers: { ...getHeaders(), ...(options.headers || {}) },
+    headers,
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -128,7 +132,8 @@ export async function apiTrackApplication(ref) {
 
 /** Submit a new application: POST /applications */
 export async function apiSubmitApplication(data) {
-  return apiFetch('/applications', { method: 'POST', body: JSON.stringify(data) });
+  const body = data instanceof FormData ? data : JSON.stringify(data);
+  return apiFetch('/applications', { method: 'POST', body });
 }
 
 /** Update application status: PATCH /applications/:id/status */
@@ -210,7 +215,8 @@ export async function apiGetGrievanceById(id) {
 
 /** Raise a grievance: POST /grievances */
 export async function apiRaiseGrievance(data) {
-  return apiFetch('/grievances', { method: 'POST', body: JSON.stringify(data) });
+  const body = data instanceof FormData ? data : JSON.stringify(data);
+  return apiFetch('/grievances', { method: 'POST', body });
 }
 
 /** Update grievance status: PATCH /grievances/:id/status */
