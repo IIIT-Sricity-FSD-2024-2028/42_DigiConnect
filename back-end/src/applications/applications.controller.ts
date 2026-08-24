@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers, Delete, UseInterceptors, UploadedFiles } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { documentUploadConfig } from '../middlewares/file-upload.config';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -49,6 +50,7 @@ export class ApplicationsController {
     };
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('simulate-payment')
   @UseGuards(RolesGuard)
   @Roles(Role.CITIZEN)

@@ -7,11 +7,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { appLogger } from './utils/winston-logger';
 
+import helmet from 'helmet';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // Security Headers (Helmet)
+  app.use(helmet({
+    contentSecurityPolicy: false, // Swagger compatible
+    crossOriginEmbedderPolicy: false,
+  }));
+
   // CORS
-  app.enableCors({ origin: '*' });
+  app.enableCors({
+    origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-role', 'x-user-id'],
+  });
 
   // Global Prefix
   app.setGlobalPrefix('api/v1');

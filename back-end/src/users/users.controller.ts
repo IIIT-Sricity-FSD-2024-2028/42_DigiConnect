@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -24,6 +25,7 @@ export class UsersController {
     };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @ApiOperation({ summary: 'Login a user' })
   @ApiBody({ schema: { type: 'object', properties: { email: { type: 'string' }, password: { type: 'string' } } } })
@@ -36,6 +38,7 @@ export class UsersController {
     };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('request-otp')
   @ApiOperation({ summary: 'Request Aadhaar OTP (Simulator)' })
   @ApiBody({ schema: { type: 'object', properties: { phone: { type: 'string' }, aadhaar: { type: 'string' } } } })
