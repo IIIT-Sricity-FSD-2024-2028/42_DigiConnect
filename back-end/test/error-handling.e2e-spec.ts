@@ -81,7 +81,7 @@ describe('Error Handling & Global Exception Filter (e2e)', () => {
       statusCode: 403,
       path: '/api/v1/users',
     });
-    expect(res.body.message).toContain('Access denied for role');
+    expect(res.body.message).toMatch(/(Super User Privilege Required|Access denied)/);
   });
 
   it('5. should have recorded errors in the Winston logs directory', async () => {

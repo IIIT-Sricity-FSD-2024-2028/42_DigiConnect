@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import 'multer';
 import { serviceUploadConfig } from '../middlewares/file-upload.config';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';

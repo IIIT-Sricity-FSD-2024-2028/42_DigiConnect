@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, Headers, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiHeader, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import 'multer';
 import { evidenceUploadConfig } from '../middlewares/file-upload.config';
 import { GrievancesService } from './grievances.service';
 import { CreateGrievanceDto } from './dto/create-grievance.dto';

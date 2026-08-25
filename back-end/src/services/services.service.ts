@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import 'multer';
 import { db } from '../data/store';
 import { GovtService } from '../models/service.model';
 import { CreateServiceDto } from './dto/create-service.dto';
