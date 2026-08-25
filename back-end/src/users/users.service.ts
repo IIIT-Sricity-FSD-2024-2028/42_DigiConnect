@@ -115,7 +115,20 @@ export class UsersService {
     }
     
     createUserDto.role = Role.CITIZEN; // Force role citizen for public register
-    return this.create(createUserDto);
+    const newUser = this.create(createUserDto);
+
+    // Automatic Server-Side Audit Log for Registration
+    db.auditLogs.unshift({
+      id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,
+      action: 'User Registered',
+      actor: newUser.email,
+      role: newUser.role,
+      date: new Date().toISOString(),
+      details: `New citizen ${newUser.name} registered with verified Aadhaar OTP.`,
+      ip: '127.0.0.1'
+    });
+
+    return newUser;
   }
 
   login(loginDto: any): User {
@@ -123,6 +136,18 @@ export class UsersService {
     if (!user) {
       throw new BadRequestException('Invalid credentials');
     }
+
+    // Automatic Server-Side Audit Log for Login
+    db.auditLogs.unshift({
+      id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,
+      action: 'User Login',
+      actor: user.email,
+      role: user.role,
+      date: new Date().toISOString(),
+      details: `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`,
+      ip: '127.0.0.1'
+    });
+
     return user;
   }
 

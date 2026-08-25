@@ -35,12 +35,16 @@ const SERVICE_DEPT_MAP = {
  */
 export async function addAuditEntry(action, details, actorOverride) {
   try {
-    await apiCreateAuditLog({
-      action: action,
-      details: details
-    });
+    const raw = sessionStorage.getItem('digi_user') || localStorage.getItem('digi_user');
+    const session = raw ? JSON.parse(raw) : null;
+    if (session && session.role === 'super_user') {
+      await apiCreateAuditLog({
+        action: action,
+        details: details
+      });
+    }
   } catch(e) {
-    console.error('[Audit Error]', e.message);
+    // Non-critical background audit logging
   }
 }
 

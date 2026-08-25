@@ -15,6 +15,7 @@ export interface AuditLog {
   role: string;
   date: string;
   details: string;
+  ip?: string;
 }
 export interface PendingOfficer {
   id: string;

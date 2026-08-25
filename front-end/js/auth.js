@@ -93,11 +93,6 @@ export async function login(email, password, selectedRole) {
 
       setSession(session);
 
-      try {
-        const { addAuditEntry } = await import('./workflow.js');
-        await addAuditEntry('User Login', `User ${session.email} logged in successfully as ${session.role}.`);
-      } catch(e) {}
-
       return { success: true, message: 'Login successful.', user: session };
   } catch(e) {
       return { success: false, message: e.message || 'Invalid credentials. Please check your email and password.' };
@@ -161,14 +156,6 @@ export function register(userData) {
  * Logout the current user
  */
 export async function logout() {
-  const session = getSession();
-  if (session) {
-    try { 
-      const { addAuditEntry } = await import('./workflow.js');
-      await addAuditEntry('User Logout', `User ${session.email} logged out.`);
-      // await apiLogout(); // If backend logout is needed
-    } catch(e) {}
-  }
   clearSession();
   const base = getBasePath();
   window.location.href = base + 'index.html';
