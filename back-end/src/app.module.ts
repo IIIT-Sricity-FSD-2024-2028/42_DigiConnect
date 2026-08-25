@@ -15,6 +15,9 @@ import { LoggingMiddleware } from './middlewares/logging.middleware';
 import { SanitizationMiddleware } from './middlewares/sanitization.middleware';
 import { LogManagementService } from './tasks/log-management.service';
 
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -29,9 +32,11 @@ import { LogManagementService } from './tasks/log-management.service';
     SuperUserModule,
     NotificationsModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [
+    AppService,
     LogManagementService,
+
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
