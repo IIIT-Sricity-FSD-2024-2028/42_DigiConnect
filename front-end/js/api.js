@@ -35,6 +35,9 @@ export async function apiFetch(path, options = {}) {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 413) {
+      throw new Error('File upload limit exceeded: The uploaded file is too large (maximum allowed size is 5MB).');
+    }
     const msg = json?.message || `HTTP ${res.status}`;
     throw new Error(Array.isArray(msg) ? msg.join('; ') : msg);
   }
@@ -145,10 +148,11 @@ export async function apiUpdateApplicationStatus(id, data) {
 }
 
 /** Respond to officer query: PATCH /applications/:id/query-response */
-export async function apiRespondToQuery(id, response) {
+export async function apiRespondToQuery(id, data) {
+  const body = data instanceof FormData ? data : JSON.stringify(typeof data === 'string' ? { response: data } : data);
   return apiFetch(`/applications/${id}/query-response`, {
     method: 'PATCH',
-    body: JSON.stringify({ response }),
+    body,
   });
 }
 

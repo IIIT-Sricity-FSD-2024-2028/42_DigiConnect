@@ -85,12 +85,21 @@ export class GrievancesService {
     const grievance = db.grievances[grievanceIndex];
     grievance.status = updateGrievanceDto.status;
     grievance.lastUpdated = new Date().toISOString();
+    const note = updateGrievanceDto.resolutionNote || updateGrievanceDto.remarks || '';
+    if (note) {
+      grievance.remarks = note;
+      grievance.resolutionNote = note;
+    }
+    if (['resolved', 'rejected', 'escalated-resolved'].includes(updateGrievanceDto.status)) {
+      grievance.closedDate = new Date().toISOString();
+      grievance.resolvedBy = actorName;
+    }
     
     grievance.history.push({
       action: `Status updated to ${updateGrievanceDto.status}`,
       date: new Date().toISOString(),
       actor: actorName,
-      note: updateGrievanceDto.resolutionNote || ''
+      note: note
     });
 
     db.grievances[grievanceIndex] = grievance;

@@ -61,7 +61,7 @@
             <div id="applicationForm" style="display:none;">
 
                 <!-- Selected Service Banner -->
-                <div
+                <div id="selectedServiceBanner"
                     style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:var(--space-xl);">
                     <div style="display:flex;align-items:center;gap:var(--space-md);">
                         <div class="service-card-icon" id="selectedSvcIcon"
@@ -643,7 +643,7 @@
                                 completion: <strong>7 working days</strong></div>
                         </div>
                         <div style="display:flex;gap:var(--space-md);justify-content:center;flex-wrap:wrap;">
-                            <button class="btn btn-primary" onclick="window.location.href='track-application.html'">
+                            <button class="btn btn-primary" onclick="sessionStorage.removeItem('lastSubmittedApp');window.location.href='track-application.html'">
                                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -651,9 +651,9 @@
                                 </svg>
                                 Track Application
                             </button>
-                            <button class="btn btn-outline" onclick="window.location.href='apply-service.html'">Apply
+                            <button class="btn btn-outline" onclick="sessionStorage.removeItem('lastSubmittedApp');window.location.href='apply-service.html'">Apply
                                 for Another Service</button>
-                            <button class="btn btn-ghost" onclick="window.location.href='citizen-dashboard.html'">Go to
+                            <button class="btn btn-ghost" onclick="sessionStorage.removeItem('lastSubmittedApp');window.location.href='citizen-dashboard.html'">Go to
                                 Dashboard</button>
                         </div>
                     </div>

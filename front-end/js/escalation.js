@@ -249,15 +249,35 @@ export async function initSupervisorReview() {
     const detail = document.getElementById('finalDetail');
     if(!detail) return;
     
-    let docsHtml = a.docs.map(d => `
+    const rawDocs = (a.documents && a.documents.length)
+      ? a.documents
+      : (a.docs && a.docs.length)
+      ? a.docs
+      : [];
+
+    let docsHtml = rawDocs.length ? rawDocs.map(d => {
+      const name = typeof d === 'string' ? d : (d.name || 'Document');
+      const path = typeof d === 'object' ? d.path : null;
+      const fileUrl = path ? `http://localhost:3000/${path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+      const viewAction = fileUrl 
+        ? `window.open('${fileUrl}', '_blank')`
+        : `showToast('No physical file attached for ${name} (sample data).','warning')`;
+      const downloadAction = fileUrl
+        ? `<button class="btn btn-outline btn-sm" style="font-size:0.7rem;" onclick="downloadFile('${fileUrl}', '${name}')" title="Download copy">↓</button>`
+        : ``;
+
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);">
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
           <svg width="13" height="13" fill="none" stroke="var(--navy-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span style="font-size:0.8rem;">${d}</span>
+          <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${name}</span>
         </div>
-        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;" onclick="showToast('Document opened.','info')">View</button>
-      </div>`
-    ).join('');
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;" onclick="${viewAction}">View</button>
+          ${downloadAction}
+        </div>
+      </div>`;
+    }).join('') : '<div style="font-size:0.8rem;color:var(--color-text-muted);">No documents available.</div>';
 
     let timelineHtml = a.timeline.map(t => {
       let color = t.t === 'success' ? 'var(--green-500)' : t.t === 'warn' ? 'var(--amber-400)' : t.t === 'danger' ? 'var(--red-500)' : 'var(--navy-400)';
@@ -425,12 +445,37 @@ export async function initSupervisorReview() {
 
     let officerDecisionClass = isSla ? 'var(--slate-500)' : 'var(--red-600)';
 
-    let docsHtml = e.docs.map(d => `
+    const rawDocs = (e.documents && e.documents.length)
+      ? e.documents
+      : (e.docs && e.docs.length)
+      ? e.docs
+      : (e.evidence && e.evidence.length)
+      ? e.evidence
+      : [];
+
+    let docsHtml = rawDocs.length ? rawDocs.map(d => {
+      const name = typeof d === 'string' ? d.split('/').pop().split('\\').pop() : (d.name || 'Document');
+      const path = typeof d === 'string' ? d : (d.path || null);
+      const fileUrl = path ? `http://localhost:3000/${path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+      const viewAction = fileUrl 
+        ? `window.open('${fileUrl}', '_blank')`
+        : `showToast('No physical file attached for ${name} (sample data).','warning')`;
+      const downloadAction = fileUrl
+        ? `<button class="btn btn-outline btn-sm" style="font-size:0.7rem;" onclick="downloadFile('${fileUrl}', '${name}')" title="Download copy">↓</button>`
+        : ``;
+
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);">
-        <span style="font-size:0.8rem;">${d}</span>
-        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;" onclick="showToast('Document opened.','info')">View</button>
-      </div>`
-    ).join('');
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <svg width="13" height="13" fill="none" stroke="var(--navy-500)" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span style="font-size:0.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${name}</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;" onclick="${viewAction}">View</button>
+          ${downloadAction}
+        </div>
+      </div>`;
+    }).join('') : '<div style="font-size:0.8rem;color:var(--color-text-muted);">No documents or evidence attached.</div>';
 
     let timelineHtml = e.timeline.map(t => {
       let color = t.t === 'danger' ? 'var(--red-500)' : t.t === 'warn' ? 'var(--amber-400)' : 'var(--navy-400)';

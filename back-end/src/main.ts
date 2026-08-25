@@ -1,29 +1,48 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as express from 'express';
 import { appLogger } from './utils/winston-logger';
 
 import helmet from 'helmet';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
-  // Security Headers (Helmet)
-  app.use(helmet({
-    contentSecurityPolicy: false, // Swagger compatible
-    crossOriginEmbedderPolicy: false,
-  }));
-
   // CORS
   app.enableCors({
     origin: ['http://localhost:5500', 'http://127.0.0.1:5500', 'http://localhost:3000'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: ['Content-Type', 'Authorization', 'x-role', 'x-user-id'],
   });
+
+  // Security Headers (Helmet) with Cross-Origin Resource Policy for media previews & downloads
+  app.use(helmet({
+    contentSecurityPolicy: false, // Swagger compatible
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
+
+  // Ensure uploads directory exists and mount static assets with CORS and Cross-Origin headers
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use('/uploads', (req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.header('Access-Control-Allow-Headers', '*');
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  }, express.static(uploadsDir));
 
   // Global Prefix
   app.setGlobalPrefix('api/v1');

@@ -520,3 +520,34 @@ export function initEventDelegation() {
   setupGlobalClickHandlers();
 }
 
+/**
+ * Cross-origin safe file downloader
+ * @param {string} fileUrl - Absolute or relative URL
+ * @param {string} filename - Desired download name
+ */
+export async function downloadFile(fileUrl, filename) {
+  if (!fileUrl) {
+    if (window.showToast) window.showToast('No file path provided to download.', 'warning');
+    return;
+  }
+  try {
+    if (window.showToast) window.showToast('Starting file download...', 'info');
+    const res = await fetch(fileUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename || fileUrl.split('/').pop().split('\\').pop() || 'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    if (window.showToast) window.showToast('Download complete.', 'success');
+  } catch (err) {
+    console.error('Blob download failed, falling back to open:', err);
+    window.open(fileUrl, '_blank');
+  }
+}
+window.downloadFile = downloadFile;
+

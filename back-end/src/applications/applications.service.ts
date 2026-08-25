@@ -270,7 +270,7 @@ export class ApplicationsService {
     db.applications.splice(appIndex, 1);
   }
 
-  respondToQuery(id: string, response: string): Application {
+  respondToQuery(id: string, response: string, newDocs: any[] = []): Application {
     const appIndex = db.applications.findIndex(a => a.id === id);
     if (appIndex === -1) throw new NotFoundException('Application not found');
     const app = db.applications[appIndex];
@@ -293,6 +293,12 @@ export class ApplicationsService {
 
     app.status = AppStatus.UNDER_REVIEW;
     app.citizenResponse = response;
+
+    if (!app.documents) app.documents = [];
+    if (newDocs && newDocs.length > 0) {
+      app.documents.push(...newDocs);
+    }
+
     app.timeline.push({
       action: 'Query Responded',
       date: now.toISOString(),

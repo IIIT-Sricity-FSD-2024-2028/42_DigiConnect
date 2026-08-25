@@ -4,7 +4,7 @@
 
 import { getSession } from './auth.js';
 import { initPage } from './navigation.js';
-import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal, getQueryParam, formatCard } from './utils.js';
+import { showToast, generateId, formatDate, formatDateTime, openModal, closeModal, getQueryParam, formatCard, downloadFile } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 import { checkSLA } from './escalation.js';
 import { apiGetServices, apiSubmitApplication, apiGetMyApplications, apiWithdrawApplication, apiGetApplicationById, apiRespondToQuery, apiGetAllApplications, apiUpdateApplicationStatus } from './api.js';
@@ -32,9 +32,46 @@ export async function initApplyService() {
     renderServiceCards(services);
   }
 
+  // If user just submitted an application and page reloads via file watcher, persist the success screen
+  const savedAppStr = sessionStorage.getItem('lastSubmittedApp');
+  if (savedAppStr) {
+    try {
+      const savedApp = JSON.parse(savedAppStr);
+      if (savedApp && savedApp.id) {
+        const stepSelect = document.getElementById('stepServiceSelect');
+        const appForm = document.getElementById('applicationForm');
+        if (stepSelect) stepSelect.style.display = 'none';
+        if (appForm) appForm.style.display = 'block';
+        for (let i = 1; i <= 4; i++) {
+          const el = document.getElementById('formStep' + i);
+          if (el) el.style.display = 'none';
+        }
+        const stepper = document.getElementById('formStepper');
+        if (stepper) stepper.style.display = 'none';
+        const banner = document.getElementById('selectedServiceBanner');
+        if (banner) banner.style.display = 'none';
+        const success = document.getElementById('successScreen');
+        if (success) {
+          success.style.display = 'block';
+          setTC('successAppId', savedApp.id);
+          setTC('appRefId', savedApp.id);
+          const trackBtn = success.querySelector('button.btn-primary');
+          if (trackBtn) {
+            trackBtn.removeAttribute('onclick');
+            trackBtn.onclick = () => {
+              sessionStorage.removeItem('lastSubmittedApp');
+              window.location.href = `track-application.html?id=${savedApp.id}`;
+            };
+          }
+        }
+      }
+    } catch(e) {}
+  }
+
   // Pre-filter by URL ?type= param (from dashboard category shortcut buttons)
   const urlType = getQueryParam('type');
   if (urlType) {
+    sessionStorage.removeItem('lastSubmittedApp');
     const catMap = {
       'certificate': 'Certificate',
       'welfare':     'Welfare',
@@ -207,6 +244,14 @@ export async function initApplyService() {
     const appForm = document.getElementById('applicationForm');
     if (stepSelect) stepSelect.style.display = 'none';
     if (appForm) appForm.style.display = 'block';
+
+    const success = document.getElementById('successScreen');
+    if (success) success.style.display = 'none';
+    const stepper = document.getElementById('formStepper');
+    if (stepper) stepper.style.display = 'flex';
+    const banner = document.getElementById('selectedServiceBanner');
+    if (banner) banner.style.display = 'flex';
+
     goToFormStep(1);
   }
 
@@ -219,6 +264,17 @@ export async function initApplyService() {
 
   window.uploadFile = function(i, input) {
     if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
+
+    if (file.size > maxSizeBytes) {
+      if (window.showToast) {
+        window.showToast(`File "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 5MB size limit. Please upload a smaller file.`, 'error');
+      }
+      input.value = ''; // Reset file input
+      return;
+    }
+
     const slot = document.getElementById('slot_' + i);
     const status = document.getElementById('slot_status_' + i);
     const badge = document.getElementById('slot_badge_' + i);
@@ -228,7 +284,7 @@ export async function initApplyService() {
       if (iconWrap) iconWrap.innerHTML = `<svg width="18" height="18" fill="none" stroke="var(--green-600)" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
     }
     if (status) {
-      status.textContent = `✓ ${input.files[0].name} (${(input.files[0].size / 1024).toFixed(0)} KB)`;
+      status.textContent = `✓ ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
       status.style.color = 'var(--green-600)';
     }
     if (badge) {
@@ -251,6 +307,15 @@ export async function initApplyService() {
 
   window.handleFileSelect = function(input, zoneId) {
     if (input.files && input.files.length > 0) {
+      const maxSizeBytes = 5 * 1024 * 1024;
+      const oversized = Array.from(input.files).filter(f => f.size > maxSizeBytes);
+      if (oversized.length > 0) {
+        if (window.showToast) {
+          window.showToast(`One or more files exceed the 5MB size limit. Please choose files under 5MB.`, 'error');
+        }
+        input.value = '';
+        return;
+      }
       if (window.showToast) window.showToast(`${input.files.length} file(s) added.`, 'success');
     }
   };
@@ -563,6 +628,14 @@ export async function initApplyService() {
         Array.from(additionalFi.files).forEach(f => allUploadedFiles.push(f));
       }
 
+      const formObj = {
+        dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
+        phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
+        street: formStreet, village: formVillage, mandal: formMandal,
+        district: formDistrict, state: formState,
+        ...svcFields
+      };
+
       let payload;
       if (allUploadedFiles.length > 0) {
         const fd = new FormData();
@@ -573,7 +646,7 @@ export async function initApplyService() {
         if (paymentTxnId) fd.append('paymentTransactionId', paymentTxnId);
         if (paymentMethodLabel) fd.append('paymentMethod', paymentMethodLabel);
         fd.append('remarks', `Applied for ${selectedService.name}`);
-        // Append every file under the same field name 'documents' — multer FilesInterceptor collects them all
+        fd.append('formData', JSON.stringify(formObj));
         allUploadedFiles.forEach(f => fd.append('documents', f));
         payload = fd;
       } else {
@@ -589,19 +662,14 @@ export async function initApplyService() {
             const actualName = (fileInput && fileInput.files && fileInput.files.length > 0) ? fileInput.files[0].name : d + '.pdf';
             return { name: actualName, type: d, date: new Date().toISOString(), status: 'pending' };
           }),
-          formData: {
-            dob: formDob, gender: formGender, address: formAddress, pincode: formPincode,
-            phone: formPhone, aadhaar: formAadhaar, guardianName: formGuardian,
-            street: formStreet, village: formVillage, mandal: formMandal,
-            district: formDistrict, state: formState,
-            ...svcFields
-          }
+          formData: formObj
         };
       }
 
       try {
         const res = await apiSubmitApplication(payload);
         const newApp = res.data;
+        sessionStorage.setItem('lastSubmittedApp', JSON.stringify(newApp));
         
         // Show success screen
         for (let i = 1; i <= 4; i++) {
@@ -609,47 +677,43 @@ export async function initApplyService() {
           if (el) el.style.display = 'none';
         }
         
-        const stepper = document.querySelector('.form-stepper');
+        const stepper = document.getElementById('formStepper');
         if (stepper) stepper.style.display = 'none';
         
-        const headerBtns = document.querySelector('[onclick="goBack()"]');
-        if (headerBtns && headerBtns.parentElement) headerBtns.parentElement.style.display = 'none';
+        const banner = document.getElementById('selectedServiceBanner');
+        if (banner) banner.style.display = 'none';
 
         const success = document.getElementById('successScreen');
         if (success) {
           success.style.display = 'block';
-          // Use real backend-assigned ID for both displays
           setTC('successAppId', newApp.id);
           setTC('appRefId', newApp.id);
+          const trackBtn = success.querySelector('button.btn-primary');
+          if (trackBtn) {
+            trackBtn.removeAttribute('onclick');
+            trackBtn.onclick = () => {
+              sessionStorage.removeItem('lastSubmittedApp');
+              window.location.href = `track-application.html?id=${newApp.id}`;
+            };
+          }
         }
         
         if (window.showToast) window.showToast('Application submitted successfully!', 'success');
-        
-        // Update track buttons on success screen
-        if (success) {
-          success.innerHTML = success.innerHTML.replace(/track-application\.html\?id=[A-Z0-9-]+|track-application\.html/g, `track-application.html?id=${newApp.id}`);
-        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch(e) {
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = 'Complete Application & Pay';
+          submitBtn.innerHTML = `
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Pay & Submit Application
+          `;
         }
         if(window.showToast) window.showToast(e.message, 'error');
       }
     }, 1000);
   };
-
-  // Success screen navigation buttons
-  const successScreen = document.getElementById('successScreen');
-  if (successScreen) {
-    successScreen.querySelectorAll('.btn').forEach(btn => {
-      const text = btn.textContent.trim();
-      if (text.includes('Track')) btn.addEventListener('click', () => { window.location.href = 'track-application.html'; });
-      if (text.includes('Another')) btn.addEventListener('click', () => { window.location.href = 'apply-service.html'; });
-      if (text.includes('Dashboard')) btn.addEventListener('click', () => { window.location.href = 'citizen-dashboard.html'; });
-    });
-  }
 
   function setTC(id, val) {
     const el = document.getElementById(id);
@@ -1119,14 +1183,27 @@ export async function initTrackApplication() {
     if (docsBody && app.documents) {
       docsBody.innerHTML = app.documents.map(d => {
         const bdgClass = d.status === 'verified' ? 'badge-success' : d.status === 'query' ? 'badge-warning' : 'badge-neutral';
-        const bdgText = d.status === 'verified' ? 'Verified' : d.status === 'query' ? 'Query Raised' : 'Pending';
+        const bdgText = d.status === 'verified' ? 'Verified' : d.status === 'query' ? 'Query Raised' : 'Uploaded';
+        const fileUrl = d.path ? `http://localhost:3000/${d.path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+        const viewAction = fileUrl 
+          ? `window.open('${fileUrl}', '_blank')`
+          : `if(window.showToast) window.showToast('No physical file attached for ${d.name} (sample record).','warning')`;
+        const downloadAction = fileUrl
+          ? `<button class="btn btn-outline btn-sm" style="font-size:0.72rem;" onclick="downloadFile('${fileUrl}', '${d.name}')" title="Download copy">↓</button>`
+          : `<button class="btn btn-outline btn-sm" style="font-size:0.72rem;" onclick="if(window.showToast) window.showToast('Sample file cannot be downloaded.','warning')">↓</button>`;
+
         return `
       <tr>
         <td style="font-weight:600;color:var(--navy-900);">${d.name}</td>
         <td><span style="font-size:0.8rem;color:var(--color-text-muted);">${d.type}</span></td>
         <td>${formatDate(d.date)}</td>
         <td><span class="badge ${bdgClass}">${bdgText}</span></td>
-        <td><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="if(window.showToast) window.showToast('Document preview opened.','info')">View</button></td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="${viewAction}">View</button>
+            ${downloadAction}
+          </div>
+        </td>
       </tr>`;
       }).join('');
     }
@@ -1149,7 +1226,10 @@ export async function initTrackApplication() {
 
     // Download cert button
     const certBtn = document.getElementById('downloadCertBtn');
-    if (certBtn) certBtn.style.display = app.status === 'approved' ? 'flex' : 'none';
+    if (certBtn) {
+      certBtn.style.display = (app.status === 'approved' || app.status === 'completed') ? 'inline-flex' : 'none';
+      certBtn.onclick = () => window.downloadDigitalCertificate(app);
+    }
   }
 
   // Auto-load if ID in URL
@@ -1208,6 +1288,18 @@ export async function initTrackApplication() {
     
     if (!input.files || input.files.length === 0) return;
 
+    const maxSizeBytes = 5 * 1024 * 1024;
+    const oversized = Array.from(input.files).filter(f => f.size > maxSizeBytes);
+    if (oversized.length > 0) {
+      if (window.showToast) {
+        window.showToast(`File exceeds 5MB size limit. Please upload files under 5MB.`, 'error');
+      }
+      input.value = '';
+      if (uploadedFile) uploadedFile.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = true;
+      return;
+    }
+
     const files = Array.from(input.files);
     const fileListHtml = files.map(f => {
       const sizeKb = (f.size / 1024).toFixed(0);
@@ -1232,20 +1324,37 @@ export async function initTrackApplication() {
     const modal = document.getElementById('queryModal');
     const noteText = document.getElementById('queryResponseNote')?.value?.trim();
     const fileInput = document.getElementById('queryFileInput');
-    const fileNames = fileInput && fileInput.files.length > 0
+    const hasFiles = fileInput && fileInput.files && fileInput.files.length > 0;
+    const fileNames = hasFiles
       ? Array.from(fileInput.files).map(f => f.name).join(', ')
       : null;
     
     // Build response message from note + uploaded file names
-    const responseText = [noteText, fileNames ? `Files: ${fileNames}` : null]
+    const responseText = [noteText, fileNames ? `Attached: ${fileNames}` : null]
       .filter(Boolean).join(' | ') || 'Citizen uploaded requested documents.';
 
     const currentAppId = document.getElementById('detailAppId')?.textContent || getQueryParam('id');
 
     if (currentAppId) {
+      const submitBtn = document.getElementById('submitResponseBtn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff;width:14px;height:14px;"></div> Submitting...';
+      }
       try {
-        await apiRespondToQuery(currentAppId, responseText);
+        if (hasFiles) {
+          const fd = new FormData();
+          fd.append('response', responseText);
+          Array.from(fileInput.files).forEach(f => fd.append('documents', f));
+          await apiRespondToQuery(currentAppId, fd);
+        } else {
+          await apiRespondToQuery(currentAppId, responseText);
+        }
       } catch(e) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Submit Response';
+        }
         if(window.showToast) window.showToast(e.message, 'error');
         return;
       }
@@ -1395,28 +1504,38 @@ export async function initReviewApplication() {
       }
 
       // Documents
-      if (a.docs && a.docs.length > 0 && typeof a.docs[0] === 'object') {
-          setTC('docCountBadge', `${a.docs.length} files`);
+      const rawDocs = (a.documents && a.documents.length) ? a.documents : (a.docs && Array.isArray(a.docs)) ? a.docs : [];
+      if (rawDocs.length > 0 && typeof rawDocs[0] === 'object') {
+          setTC('docCountBadge', `${rawDocs.length} files`);
           const pdfBg = '#eff6ff', pdfCol = '#1d4ed8', imgBg = '#f0fdf4', imgCol = '#166534';
           const docsBody = document.getElementById('docsBody');
           if (docsBody) {
-            docsBody.innerHTML = a.docs.map(d => `
+            docsBody.innerHTML = rawDocs.map(d => {
+              const fileUrl = d.path ? `http://localhost:3000/${d.path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+              const viewAction = fileUrl 
+                ? `window.open('${fileUrl}', '_blank')`
+                : `window.showToast&&window.showToast('No physical file attached for ${d.name} (sample record).','warning')`;
+              const downloadAction = fileUrl
+                ? `<button class="btn btn-outline btn-sm" onclick="downloadFile('${fileUrl}', '${d.name}')" title="Download copy">↓</button>`
+                : `<button class="btn btn-outline btn-sm" onclick="window.showToast&&window.showToast('Sample file cannot be downloaded.','warning')">↓</button>`;
+
+              return `
                 <div class="doc-row">
-                    <div class="doc-icon" style="background:${d.icon==='pdf'?pdfBg:imgBg};color:${d.icon==='pdf'?pdfCol:imgCol};">
+                    <div class="doc-icon" style="background:${d.name?.endsWith('pdf')?pdfBg:imgBg};color:${d.name?.endsWith('pdf')?pdfCol:imgCol};">
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            ${d.icon==='pdf'
+                            ${d.name?.endsWith('pdf')
                                 ?'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/>'
                                 :'<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>'}
                         </svg>
                     </div>
                     <div>
                         <div class="doc-name">${d.name}</div>
-                        <div class="doc-size">${d.type} · ${d.size}</div>
+                        <div class="doc-size">${d.type || 'Document'} · ${d.size || '—'}</div>
                     </div>
-                    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="window.showToast('Opening ${d.name}…','info')">View</button>
-                    <button class="btn btn-outline btn-sm" onclick="window.showToast('${d.name} downloaded.','success')">↓</button>
-                </div>
-            `).join('');
+                    <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="${viewAction}">View</button>
+                    ${downloadAction}
+                </div>`;
+            }).join('');
           }
       } else if (a.docs && typeof a.docs === 'number') {
           // Fallback if data just had a number of docs
@@ -1720,6 +1839,76 @@ function setTextContent(id, value) {
 // Auto-init based on data-page attribute
 // ══════════════════════════════════════════
 
+// ── Certificate Download Generator ──
+window.downloadDigitalCertificate = function(app) {
+  if (!app) return;
+  const certWindow = window.open('', '_blank');
+  if (!certWindow) {
+    if (window.showToast) window.showToast('Popup blocked. Please allow popups to view certificate.', 'warning');
+    return;
+  }
+  const certHtml = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Certificate - ${app.serviceName || app.service || 'Service'} (${app.id})</title>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; text-align: center; }
+      .cert-container { max-width: 750px; margin: 0 auto; background: white; border: 12px double #1e3a8a; padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+      .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+      .emblem { font-size: 3rem; margin-bottom: 10px; }
+      .title { font-size: 1.8rem; font-weight: 800; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+      .sub { font-size: 0.95rem; color: #64748b; margin-top: 5px; }
+      .details-table { width: 100%; border-collapse: collapse; margin: 25px 0; text-align: left; }
+      .details-table td { padding: 10px 14px; border: 1px solid #e2e8f0; font-size: 0.95rem; }
+      .details-table td:first-child { font-weight: bold; background: #f1f5f9; width: 35%; }
+      .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px; padding-top: 20px; border-top: 1px dashed #cbd5e1; }
+      .sign { text-align: center; }
+      .sign-line { width: 180px; border-bottom: 1px solid #0f172a; margin-bottom: 6px; }
+      .qr-mock { width: 70px; height: 70px; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; }
+      @media print { body { background: white; padding: 0; } .cert-container { box-shadow: none; border-color: #000; } button { display: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="cert-container">
+      <div class="header">
+        <div class="emblem">🏛️</div>
+        <div class="title">Government of Telangana</div>
+        <div class="sub">Unified Citizen Service & Delivery Platform — DigiConnect</div>
+      </div>
+      <h2 style="color:#047857; margin:0 0 15px;">OFFICIAL CERTIFICATE</h2>
+      <p style="color:#64748b; font-size:0.9rem;">Application Reference ID: <strong>${app.id}</strong></p>
+      
+      <table class="details-table">
+        <tr><td>Service Name</td><td><strong>${app.serviceName || app.service || 'Citizen Service'}</strong></td></tr>
+        <tr><td>Applicant Name</td><td><strong>${app.citizenName || app.citizen || 'Citizen'}</strong></td></tr>
+        <tr><td>Department</td><td>${app.dept || 'Government Department'}</td></tr>
+        <tr><td>Jurisdiction / Mandal</td><td>${app.jurisdiction || 'Secunderabad'}</td></tr>
+        <tr><td>Approval Date</td><td>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</td></tr>
+        <tr><td>Issuing Officer</td><td>${app.officerName || app.officer || 'Competent Authority'}</td></tr>
+        <tr><td>Status</td><td><span style="color:#047857; font-weight:bold;">Digitally Verified & Approved</span></td></tr>
+      </table>
+
+      <div class="footer">
+        <div class="qr-mock">DIGITAL QR<br>VERIFIED</div>
+        <div class="sign">
+          <div class="sign-line"></div>
+          <div style="font-size:0.85rem; font-weight:bold;">${app.officerName || app.officer || 'Competent Authority'}</div>
+          <div style="font-size:0.75rem; color:#64748b;">${app.dept || 'Government Authority'}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:30px;">
+        <button onclick="window.print()" style="padding:10px 24px; background:#1e3a8a; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ Print / Save as PDF</button>
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+  certWindow.document.write(certHtml);
+  certWindow.document.close();
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   const page = document.body.dataset.page;
   switch (page) {
@@ -1729,4 +1918,5 @@ document.addEventListener('DOMContentLoaded', () => {
     case 'review-application': initReviewApplication(); break;
   }
 });
+
 

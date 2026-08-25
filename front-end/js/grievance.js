@@ -150,7 +150,14 @@ export function initRaiseGrievance() {
     input.onchange = (e) => {
       const list = document.getElementById('evidenceFiles');
       if (!list) return;
+      const maxSizeBytes = 5 * 1024 * 1024;
       Array.from(e.target.files).forEach(f => {
+        if (f.size > maxSizeBytes) {
+          if (window.showToast) {
+            window.showToast(`File "${f.name}" (${(f.size / (1024 * 1024)).toFixed(1)}MB) exceeds 5MB size limit.`, 'error');
+          }
+          return;
+        }
         _selectedEvidenceFiles.push(f);
         const div = document.createElement('div');
         div.style.display = 'flex';
@@ -227,6 +234,13 @@ export function initRaiseGrievance() {
         const sb = document.getElementById('gSidebar');
         if (sb) sb.style.display = 'none';
 
+        const stepper = document.querySelector('.stepper');
+        if (stepper) stepper.style.display = 'none';
+
+        const grid = sb?.parentElement;
+        if (grid) grid.style.gridTemplateColumns = '1fr';
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         if(window.showToast) window.showToast('Grievance submitted successfully!', 'success');
       }).catch(e => {
         if(window.showToast) window.showToast(e.message || 'Failed to submit grievance', 'error');
@@ -340,6 +354,61 @@ export async function initMyGrievances() {
     setTC('dOfficer', g.officerName || '—');
     setTC('dRelatedApp', g.relatedAppId || 'None');
     setTC('dGrvDesc', g.description);
+
+    // Resolution Section (displayed when resolved or rejected)
+    const resSec = document.getElementById('dResolutionSection');
+    if (resSec) {
+      const isResolved = g.status === 'resolved' || g.status === 'escalated-resolved';
+      const isRejected = g.status === 'rejected';
+      const hasRes = isResolved || isRejected || !!g.resolutionNote || !!g.remarks;
+      
+      if (hasRes) {
+        resSec.style.display = 'block';
+        resSec.style.background = isResolved ? 'var(--green-50)' : isRejected ? 'var(--red-50)' : 'var(--slate-50)';
+        const titleEl = document.getElementById('dResTitle');
+        if (titleEl) {
+          titleEl.textContent = isResolved ? 'Official Resolution & Remarks' : isRejected ? 'Rejection Reason & Decision' : 'Official Decision Note';
+          titleEl.style.color = isResolved ? 'var(--green-800)' : isRejected ? 'var(--red-800)' : 'var(--navy-800)';
+        }
+        const dateEl = document.getElementById('dResDate');
+        if (dateEl) {
+          dateEl.textContent = (g.closedDate || g.lastUpdated) ? `Updated: ${formatDate(g.closedDate || g.lastUpdated)} by ${g.resolvedBy || g.officerName || 'Officer'}` : '';
+        }
+        const noteEl = document.getElementById('dResNote');
+        if (noteEl) {
+          noteEl.textContent = g.resolutionNote || g.remarks || (g.history && g.history.slice().reverse().find(h => h.note)?.note) || 'No specific remarks recorded.';
+        }
+        const docsContainer = document.getElementById('dResDocs');
+        if (docsContainer) {
+          const rawDocs = (g.documents && g.documents.length) ? g.documents : (g.evidence && g.evidence.length) ? g.evidence : [];
+          if (rawDocs.length > 0) {
+            docsContainer.innerHTML = `
+              <div style="font-size:0.75rem;font-weight:700;color:var(--color-text-muted);margin-top:4px;margin-bottom:4px;">Attached Documents & Reports:</div>
+              ${rawDocs.map(d => {
+                const name = typeof d === 'string' ? d.split('/').pop().split('\\').pop() : (d.name || 'Document');
+                const path = typeof d === 'string' ? d : (d.path || null);
+                const fileUrl = path ? `http://localhost:3000/${path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+                const viewAction = fileUrl ? `window.open('${fileUrl}', '_blank')` : `window.showToast&&window.showToast('No physical file attached.','warning')`;
+                const downloadAction = fileUrl ? `<button class="btn btn-outline btn-sm" style="font-size:0.72rem;" onclick="event.stopPropagation();downloadFile('${fileUrl}', '${name}')" title="Download copy">↓</button>` : ``;
+                return `
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#fff;border-radius:var(--radius-sm);border:1px solid var(--color-border);">
+                    <span style="font-size:0.8rem;font-weight:600;color:var(--navy-900);">${name}</span>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                      <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="${viewAction}">View</button>
+                      ${downloadAction}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            `;
+          } else {
+            docsContainer.innerHTML = '';
+          }
+        }
+      } else {
+        resSec.style.display = 'none';
+      }
+    }
 
     // Chat / Timeline
     const chatContainer = document.getElementById('dChat');
@@ -489,6 +558,44 @@ export async function initGrievanceDetail() {
   setTextContent('reviewPriority', grievance.priority);
   setTextContent('reviewFiledDate', formatDate(grievance.filedDate));
   setTextContent('reviewRelatedApp', grievance.relatedAppId || 'None');
+
+  // Populate supporting documents / evidence list
+  const docsListEl = document.getElementById('reviewDocsList');
+  if (docsListEl) {
+    const rawDocs = (grievance.documents && grievance.documents.length)
+      ? grievance.documents
+      : (grievance.evidence && grievance.evidence.length)
+      ? grievance.evidence
+      : [];
+    if (rawDocs.length > 0) {
+      docsListEl.innerHTML = rawDocs.map(d => {
+        const name = typeof d === 'string' ? d.split('/').pop().split('\\').pop() : (d.name || 'Document');
+        const path = typeof d === 'string' ? d : (d.path || null);
+        const fileUrl = path ? `http://localhost:3000/${path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+        const viewAction = fileUrl ? `window.open('${fileUrl}', '_blank')` : `window.showToast&&window.showToast('No physical file attached.','warning')`;
+        const downloadAction = fileUrl ? `<button class="btn btn-outline btn-sm" style="font-size:0.72rem;" onclick="event.stopPropagation();downloadFile('${fileUrl}', '${name}')" title="Download copy">↓</button>` : ``;
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--slate-200);border-radius:8px;background:white;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;cursor:pointer;" onclick="${viewAction}">
+              <div style="width:36px;height:36px;border-radius:8px;background:var(--navy-100);color:var(--navy-600);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+              </div>
+              <div style="min-width:0;flex:1;">
+                <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+                <div style="font-size:0.72rem;color:var(--slate-500);">Attached Evidence</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="${viewAction}">View</button>
+              ${downloadAction}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } else {
+      docsListEl.innerHTML = '<div style="font-size:0.8125rem;color:var(--color-text-muted);">No attached evidence files submitted with this grievance.</div>';
+    }
+  }
 
   // Look up citizen details
   let users = [];
@@ -752,20 +859,36 @@ export async function initGrievanceDetail() {
       currentMaxStep = 4; completedSteps.add(1); completedSteps.add(2); completedSteps.add(3); 
     }
     
-    // Render dynamic documents
+    // Render dynamic documents & evidence
     const docsList = document.getElementById('reviewDocsList');
-    if (docsList && grievance.documents && grievance.documents.length) {
-      docsList.innerHTML = grievance.documents.map(d => `
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--slate-200);border-radius:8px;cursor:pointer;background:white;" onclick="window.showToast&&window.showToast('Opening ${d.name}','info')">
+    const allEvidence = (grievance.documents && grievance.documents.length) 
+      ? grievance.documents 
+      : (grievance.evidence && grievance.evidence.length) 
+      ? grievance.evidence 
+      : [];
+
+    if (docsList && allEvidence.length) {
+      docsList.innerHTML = allEvidence.map(item => {
+        const filePath = typeof item === 'string' ? item : (item.path || '');
+        const fileName = typeof item === 'string' ? item.split('/').pop().split('\\').pop() : (item.name || 'Evidence Attachment');
+        const fileType = typeof item === 'object' && item.type ? item.type : 'Evidence Document';
+        const fileUrl = filePath ? `http://localhost:3000/${filePath.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+        const clickAction = fileUrl 
+          ? `window.open('${fileUrl}', '_blank')`
+          : `window.showToast&&window.showToast('No physical file attached for ${fileName} (sample data).','warning')`;
+
+        return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--slate-200);border-radius:8px;cursor:pointer;background:white;transition:all 0.2s ease;" onclick="${clickAction}" title="Click to view file">
           <div style="width:40px;height:40px;border-radius:8px;background:var(--navy-100);color:var(--navy-600);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           </div>
           <div style="min-width:0;flex:1;">
-            <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">${d.name}</div>
-            <div style="font-size:0.75rem;color:var(--slate-500);">${d.type || 'Document'}</div>
+            <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">${fileName}</div>
+            <div style="font-size:0.75rem;color:var(--slate-500);">${fileType}</div>
           </div>
-        </div>
-      `).join('');
+          <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;padding:4px 8px;">View</button>
+        </div>`;
+      }).join('');
     } else if (docsList) {
       docsList.innerHTML = '<div style="font-size:0.85rem;color:var(--slate-500);">No supporting documents submitted.</div>';
     }

@@ -44,6 +44,11 @@ export class ApplicationsController {
         createApplicationDto.documents = uploadedDocs;
       }
     }
+    if (typeof createApplicationDto.formData === 'string') {
+      try {
+        createApplicationDto.formData = JSON.parse(createApplicationDto.formData);
+      } catch (e) {}
+    }
     return {
       success: true,
       data: this.applicationsService.submit(createApplicationDto),
@@ -259,17 +264,31 @@ export class ApplicationsController {
   @Patch(':id/query-response')
   @UseGuards(RolesGuard)
   @Roles(Role.CITIZEN)
-  @ApiOperation({ summary: 'Respond to officer query' })
+  @UseInterceptors(FilesInterceptor('documents', 10, documentUploadConfig))
+  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiOperation({ summary: 'Respond to officer query with optional files' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiBody({ schema: { type: 'object', properties: { response: { type: 'string' } } } })
   @ApiResponse({ status: 200, description: 'Query response submitted' })
-  respondToQuery(@Param('id') id: string, @Body('response') response: string) {
+  respondToQuery(
+    @Param('id') id: string,
+    @Body('response') response: string,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    const uploadedDocs = (files && files.length > 0)
+      ? files.map(f => ({
+          name: f.originalname,
+          type: f.mimetype,
+          date: new Date().toISOString(),
+          status: 'Uploaded',
+          size: `${(f.size / 1024).toFixed(1)} KB`,
+          path: f.path,
+        }))
+      : [];
     return {
       success: true,
-      data: this.applicationsService.respondToQuery(id, response),
+      data: this.applicationsService.respondToQuery(id, response || '', uploadedDocs),
       message: 'OK'
     };
   }
-
-
 }

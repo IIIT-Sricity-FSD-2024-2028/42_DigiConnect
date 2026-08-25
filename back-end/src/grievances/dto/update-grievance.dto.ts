@@ -8,4 +8,8 @@ export class UpdateGrievanceDto {
   @IsOptional()
   @IsString()
   resolutionNote?: string;
+
+  @IsOptional()
+  @IsString()
+  remarks?: string;
 }

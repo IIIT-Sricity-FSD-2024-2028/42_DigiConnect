@@ -119,7 +119,7 @@ export class NotificationsService {
       type: config.type,
       read: false,
       date: new Date().toISOString(),
-      link: `citizen/grievances.html?id=${grievanceId}`
+      link: `citizen/my-grievances.html?id=${grievanceId}`
     };
 
     db.notifications.unshift(notification);

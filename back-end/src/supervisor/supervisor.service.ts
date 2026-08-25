@@ -75,7 +75,8 @@ export class SupervisorService {
           role: 'Officer',
           submitted: a.submittedDate ? new Date(a.submittedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '-',
           slaLeft,
-          docs: a.documents?.map(d => d.name) || [],
+          docs: a.documents || [],
+          documents: a.documents || [],
           officerNote: a.remarks || 'No remarks provided.',
           timeline: a.timeline?.map(t => ({
             d: new Date(t.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
@@ -116,7 +117,8 @@ export class SupervisorService {
           on: new Date(a.slaDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
           urgent: overdue > 5,
           officerDecision: 'No decision — SLA exceeded',
-          docs: a.documents?.map(d => d.name) || [],
+          docs: a.documents || [],
+          documents: a.documents || [],
           summary: `Application SLA exceeded by ${overdue} days.`,
           timeline: a.timeline?.map(t => ({
             d: new Date(t.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
@@ -161,7 +163,9 @@ export class SupervisorService {
           on: new Date(g.filedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
           urgent: g.priority === 'high',
           officerDecision: 'Escalated to Supervisor',
-          docs: app?.documents?.map(d => d.name) || [],
+          docs: app?.documents || [],
+          documents: app?.documents || [],
+          evidence: g.evidence || [],
           go: g.officerName,
           summary: g.description,
           timeline: g.history?.map(t => ({

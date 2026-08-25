@@ -983,6 +983,16 @@
         "requestBody": {
           "required": true,
           "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "response": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
             "application/json": {
               "schema": {
                 "type": "object",
@@ -1000,7 +1010,7 @@
             "description": "Query response submitted"
           }
         },
-        "summary": "Respond to officer query",
+        "summary": "Respond to officer query with optional files",
         "tags": [
           "applications"
         ]

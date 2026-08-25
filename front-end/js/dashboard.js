@@ -429,6 +429,37 @@ export async function initOfficerDashboard() {
   window.openReview = function (id) {
     currentApp = officerQueue.find(a => a.id === id);
     if (!currentApp) return;
+
+    const docsList = (currentApp.documents && currentApp.documents.length)
+      ? currentApp.documents
+      : (currentApp.docs && Array.isArray(currentApp.docs))
+      ? currentApp.docs
+      : (typeof currentApp.docs === 'number')
+      ? ['Aadhaar Card.pdf', 'Ration Card / Utility Bill.jpg', 'Salary Slip 2024.pdf', 'Self-Declaration.pdf'].slice(0, currentApp.docs).map(name => ({ name }))
+      : [];
+
+    const docsHtml = docsList.length ? docsList.map(d => {
+      const name = typeof d === 'string' ? d : (d.name || 'Document');
+      const path = typeof d === 'object' ? d.path : null;
+      const fileUrl = path ? `http://localhost:3000/${path.replace(/\\/g, '/').replace(/^\/+/, '')}` : '';
+      const viewAction = fileUrl 
+        ? `window.open('${fileUrl}', '_blank')`
+        : `window.showToast&&window.showToast('No physical file attached for ${name} (sample data).','warning')`;
+      const downloadAction = fileUrl
+        ? `<button class="btn btn-outline btn-sm" style="font-size:0.72rem;" onclick="downloadFile('${fileUrl}', '${name}')" title="Download copy">↓</button>`
+        : ``;
+
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);">
+          <span style="font-size:0.8rem;font-weight:500;color:var(--navy-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${name}</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="${viewAction}">View</button>
+            ${downloadAction}
+          </div>
+        </div>
+      `;
+    }).join('') : '<div style="font-size:0.8rem;color:var(--color-text-muted);">No documents submitted.</div>';
+
     document.getElementById('reviewTitle').textContent = `Review: ${currentApp.id} — ${currentApp.service}`;
     document.getElementById('reviewBody').innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-bottom:var(--space-lg);">
@@ -436,7 +467,7 @@ export async function initOfficerDashboard() {
           <div class="review-card"><div class="review-grid">
             <div class="review-item"><span class="review-key">Applicant</span><span class="review-value">${currentApp.citizen}</span></div>
             <div class="review-item"><span class="review-key">Service</span><span class="review-value">${currentApp.service}</span></div>
-            <div class="review-item"><span class="review-key">Submitted</span><span class="review-value">${currentApp.submitted} 2025</span></div>
+            <div class="review-item"><span class="review-key">Submitted</span><span class="review-value">${currentApp.submitted}</span></div>
             <div class="review-item"><span class="review-key">SLA Status</span><span class="review-value" style="font-weight:700;color:${currentApp.slaLeft < 0 ? 'var(--red-500)' : currentApp.slaLeft <= 2 ? 'var(--amber-500)' : 'var(--green-500)'};">${currentApp.slaLeft < 0 ? Math.abs(currentApp.slaLeft) + ' days overdue' : currentApp.slaLeft + ' days left'}</span></div>
             ${currentApp.income ? `<div class="review-item"><span class="review-key">Annual Income</span><span class="review-value">₹${currentApp.income}</span></div>` : ''}
             ${currentApp.community ? `<div class="review-item"><span class="review-key">Community</span><span class="review-value">${currentApp.community}</span></div>` : ''}
@@ -446,7 +477,7 @@ export async function initOfficerDashboard() {
         <div>
           <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--color-text-muted);margin-bottom:var(--space-sm);">Uploaded Documents</div>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            ${['Aadhaar Card.pdf', 'Ration Card / Utility Bill.jpg', 'Salary Slip 2024.pdf', 'Self-Declaration.pdf'].slice(0, currentApp.docs).map(d => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--slate-50);border-radius:var(--radius-sm);border:1px solid var(--color-border);"><span style="font-size:0.8rem;">${d}</span><button class="btn btn-ghost btn-sm" style="font-size:0.72rem;" onclick="window.showToast('Document opened.','info')">View</button></div>`).join('')}
+            ${docsHtml}
           </div>
         </div>
       </div>

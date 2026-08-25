@@ -87,13 +87,15 @@ export async function renderNotifPanel() {
       } catch (e) { /* ignore */ }
       el.classList.remove('unread');
       if (link && link !== '#') {
-        const basePath = window.location.pathname.includes('/Super User/') ||
+        const cleanLink = link.replace(/^\/+/, '');
+        const inSubdir = window.location.pathname.includes('/Super User/') ||
           window.location.pathname.includes('/Super%20User/') ||
           window.location.pathname.includes('/citizen/') ||
           window.location.pathname.includes('/officer/') ||
           window.location.pathname.includes('/supervisor/') ||
-          window.location.pathname.includes('/grievance/') ? '../' : '';
-        window.location.href = basePath + link;
+          window.location.pathname.includes('/grievance/');
+        const basePath = inSubdir ? '../' : '';
+        window.location.href = basePath + cleanLink;
       }
     });
   });
