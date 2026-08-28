@@ -14,8 +14,8 @@ import {
 import '../../styles/admin.css';
 
 /**
- * Parent Container Component: ManageUsersPage (Member 5)
- * 
+ * Parent Container Component: ManageUsersPage
+ *
  * Features:
  *  - Full CRUD management across all roles (Citizens, Officers, Supervisors, Grievance, Super Users).
  *  - Lifted state management for user directory, search term, active role filter, and modal forms.
@@ -33,7 +33,6 @@ export default function ManageUsersPage() {
   const [activeUser, setActiveUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
-  const [toastMessage, setToastMessage] = useState('');
 
   // Fetch users from backend on initial mount
   useEffect(() => {
@@ -44,34 +43,43 @@ export default function ManageUsersPage() {
     });
   }, []);
 
-  // Helper for user feedback toasts
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
-  };
-
   // ── Derived Filtered Users (using lifted state) ──
   const filteredUsers = users.filter((u) => {
     // 1. Role filter
-    if (roleFilter !== 'all' && (u.role || '').toLowerCase() !== roleFilter.toLowerCase()) {
+    if (
+      roleFilter !== 'all' &&
+      (u.role || '').toLowerCase() !== roleFilter.toLowerCase()
+    ) {
       return false;
     }
 
     // 2. Status filter
-    if (statusFilter && (u.status || 'Active').toLowerCase() !== statusFilter.toLowerCase()) {
+    if (
+      statusFilter &&
+      (u.status || 'Active').toLowerCase() !== statusFilter.toLowerCase()
+    ) {
       return false;
     }
 
     // 3. Search query across name, email, id, phone, role
     if (search.trim()) {
       const q = search.toLowerCase();
+
       const matchName = (u.name || '').toLowerCase().includes(q);
       const matchEmail = (u.email || '').toLowerCase().includes(q);
       const matchId = (u.id || '').toLowerCase().includes(q);
       const matchPhone = (u.phone || '').includes(q);
       const matchRole = (u.role || '').toLowerCase().includes(q);
       const matchDept = (u.dept || '').toLowerCase().includes(q);
-      return matchName || matchEmail || matchId || matchPhone || matchRole || matchDept;
+
+      return (
+        matchName ||
+        matchEmail ||
+        matchId ||
+        matchPhone ||
+        matchRole ||
+        matchDept
+      );
     }
 
     return true;
@@ -119,12 +127,17 @@ export default function ManageUsersPage() {
     const targetUser = users.find((u) => u.id === userId);
     if (!targetUser) return;
 
-    const newStatus = (targetUser.status || '').toLowerCase() === 'suspended' ? 'Active' : 'Suspended';
+    const newStatus =
+      (targetUser.status || '').toLowerCase() === 'suspended'
+        ? 'Active'
+        : 'Suspended';
+
     const updatedUser = { ...targetUser, status: newStatus };
 
     // Update parent lifted state
-    setUsers((prev) => prev.map((u) => (u.id === userId ? updatedUser : u)));
-    triggerToast(`User "${targetUser.name}" status updated to ${newStatus}.`);
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? updatedUser : u))
+    );
 
     // Sync with backend
     await updateUser(userId, { status: newStatus });
@@ -135,9 +148,13 @@ export default function ManageUsersPage() {
     const targetUser = users.find((u) => u.id === userId);
     if (!targetUser) return;
 
-    if (window.confirm(`Are you sure you want to permanently delete "${targetUser.name}" (${userId})?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to permanently delete "${targetUser.name}" (${userId})?`
+      )
+    ) {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
-      triggerToast(`User "${targetUser.name}" deleted successfully.`);
+
       await deleteUser(userId);
     }
   };
@@ -145,14 +162,17 @@ export default function ManageUsersPage() {
   // Callback: Save user (Create or Update from Modal)
   const handleSaveUser = async (userData) => {
     if (modalMode === 'edit') {
-      setUsers((prev) => prev.map((u) => (u.id === userData.id ? userData : u)));
-      triggerToast(`User "${userData.name}" updated successfully.`);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userData.id ? userData : u))
+      );
+
       await updateUser(userData.id, userData);
     } else {
       setUsers((prev) => [userData, ...prev]);
-      triggerToast(`New user "${userData.name}" created successfully.`);
+
       await createUser(userData);
     }
+
     handleCloseModal();
   };
 
@@ -164,28 +184,55 @@ export default function ManageUsersPage() {
         .concat(
           filteredUsers.map(
             (u) =>
-              `"${u.id}","${u.name}","${u.role}","${u.email}","${u.phone || ''}","${u.joined || ''}","${u.status || 'Active'}","${u.dept || ''}"`
+              `"${u.id}","${u.name}","${u.role}","${u.email}","${u.phone || ''
+              }","${u.joined || ''}","${u.status || 'Active'}","${u.dept || ''
+              }"`
           )
         )
         .join('\n');
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
+
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `digiconnect_users_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      'download',
+      `digiconnect_users_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast(`Exported ${filteredUsers.length} user records.`);
   };
 
   // Computed metric counts
   const totalCount = users.length;
-  const citizenCount = users.filter((u) => (u.role || '').toLowerCase() === 'citizen').length;
-  const officerCount = users.filter((u) => (u.role || '').toLowerCase() === 'officer').length;
-  const supervisorCount = users.filter((u) => (u.role || '').toLowerCase() === 'supervisor').length;
-  const grievanceCount = users.filter((u) => (u.role || '').toLowerCase() === 'grievance').length;
-  const adminCount = users.filter((u) => ['super_user', 'super_admin', 'admin'].includes((u.role || '').toLowerCase())).length;
-  const suspendedCount = users.filter((u) => (u.status || '').toLowerCase() === 'suspended').length;
+
+  const citizenCount = users.filter(
+    (u) => (u.role || '').toLowerCase() === 'citizen'
+  ).length;
+
+  const officerCount = users.filter(
+    (u) => (u.role || '').toLowerCase() === 'officer'
+  ).length;
+
+  const supervisorCount = users.filter(
+    (u) => (u.role || '').toLowerCase() === 'supervisor'
+  ).length;
+
+  const grievanceCount = users.filter(
+    (u) => (u.role || '').toLowerCase() === 'grievance'
+  ).length;
+
+  const adminCount = users.filter((u) =>
+    ['super_user', 'super_admin', 'admin'].includes(
+      (u.role || '').toLowerCase()
+    )
+  ).length;
+
+  const suspendedCount = users.filter(
+    (u) => (u.status || '').toLowerCase() === 'suspended'
+  ).length;
 
   return (
     <div className="admin-page-root">
@@ -198,7 +245,8 @@ export default function ManageUsersPage() {
           <div>
             <h1 className="page-title">User Management</h1>
             <p className="page-subtitle">
-              Full administrative directory and access control across all citizen and departmental roles.
+              Full administrative directory and access control across all
+              citizen and departmental roles.
             </p>
           </div>
         </div>
@@ -210,49 +258,76 @@ export default function ManageUsersPage() {
             value={totalCount}
             type="all"
             active={roleFilter === 'all' && !statusFilter}
-            onClick={() => { setRoleFilter('all'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('all');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Citizens"
             value={citizenCount}
             type="citizens"
             active={roleFilter === 'citizen'}
-            onClick={() => { setRoleFilter('citizen'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('citizen');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Officers"
             value={officerCount}
             type="officers"
             active={roleFilter === 'officer'}
-            onClick={() => { setRoleFilter('officer'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('officer');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Supervisors"
             value={supervisorCount}
             type="supervisors"
             active={roleFilter === 'supervisor'}
-            onClick={() => { setRoleFilter('supervisor'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('supervisor');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Grievance Officers"
             value={grievanceCount}
             type="grievance"
             active={roleFilter === 'grievance'}
-            onClick={() => { setRoleFilter('grievance'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('grievance');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Super Users"
             value={adminCount}
             type="admins"
             active={roleFilter === 'super_user'}
-            onClick={() => { setRoleFilter('super_user'); setStatusFilter(''); }}
+            onClick={() => {
+              setRoleFilter('super_user');
+              setStatusFilter('');
+            }}
           />
+
           <StatCard
             label="Suspended"
             value={suspendedCount}
             type="suspended"
             active={statusFilter === 'Suspended'}
-            onClick={() => { setRoleFilter('all'); setStatusFilter('Suspended'); }}
+            onClick={() => {
+              setRoleFilter('all');
+              setStatusFilter('Suspended');
+            }}
           />
         </div>
 
@@ -285,14 +360,6 @@ export default function ManageUsersPage() {
           onSave={handleSaveUser}
           onClose={handleCloseModal}
         />
-
-        {/* Dynamic Toast Feedback */}
-        {toastMessage && (
-          <div className="admin-toast-banner" role="status">
-            <span>✨</span>
-            <span>{toastMessage}</span>
-          </div>
-        )}
       </main>
     </div>
   );
