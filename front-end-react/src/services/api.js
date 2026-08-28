@@ -115,6 +115,114 @@ export const INITIAL_MOCK_APPLICATIONS = [
   }
 ];
 
+// Initial fallback mock users for Admin User Management
+export const INITIAL_MOCK_USERS = [
+  {
+    id: 'ADM-1001',
+    name: 'Super User',
+    role: 'super_user',
+    email: 'superuser@gov.in',
+    phone: '9876543299',
+    joined: '01 Jan 2020',
+    status: 'Active',
+    dept: 'IT Admin',
+    jurisdiction: 'All',
+    designation: 'Chief Administrator',
+    empId: 'ADM-001',
+  },
+  {
+    id: 'CIT-1001',
+    name: 'Ravi Kumar',
+    role: 'citizen',
+    email: 'ravi.k@gmail.com',
+    phone: '9876543200',
+    joined: '10 Jan 2024',
+    status: 'Active',
+    dept: '—',
+    jurisdiction: 'Secunderabad',
+    designation: '—',
+    empId: '—',
+  },
+  {
+    id: 'CIT-1002',
+    name: 'Sunita Verma',
+    role: 'citizen',
+    email: 'sunita.v@gmail.com',
+    phone: '9876543203',
+    joined: '18 Jan 2024',
+    status: 'Active',
+    dept: '—',
+    jurisdiction: 'Secunderabad',
+    designation: '—',
+    empId: '—',
+  },
+  {
+    id: 'OFF-1001',
+    name: 'Suresh Reddy',
+    role: 'officer',
+    email: 'suresh.reddy@gov.in',
+    phone: '9876543201',
+    joined: '15 Mar 2021',
+    status: 'Active',
+    dept: 'Revenue Department',
+    jurisdiction: 'Hyderabad North',
+    designation: 'MRO',
+    empId: 'EMP-1001',
+  },
+  {
+    id: 'OFF-1002',
+    name: 'Vikram Singh',
+    role: 'officer',
+    email: 'vikram.singh@gov.in',
+    phone: '9876543212',
+    joined: '22 Apr 2022',
+    status: 'Suspended',
+    dept: 'Police & Civic Admin',
+    jurisdiction: 'Hyderabad South',
+    designation: 'RI',
+    empId: 'EMP-1004',
+  },
+  {
+    id: 'SUP-1001',
+    name: 'Anita Sharma',
+    role: 'supervisor',
+    email: 'anita.sharma@gov.in',
+    phone: '9876543202',
+    joined: '20 Jun 2020',
+    status: 'Active',
+    dept: 'Health & Municipal Dept',
+    jurisdiction: 'Central Zone',
+    designation: 'Welfare Officer',
+    empId: 'EMP-1002',
+  },
+  {
+    id: 'GRV-1001',
+    name: 'Ravi Teja',
+    role: 'grievance',
+    email: 'ravi.teja@gov.in',
+    phone: '9876543205',
+    joined: '12 Nov 2022',
+    status: 'Active',
+    dept: 'Commercial Licensing Dept',
+    jurisdiction: 'Secunderabad Zone',
+    designation: 'Grievance Officer',
+    empId: 'EMP-1003',
+  },
+  {
+    id: 'CIT-1003',
+    name: 'Kaveri Devi',
+    role: 'citizen',
+    email: 'kaveri.d@gmail.com',
+    phone: '9876543209',
+    joined: '05 Feb 2024',
+    status: 'Pending',
+    dept: '—',
+    jurisdiction: 'Secunderabad',
+    designation: '—',
+    empId: '—',
+  },
+];
+
 // Helper to get request headers with current session
 function getHeaders() {
   let session = null;
@@ -125,8 +233,8 @@ function getHeaders() {
   }
   return {
     'Content-Type': 'application/json',
-    'x-role': session?.role || 'citizen',
-    'x-user-id': session?.id || 'CIT-1001',
+    'x-role': session?.role || 'super_user',
+    'x-user-id': session?.id || 'ADM-1001',
   };
 }
 
@@ -219,6 +327,89 @@ export async function withdrawApplicationApi(id) {
     return true;
   } catch (err) {
     console.warn('API withdrawal failed or backend offline, updating local state.', err.message);
+    return true;
+  }
+}
+
+/**
+ * Fetch all users (Admin / Super User)
+ */
+export async function getUsers() {
+  try {
+    const res = await fetch(`${API_BASE}/users`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP Error ${res.status}`);
+    }
+    const json = await res.json();
+    if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data;
+    }
+    return INITIAL_MOCK_USERS;
+  } catch (err) {
+    console.warn('Backend offline or unreachable, using safe mock users data.', err.message);
+    return INITIAL_MOCK_USERS;
+  }
+}
+
+/**
+ * Create a new user
+ */
+export async function createUser(userData) {
+  try {
+    const res = await fetch(`${API_BASE}/users`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(userData),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to create user`);
+    }
+    const json = await res.json();
+    return json.data || userData;
+  } catch (err) {
+    console.warn('Backend offline, proceeding with local creation.', err.message);
+    return userData;
+  }
+}
+
+/**
+ * Update user details
+ */
+export async function updateUser(id, updateData) {
+  try {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(updateData),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to update user ${id}`);
+    }
+    const json = await res.json();
+    return json.data || updateData;
+  } catch (err) {
+    console.warn('Backend offline, proceeding with local update.', err.message);
+    return updateData;
+  }
+}
+
+/**
+ * Delete a user
+ */
+export async function deleteUser(id) {
+  try {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to delete user ${id}`);
+    }
+    return true;
+  } catch (err) {
+    console.warn('Backend offline, proceeding with local deletion.', err.message);
     return true;
   }
 }
