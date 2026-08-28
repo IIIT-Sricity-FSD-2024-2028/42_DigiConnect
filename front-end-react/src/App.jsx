@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import Sidebar from './components/common/Sidebar';
 import Navbar from './components/common/Navbar';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
+import ApplyServicePage from './pages/citizen/ApplyServicePage';
+import TrackApplicationPage from './pages/citizen/TrackApplicationPage'
 import './App.css';
 
 export default function App() {
