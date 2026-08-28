@@ -6,7 +6,6 @@ import Modal from '../../components/common/Modal';
 import { getApplications, INITIAL_MOCK_APPLICATIONS } from '../../services/api';
 import '../../styles/applications.css';
 
-
 function FilterBar({ searchTerm, selectedStatus, onSearchChange, onStatusChange }) {
   const statuses = ['all', 'submitted', 'under-review', 'query', 'approved', 'rejected'];
 
@@ -63,7 +62,7 @@ function ApplicationList({ applications, onSelectApplication, onDownload }) {
 }
 
 // ── Parent Container Component ──
-export default function MyApplicationsPage() {
+export default function MyApplicationsPage({ onNavigate, showNavbar = false }) {
   const currentUser = { id: 'CIT-1001', name: 'Ravi Kumar', role: 'Citizen' };
 
   // Lifted State
@@ -101,18 +100,27 @@ export default function MyApplicationsPage() {
 
   return (
     <div>
-      {/* 1. Navbar using Props */}
-      <Navbar user={currentUser} />
+      {/* Optional Standalone Navbar */}
+      {showNavbar && <Navbar user={currentUser} />}
 
-      <main className="app-container">
+      <div>
         <div className="page-header">
           <div>
             <h1 className="page-title">My Applications</h1>
-            <p className="page-subtitle">Track and manage all your civic service requests.</p>
+            <p className="page-subtitle">Track and manage all your civic service requests in one place.</p>
           </div>
+          {onNavigate && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => onNavigate('track-application')}
+            >
+              🔍 Track Status
+            </button>
+          )}
         </div>
 
-        {/* 2. Stat Cards Summary Strip */}
+        {/* 1. Stat Cards Summary Strip */}
         <div className="summary-strip">
           <StatCard label="Total" value={applications.length} type="all" active={selectedStatus === 'all'} onClick={() => setSelectedStatus('all')} />
           <StatCard label="Under Review" value={applications.filter((a) => a.status === 'under-review').length} type="under-review" active={selectedStatus === 'under-review'} onClick={() => setSelectedStatus('under-review')} />
@@ -121,7 +129,7 @@ export default function MyApplicationsPage() {
           <StatCard label="Rejected" value={applications.filter((a) => a.status === 'rejected').length} type="rejected" active={selectedStatus === 'rejected'} onClick={() => setSelectedStatus('rejected')} />
         </div>
 
-        {/* 3. FilterBar with Child-to-Parent Callbacks */}
+        {/* 2. FilterBar with Child-to-Parent Callbacks */}
         <FilterBar
           searchTerm={searchTerm}
           selectedStatus={selectedStatus}
@@ -135,14 +143,14 @@ export default function MyApplicationsPage() {
           </div>
         </div>
 
-        {/* 4. Application List using Props & Callbacks */}
+        {/* 3. Application List using Props & Callbacks */}
         <ApplicationList
           applications={filteredApplications}
           onSelectApplication={setSelectedApp}
           onDownload={handleDownload}
         />
 
-        {/* 5. Modal Component for Details */}
+        {/* 4. Modal Component for Details */}
         <Modal
           isOpen={Boolean(selectedApp)}
           title={selectedApp ? `${selectedApp.serviceName} (${selectedApp.id})` : ''}
@@ -162,7 +170,7 @@ export default function MyApplicationsPage() {
             </div>
           )}
         </Modal>
-      </main>
+      </div>
     </div>
   );
 }
