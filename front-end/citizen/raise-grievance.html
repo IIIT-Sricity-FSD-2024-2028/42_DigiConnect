@@ -33,7 +33,7 @@
             <div style="display:grid;grid-template-columns:1fr 320px;gap:var(--space-xl);align-items:start;">
 
                 <!-- Form -->
-                <div>
+                <div style="min-width:0;">
                     <!-- Stepper -->
                     <div class="stepper" id="grievStepper" style="margin-bottom:var(--space-xl);">
                         <div class="stepper-step active" data-step="1">
@@ -226,7 +226,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label">Preferred Resolution</label>
-                                        <select class="form-input">
+                                        <select class="form-input" id="gResolution">
                                             <option>Process my application immediately</option>
                                             <option>Re-examine my application</option>
                                             <option>Action against officer</option>
@@ -237,7 +237,7 @@
                                     </div>
                                     <div class="form-group col-span-full">
                                         <label class="form-label">Names of Involved Officers (if known)</label>
-                                        <input type="text" class="form-input"
+                                        <input type="text" class="form-input" id="gOfficers"
                                             placeholder="e.g. Suresh Reddy (VRO), Anita Sharma (RI)" />
                                     </div>
                                 </div>
@@ -270,56 +270,101 @@
                                         style="font-size:0.9375rem;font-weight:600;color:var(--slate-600);margin-bottom:4px;">
                                         Click to attach files</div>
                                     <div style="font-size:0.8rem;color:var(--color-text-muted);">Screenshots, documents,
-                                        receipts · PDF, JPG, PNG · Max 10MB each · Up to 5 files</div>
+                                        receipts · PDF, JPG, PNG · Max 5MB each · Up to 5 files</div>
                                 </div>
                                 <div id="evidenceFiles" style="display:flex;flex-direction:column;gap:var(--space-sm);">
                                 </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);">
+                            <button class="btn btn-outline" onclick="gNextStep(2)">← Back</button>
+                            <button class="btn btn-primary" onclick="gNextStep(4)">Continue to Confirmation →</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Review & Confirmation -->
+                    <div id="gStep4" style="display:none;">
+                        <div class="form-section">
+                            <div class="form-section-header">
+                                <span class="form-section-number">04</span>
+                                <span class="form-section-title">Review & Confirmation</span>
+                                <p class="form-section-desc">Please review your grievance details and accept the declarations before final submission.</p>
+                            </div>
+                            <div class="form-section-body">
+                                <div class="review-card" style="margin-bottom:var(--space-lg);">
+                                    <div class="review-card-header">Grievance Summary</div>
+                                    <div class="review-row">
+                                        <span class="review-key">Category</span>
+                                        <span class="review-val" id="revCat">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Related Application ID</span>
+                                        <span class="review-val" id="revApp" style="font-family:var(--font-mono);">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Department / Service</span>
+                                        <span class="review-val" id="revDept">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Priority</span>
+                                        <span class="review-val" id="revPriority">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Grievance Title</span>
+                                        <span class="review-val" id="revTitle" style="text-align:right;font-weight:600;">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Description</span>
+                                        <span class="review-val" id="revDesc" style="text-align:left;font-weight:400;color:var(--color-text);white-space:pre-wrap;max-height:100px;overflow-y:auto;">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Preferred Resolution</span>
+                                        <span class="review-val" id="revResolution">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Involved Officers</span>
+                                        <span class="review-val" id="revOfficers">—</span>
+                                    </div>
+                                    <div class="review-row">
+                                        <span class="review-key">Attached Evidence</span>
+                                        <span class="review-val" id="revEvidence">—</span>
+                                    </div>
+                                </div>
 
                                 <div style="margin-top:var(--space-xl);">
-                                    <div
-                                        style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:var(--space-sm);">
-                                        Consent & Declaration</div>
+                                    <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:var(--space-sm);">
+                                        Consent & Declaration
+                                    </div>
                                     <div style="display:flex;flex-direction:column;gap:var(--space-sm);">
-                                        <label
-                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
-                                            <input type="checkbox" id="consent1"
-                                                style="margin-top:2px;accent-color:var(--navy-600);" />
-                                            <span>I declare that the information provided in this grievance is true and
-                                                accurate to the best of my knowledge.</span>
+                                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent1" style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I declare that the information provided in this grievance is true and accurate to the best of my knowledge.</span>
                                         </label>
-                                        <label
-                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
-                                            <input type="checkbox" id="consent2"
-                                                style="margin-top:2px;accent-color:var(--navy-600);" />
-                                            <span>I understand that filing a false grievance may result in action being
-                                                taken against me.</span>
+                                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent2" style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I understand that filing a false grievance may result in action being taken against me.</span>
                                         </label>
-                                        <label
-                                            style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
-                                            <input type="checkbox" id="consent3"
-                                                style="margin-top:2px;accent-color:var(--navy-600);" />
-                                            <span>I consent to my grievance details being shared with the concerned
-                                                department for investigation.</span>
+                                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.875rem;">
+                                            <input type="checkbox" id="consent3" style="margin-top:2px;accent-color:var(--navy-600);" />
+                                            <span>I consent to my grievance details being shared with the concerned department for investigation.</span>
                                         </label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-top:var(--space-lg);">
-                            <button class="btn btn-outline" onclick="gNextStep(2)">← Back</button>
+                            <button class="btn btn-outline" onclick="gNextStep(3)">← Back</button>
                             <button class="btn btn-primary" onclick="submitGrievance()" id="gSubmitBtn">
-                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                 </svg>
                                 Submit Grievance
                             </button>
                         </div>
                     </div>
 
-                    <!-- Step 4: Confirmation -->
-                    <div id="gStep4" style="display:none;">
+                    <!-- Step Success: Post-Submission Confirmation -->
+                    <div id="gStepSuccess" style="display:none;">
                         <div style="text-align:center;padding:var(--space-3xl) var(--space-xl);">
                             <div
                                 style="width:80px;height:80px;background:var(--green-100);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto var(--space-xl);">
@@ -352,7 +397,7 @@
                                     <div class="review-item"><span class="review-key">Expected Resolution</span><span
                                             class="review-value">Within 7 working days</span></div>
                                     <div class="review-item"><span class="review-key">Status</span><span><span
-                                                class="badge badge-info">Filed</span></span></div>
+                                                 class="badge badge-info">Filed</span></span></div>
                                 </div>
                             </div>
                             <div style="display:flex;gap:var(--space-md);justify-content:center;flex-wrap:wrap;">

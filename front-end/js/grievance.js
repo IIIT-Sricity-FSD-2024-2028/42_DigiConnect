@@ -27,8 +27,18 @@ function localAuditEntry(action, details) {
   setAuditLogs(logs);
 }
 
-function getCatLabel(c) { return { delay: 'Service Delay', rejection: 'App. Rejection', payment: 'Payment Issue', misconduct: 'Officer Misconduct' }[c] || 'Other'; }
-function getCatClass(c) { return { delay: 'cat-delay', rejection: 'cat-rejection', payment: 'cat-payment', misconduct: 'cat-misconduct' }[c] || ''; }
+function getCatLabel(c) {
+  return {
+    delay: 'Delay in Service',
+    rejection: 'Wrongful Rejection',
+    misconduct: 'Officer Misconduct',
+    technical: 'Technical Issue',
+    'wrong-info': 'Wrong Information Issued',
+    payment: 'Payment Issue',
+    other: 'Other Issue',
+  }[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Other');
+}
+function getCatClass(c) { return { delay: 'cat-delay', rejection: 'cat-rejection', payment: 'cat-payment', misconduct: 'cat-misconduct', technical: 'cat-delay', 'wrong-info': 'cat-rejection' }[c] || ''; }
 
 // ══════════════════════════════════════════
 // Citizen: Raise Grievance
@@ -142,6 +152,26 @@ export function initRaiseGrievance() {
       }
     }
 
+    // Populate review summary when entering step 4 (Review & Confirmation)
+    if (step === 4) {
+      const tc = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      tc('revCat', getCatLabel(selectedCategory));
+      tc('revApp', document.getElementById('gAppId')?.value?.trim() || 'None (General complaint)');
+      tc('revDept', document.getElementById('gDept')?.value || 'Not specified');
+      
+      const pVal = document.getElementById('gPriority')?.value || 'normal';
+      const pLabels = { normal: 'Normal (7 working days)', high: 'High – Affecting livelihood/health (3 working days)', urgent: 'Urgent – Critical / Emergency (24 hours)' };
+      tc('revPriority', pLabels[pVal] || pVal);
+      
+      tc('revTitle', document.getElementById('gTitle')?.value?.trim() || '—');
+      tc('revDesc', document.getElementById('gDesc')?.value?.trim() || '—');
+      tc('revResolution', document.getElementById('gResolution')?.value || 'Process my application immediately');
+      tc('revOfficers', document.getElementById('gOfficers')?.value?.trim() || 'None specified');
+      
+      const evNames = _selectedEvidenceFiles.map(f => f.name).join(', ');
+      tc('revEvidence', evNames || 'No files attached (Optional)');
+    }
+
     // Hide all steps
     [1, 2, 3, 4].forEach(s => {
       const el = document.getElementById('gStep' + s);
@@ -154,9 +184,18 @@ export function initRaiseGrievance() {
       }
     });
 
+    const succEl = document.getElementById('gStepSuccess');
+    if (succEl) succEl.style.display = 'none';
+
+    const sb = document.getElementById('gSidebar');
+    if (sb) sb.style.display = '';
+    const grid = sb?.parentElement;
+    if (grid) grid.style.gridTemplateColumns = '';
+
     const target = document.getElementById('gStep' + step);
     if (target) target.style.display = 'block';
     currentStep = step;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // ── Master Prompt Section 22: One-Click Grievance Appeal Pre-fill ──
@@ -221,7 +260,7 @@ export function initRaiseGrievance() {
     const c2 = document.getElementById('consent2')?.checked;
     const c3 = document.getElementById('consent3')?.checked;
     if (!c1 || !c2 || !c3) {
-      if(window.showToast) window.showToast('Please agree to all declarations.', 'warning');
+      if(window.showToast) window.showToast('Please agree to all declarations before submitting.', 'warning');
       return;
     }
 
@@ -235,7 +274,7 @@ export function initRaiseGrievance() {
       const subject = document.getElementById('gTitle')?.value?.trim();
       const description = document.getElementById('gDesc')?.value?.trim();
       const relatedApp = document.getElementById('gAppId')?.value?.trim();
-      const priority = document.getElementById('gPriority')?.value || 'medium';
+      const priority = document.getElementById('gPriority')?.value || 'normal';
 
       let payload;
       if (_selectedEvidenceFiles && _selectedEvidenceFiles.length > 0) {
@@ -260,7 +299,16 @@ export function initRaiseGrievance() {
 
       apiRaiseGrievance(payload).then(res => {
         const newGrievance = res.data;
-        window.gNextStep(4);
+        
+        // Hide all steps
+        [1, 2, 3, 4].forEach(s => {
+          const el = document.getElementById('gStep' + s);
+          if (el) el.style.display = 'none';
+        });
+
+        // Show success screen
+        const succEl = document.getElementById('gStepSuccess');
+        if (succEl) succEl.style.display = 'block';
         
         const tc = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         tc('newGrvId', newGrievance.id);
@@ -284,10 +332,10 @@ export function initRaiseGrievance() {
         if(window.showToast) window.showToast(e.message || 'Failed to submit grievance', 'error');
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = 'Submit Grievance';
+          submitBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg> Submit Grievance';
         }
       });
-    }, 1200);
+    }, 800);
   };
 }
 
