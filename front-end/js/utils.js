@@ -572,3 +572,126 @@ export function formatNum(val) {
   return (Number(val) || 0).toLocaleString('en-IN');
 }
 
+/**
+ * Official Digital Certificate Generator and Downloader
+ * @param {Object} app - Application record
+ */
+export function downloadDigitalCertificate(app) {
+  if (!app) {
+    if (window.showToast) window.showToast('No application record provided.', 'warning');
+    return;
+  }
+
+  // If backend generated certificate exists, open it directly
+  if (app.certificateId) {
+    window.open(`http://localhost:3000/api/v1/certificates/${app.certificateId}`, '_blank');
+    if (window.showToast) window.showToast(`Certificate opened for ${app.id}`, 'success');
+    return;
+  }
+
+  const certWindow = window.open('', '_blank');
+  if (!certWindow) {
+    if (window.showToast) window.showToast('Popup blocked. Please allow popups to view certificate.', 'warning');
+    return;
+  }
+
+  const certId = app.certificateId || `CERT-${(app.id || 'APP').replace(/[^A-Z0-9]/gi, '').slice(-4)}-${new Date().getFullYear()}`;
+  const citizenName = app.citizenName || app.applicantName || app.citizen || 'Authorized Citizen';
+  const serviceName = app.serviceName || app.service || 'Citizen Service';
+  const dept = app.dept || app.departmentName || app.department || 'Government Department';
+  const jurisdiction = app.jurisdiction || app.jurisdictionName || 'Secunderabad';
+  const officerName = app.officerName || app.assignedOfficerName || app.officer || 'Competent Authority';
+  const approvalDate = app.approvedDate || app.completedDate || app.updatedAt
+    ? new Date(app.approvedDate || app.completedDate || app.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const certHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificate - ${serviceName} (${app.id})</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; text-align: center; }
+    .cert-container { max-width: 750px; margin: 0 auto; background: white; border: 12px double #1e3a8a; padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
+    .header { border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
+    .emblem { font-size: 3rem; margin-bottom: 10px; }
+    .title { font-size: 1.8rem; font-weight: 800; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+    .sub { font-size: 0.95rem; color: #64748b; margin-top: 5px; }
+    .details-table { width: 100%; border-collapse: collapse; margin: 25px 0; text-align: left; }
+    .details-table td { padding: 10px 14px; border: 1px solid #e2e8f0; font-size: 0.95rem; }
+    .details-table td:first-child { font-weight: bold; background: #f1f5f9; width: 35%; }
+    .footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 50px; padding-top: 20px; border-top: 1px dashed #cbd5e1; }
+    .sign { text-align: center; }
+    .sign-line { width: 180px; border-bottom: 1px solid #0f172a; margin-bottom: 6px; }
+    .qr-mock { width: 75px; height: 75px; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; border-radius: 4px; line-height: 1.2; text-align: center; }
+    .btn-bar { margin-top: 30px; display: flex; gap: 12px; justify-content: center; }
+    .btn-action { padding: 10px 24px; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
+    .btn-print { background: #1e3a8a; }
+    .btn-download { background: #047857; }
+    @media print {
+      body { background: white; padding: 0; }
+      .cert-container { box-shadow: none; border-color: #000; }
+      .btn-bar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cert-container">
+    <div class="header">
+      <div class="emblem">🏛️</div>
+      <div class="title">Government of India & State Administration</div>
+      <div class="sub">Unified Citizen Service & Delivery Platform — DigiConnect</div>
+    </div>
+    <h2 style="color:#047857; margin:0 0 15px;">OFFICIAL CERTIFICATE</h2>
+    <p style="color:#64748b; font-size:0.9rem;">Certificate ID: <strong>${certId}</strong> &nbsp;|&nbsp; Reference ID: <strong>${app.id}</strong></p>
+    
+    <table class="details-table">
+      <tr><td>Service Name</td><td><strong>${serviceName}</strong></td></tr>
+      <tr><td>Applicant Name</td><td><strong>${citizenName}</strong></td></tr>
+      <tr><td>Department</td><td>${dept}</td></tr>
+      <tr><td>Jurisdiction / Region</td><td>${jurisdiction}</td></tr>
+      <tr><td>Approval Date</td><td>${approvalDate}</td></tr>
+      <tr><td>Issuing Officer</td><td>${officerName}</td></tr>
+      <tr><td>Status</td><td><span style="color:#047857; font-weight:bold;">Digitally Verified & Approved</span></td></tr>
+    </table>
+
+    <div class="footer">
+      <div class="qr-mock">DIGITAL QR<br>VERIFIED<br>✔</div>
+      <div class="sign">
+        <div class="sign-line"></div>
+        <div style="font-size:0.85rem; font-weight:bold;">${officerName}</div>
+        <div style="font-size:0.75rem; color:#64748b;">${dept}</div>
+      </div>
+    </div>
+
+    <div class="btn-bar">
+      <button class="btn-action btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <button class="btn-action btn-download" onclick="downloadDoc()">⬇️ Download HTML</button>
+    </div>
+  </div>
+  <script>
+    function downloadDoc() {
+      const clone = document.documentElement.cloneNode(true);
+      const btns = clone.querySelector('.btn-bar');
+      if (btns) btns.remove();
+      const blob = new Blob(['<!DOCTYPE html>\\n' + clone.outerHTML], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Certificate_${app.id || 'document'}.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  <\/script>
+</body>
+</html>`;
+
+  certWindow.document.write(certHtml);
+  certWindow.document.close();
+  if (window.showToast) window.showToast(`Certificate opened for ${app.id}`, 'success');
+}
+window.downloadDigitalCertificate = downloadDigitalCertificate;
+
