@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>National Application Analytics – DigiConnect Central Government</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .filter-pill-group {
+            display: inline-flex;
+            background: var(--slate-100);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            gap: 2px;
+        }
+        .filter-pill {
+            border: none;
+            background: transparent;
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--slate-600);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-pill.active {
+            background: #ffffff;
+            color: var(--navy-900);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .load-more-container {
+            display: flex;
+            justify-content: center;
+            padding: 12px 16px;
+            border-top: 1px solid var(--slate-100);
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body data-page="central-application-analytics">
+    <div class="app-layout">
+        <!-- Sidebar (Standard Central Admin sidebar — no new sidebar items) -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header & Back Navigation -->
+            <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:var(--space-lg);">
+                <div>
+                    <a href="dashboard.html" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding-left:0;color:var(--navy-600);font-weight:700;">
+                        ← Back to National Dashboard
+                    </a>
+                    <h1 class="page-title">National Application Analytics</h1>
+                    <p class="page-subtitle">Lifecycle velocity, SLA turnaround, completion rates and state-by-state throughput.</p>
+                </div>
+            </div>
+
+            <!-- Summary KPI Cards -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-md);margin-bottom:var(--space-xl);">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">📋</div>
+                    <div>
+                        <div class="stat-value" id="kpi-total">0</div>
+                        <div class="stat-label">Total Submissions</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;" id="kpi-states-label">Across federated states</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#f0fdf4;color:#16a34a;">✅</div>
+                    <div>
+                        <div class="stat-value" id="kpi-completed" style="color:#16a34a;">0</div>
+                        <div class="stat-label">Completed & Issued</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;" id="kpi-completion-rate">0.0% completion rate</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fefce8;color:#ca8a04;">⏳</div>
+                    <div>
+                        <div class="stat-value" id="kpi-pending" style="color:#d97706;">0</div>
+                        <div class="stat-label">In Verification Queue</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Pending department review</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fdf2f8;color:#db2777;">⏱️</div>
+                    <div>
+                        <div class="stat-value" id="kpi-sla">95.0%</div>
+                        <div class="stat-label">National SLA Compliance</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Target: &gt;90.0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend & Status Breakdown -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(400px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">National Velocity Trend</span>
+                        <div class="filter-pill-group" style="padding:2px;">
+                            <button type="button" class="filter-pill active" onclick="switchTrend('monthly', this)" style="padding:3px 8px;font-size:0.75rem;">Monthly</button>
+                            <button type="button" class="filter-pill" onclick="switchTrend('weekly', this)" style="padding:3px 8px;font-size:0.75rem;">Weekly</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:var(--space-md);">
+                        <div id="appVelocityChart" style="min-height:220px;"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">Top 8 States by Volume</span>
+                        <span class="badge badge-info">Submissions</span>
+                    </div>
+                    <div class="card-body" style="padding:var(--space-md);">
+                        <div id="topStatesAppChart" style="min-height:220px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- State Detailed Applications Table -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="card-title">State-by-State Application Lifecycle</span>
+                        <div style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Status distribution and resolution efficiency per state government</div>
+                    </div>
+                    <span class="badge badge-neutral" id="stateAppsCountBadge">Showing 5 of 28</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>State</th>
+                                    <th>Total Applications</th>
+                                    <th>Completed</th>
+                                    <th>Pending</th>
+                                    <th>Rejected</th>
+                                    <th>Queries</th>
+                                    <th>Resolution Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stateAppsTableTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="load-more-container" id="appLoadMoreContainer">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnLoadMoreApp" onclick="loadMoreAppRows()">
+                            Load More States (Showing <span id="appShownCount">5</span> of <span id="appTotalCount">28</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getNationalAnalyticsData, formatNum } from '../js/national-analytics.js';
+        import { renderTrendChart, renderBarChart } from '../js/chart-renderer.js';
+
+        let nationalData = null;
+        let activeTrend = 'monthly';
+        let appLimit = 5;
+
+        initPage({
+            title: 'National Application Analytics',
+            breadcrumbs: [{ label: 'Central Government' }, { label: 'National Dashboard', href: 'central-admin/dashboard.html' }, { label: 'Application Analytics' }],
+            requiredRole: 'central_admin'
+        });
+
+        window.switchTrend = (period, btn) => {
+            activeTrend = period;
+            btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderVelocityChart();
+        };
+
+        function renderVelocityChart() {
+            if (!nationalData) return;
+            const container = document.getElementById('appVelocityChart');
+            const points = (nationalData.trends[activeTrend] || nationalData.trends.monthly).map(p => ({
+                label: p.label,
+                value: p.apps
+            }));
+            renderTrendChart(container, points, {
+                height: 220,
+                lineColor: '#2563eb',
+                fillColor: 'rgba(37, 99, 235, 0.08)',
+                formatValue: (v) => formatNum(v)
+            });
+        }
+
+        function renderTopStatesChart() {
+            if (!nationalData) return;
+            const top8 = nationalData.states.slice(0, 8);
+            const chartData = top8.map(s => ({
+                label: s.name,
+                value: s.applications,
+                color: '#3b82f6'
+            }));
+            renderBarChart(document.getElementById('topStatesAppChart'), chartData, {
+                height: 220,
+                formatValue: (v) => formatNum(v)
+            });
+        }
+
+        function renderStateAppsTable() {
+            if (!nationalData) return;
+            const states = nationalData.states;
+            const visible = states.slice(0, appLimit);
+            const tbody = document.getElementById('stateAppsTableTbody');
+
+            tbody.innerHTML = visible.map(s => {
+                const resRate = s.applications > 0 ? (((s.completed + s.rejected) / s.applications) * 100).toFixed(1) : '0.0';
+                return `
+                    <tr>
+                        <td style="font-weight:700;color:var(--navy-900);">🏛️ ${s.name} <span class="badge badge-neutral">${s.code}</span></td>
+                        <td style="font-weight:600;">${formatNum(s.applications)}</td>
+                        <td><span class="badge badge-success">${formatNum(s.completed)}</span></td>
+                        <td><span class="badge badge-warning">${formatNum(s.pending)}</span></td>
+                        <td><span class="badge badge-danger">${formatNum(s.rejected)}</span></td>
+                        <td><span class="badge badge-purple">${formatNum(s.query)}</span></td>
+                        <td><strong style="color:${resRate > 70 ? '#16a34a' : '#d97706'};">${resRate}%</strong></td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('appShownCount').textContent = visible.length;
+            document.getElementById('appTotalCount').textContent = states.length;
+            document.getElementById('stateAppsCountBadge').textContent = `Showing ${visible.length} of ${states.length}`;
+            const container = document.getElementById('appLoadMoreContainer');
+            if (visible.length >= states.length) {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'flex';
+            }
+        }
+
+        window.loadMoreAppRows = () => {
+            appLimit += 5;
+            renderStateAppsTable();
+        };
+
+        async function initData() {
+            nationalData = await getNationalAnalyticsData();
+
+            const total = nationalData.totalApplications || 0;
+            const completed = nationalData.appOverview?.completed || 0;
+            const pending = nationalData.appOverview?.pending || 0;
+            const rate = total > 0 ? ((completed / total) * 100).toFixed(1) : '0.0';
+
+            document.getElementById('kpi-total').textContent = formatNum(total);
+            document.getElementById('kpi-completed').textContent = formatNum(completed);
+            document.getElementById('kpi-pending').textContent = formatNum(pending);
+            const rateEl = document.getElementById('kpi-completion-rate');
+            if (rateEl) rateEl.textContent = `${rate}% completion rate`;
+            const statesLabel = document.getElementById('kpi-states-label');
+            if (statesLabel) statesLabel.textContent = `Across ${nationalData.totalStates} federated states`;
+
+            renderVelocityChart();
+            renderTopStatesChart();
+            renderStateAppsTable();
+        }
+
+        initData();
+    </script>
+</body>
+</html>

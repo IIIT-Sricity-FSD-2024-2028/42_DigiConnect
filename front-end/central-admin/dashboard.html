@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>National Dashboard – DigiConnect Central Government</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .filter-pill-group {
+            display: inline-flex;
+            background: var(--slate-100);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            gap: 2px;
+        }
+        .filter-pill {
+            border: none;
+            background: transparent;
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--slate-600);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-pill.active {
+            background: #ffffff;
+            color: var(--navy-900);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .app-status-bar {
+            display: flex;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: var(--slate-100);
+            margin-bottom: var(--space-md);
+        }
+        .app-status-seg {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .status-chip-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+        }
+        .status-chip {
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: var(--slate-50);
+            border: 1px solid var(--slate-200);
+            display: flex;
+            flex-direction: column;
+        }
+        .status-chip-val {
+            font-size: 1.125rem;
+            font-weight: 800;
+            color: var(--navy-900);
+            margin-top: 2px;
+        }
+        .status-chip-lbl {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--slate-500);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .load-more-container {
+            display: flex;
+            justify-content: center;
+            padding: 12px 16px;
+            border-top: 1px solid var(--slate-100);
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body data-page="central-dashboard">
+    <div class="app-layout">
+        <!-- Sidebar (Remains conceptually standard: National Overview, Federation Management, Account) -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- 1. NATIONAL DASHBOARD HEADER -->
+            <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:var(--space-lg);">
+                <div>
+                    <h1 class="page-title">National Dashboard</h1>
+                    <p class="page-subtitle">National overview and performance of the DigiConnect platform.</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div class="filter-pill-group" id="dateFilterGroup">
+                        <button type="button" class="filter-pill" data-period="today" onclick="changeDateFilter('today')">Today</button>
+                        <button type="button" class="filter-pill" data-period="week" onclick="changeDateFilter('week')">This Week</button>
+                        <button type="button" class="filter-pill active" data-period="month" onclick="changeDateFilter('month')">This Month</button>
+                        <button type="button" class="filter-pill" data-period="year" onclick="changeDateFilter('year')">This Year</button>
+                        <button type="button" class="filter-pill" data-period="custom" onclick="changeDateFilter('custom')">Custom Range</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. TOP SUMMARY CARDS (5 Cards with Platform Fee) -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-md);margin-bottom:var(--space-xl);">
+                <!-- Card 1: Total States -->
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">🏛️</div>
+                    <div>
+                        <div class="stat-value" id="card-total-states">0</div>
+                        <div class="stat-label">Total States</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Active States: <span id="card-active-states" style="font-weight:700;color:var(--navy-900);">0</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Total Citizens -->
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fdf2f8;color:#db2777;">👥</div>
+                    <div>
+                        <div class="stat-value" id="card-total-citizens">0</div>
+                        <div class="stat-label">Total Citizens</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Across all states</div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Applications -->
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fefce8;color:#ca8a04;">📋</div>
+                    <div>
+                        <div class="stat-value" id="card-total-apps">0</div>
+                        <div class="stat-label">Total Applications</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Across all states</div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Total Revenue -->
+                <div class="stat-card" style="border:2px solid #2563eb;">
+                    <div class="stat-icon" style="background:#2563eb;color:#ffffff;">💰</div>
+                    <div>
+                        <div class="stat-value" id="card-total-revenue" style="color:#2563eb;">₹0</div>
+                        <div class="stat-label">Total Revenue</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Across all states</div>
+                    </div>
+                </div>
+
+                <!-- Card 5: Total Platform Fee -->
+                <div class="stat-card" style="border:1.5px solid #0284c7;">
+                    <div class="stat-icon" style="background:#e0f2fe;color:#0284c7;">⚡</div>
+                    <div>
+                        <div class="stat-value" id="card-total-platform-fee" style="color:#0284c7;">₹0</div>
+                        <div class="stat-label">Total Platform Fee</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Central e-Gov share</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW 1: APPLICATION OVERVIEW & APPLICATION TREND -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <!-- 3. APPLICATION OVERVIEW -->
+                <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">Application Overview</span>
+                        <span class="badge badge-neutral" id="appTotalBadge">0 Total</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Segmented progress bar -->
+                        <div class="app-status-bar" id="appStatusBar">
+                            <div class="app-status-seg" style="width:0%;background:#22c55e;" title="Completed"></div>
+                        </div>
+
+                        <!-- Status chips -->
+                        <div class="status-chip-grid">
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#0284c7;"></span> Submitted</div>
+                                <div class="status-chip-val" id="st-submitted">0</div>
+                            </div>
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span> In Progress</div>
+                                <div class="status-chip-val" id="st-in-progress">0</div>
+                            </div>
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span> Pending</div>
+                                <div class="status-chip-val" id="st-pending">0</div>
+                            </div>
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;"></span> Completed</div>
+                                <div class="status-chip-val" id="st-completed">0</div>
+                            </div>
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;"></span> Rejected</div>
+                                <div class="status-chip-val" id="st-rejected">0</div>
+                            </div>
+                            <div class="status-chip">
+                                <div class="status-chip-lbl"><span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;"></span> Query Raised</div>
+                                <div class="status-chip-val" id="st-query">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 14. APPLICATION TREND -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <span class="card-title">Application Trend</span>
+                            <div style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Application submissions velocity</div>
+                        </div>
+                        <a href="application-analytics.html" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                            Inspect Application Analytics →
+                        </a>
+                    </div>
+                    <div style="padding:10px 16px 0 16px;display:flex;justify-content:flex-end;">
+                        <div class="filter-pill-group" style="padding:2px;">
+                            <button type="button" class="filter-pill active" data-trend="monthly" onclick="switchAppTrend('monthly', this)" style="padding:3px 8px;font-size:0.75rem;">Monthly</button>
+                            <button type="button" class="filter-pill" data-trend="weekly" onclick="switchAppTrend('weekly', this)" style="padding:3px 8px;font-size:0.75rem;">Weekly</button>
+                            <button type="button" class="filter-pill" data-trend="daily" onclick="switchAppTrend('daily', this)" style="padding:3px 8px;font-size:0.75rem;">Daily</button>
+                            <button type="button" class="filter-pill" data-trend="yearly" onclick="switchAppTrend('yearly', this)" style="padding:3px 8px;font-size:0.75rem;">Yearly</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:var(--space-md);">
+                        <div id="appTrendChartContainer" style="min-height:180px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. & 5. STATE-WISE REVENUE SECTION -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <span class="card-title">State-Wise Revenue</span>
+                        <div style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Revenue collection and share percentage across state governments</div>
+                    </div>
+                    <a href="revenue-analysis.html" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                        Inspect Revenue Analysis →
+                    </a>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table" id="stateRevenueTable">
+                            <thead>
+                                <tr>
+                                    <th>State</th>
+                                    <th>Applications</th>
+                                    <th>Dept. Share (₹)</th>
+                                    <th>Platform Fee (₹)</th>
+                                    <th>Total Revenue (₹)</th>
+                                    <th>Revenue Share</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stateRevenueTbody">
+                                <!-- Loaded dynamically: 5 items initially -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="load-more-container" id="revenueLoadMoreContainer">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnLoadMoreRevenue" onclick="loadMoreRevenueRows()">
+                            Load More States (Showing <span id="revShownCount">4</span> of <span id="revTotalCount">4</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 15. STATE PERFORMANCE SECTION -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <span class="card-title">State Performance</span>
+                        <div style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">End-to-end application lifecycle and completion breakdown per state</div>
+                    </div>
+                    <a href="application-analytics.html" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:4px;">
+                        Application Analytics →
+                    </a>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table" id="statePerformanceTable">
+                            <thead>
+                                <tr>
+                                    <th>State</th>
+                                    <th>Applications</th>
+                                    <th>Completed</th>
+                                    <th>Pending</th>
+                                    <th>Rejected</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statePerformanceTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="load-more-container" id="perfLoadMoreContainer">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnLoadMorePerf" onclick="loadMorePerfRows()">
+                            Load More States (Showing <span id="perfShownCount">4</span> of <span id="perfTotalCount">4</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 16. & 17. NATIONAL & STATE-WISE GRIEVANCE OVERVIEWS -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <!-- 16. NATIONAL GRIEVANCE OVERVIEW -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <span class="card-title">National Grievance Overview</span>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">Aggregated monitoring across all departments</div>
+                        </div>
+                        <span class="badge badge-warning">Monitoring Only</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-chip-grid" style="grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));">
+                            <div class="status-chip" style="border-left:3px solid var(--navy-600);">
+                                <div class="status-chip-lbl">Total Grievances</div>
+                                <div class="status-chip-val" id="grv-total">0</div>
+                            </div>
+                            <div class="status-chip" style="border-left:3px solid #f59e0b;">
+                                <div class="status-chip-lbl">Pending</div>
+                                <div class="status-chip-val" style="color:#d97706;" id="grv-pending">0</div>
+                            </div>
+                            <div class="status-chip" style="border-left:3px solid #3b82f6;">
+                                <div class="status-chip-lbl">In Progress</div>
+                                <div class="status-chip-val" style="color:#2563eb;" id="grv-in-progress">0</div>
+                            </div>
+                            <div class="status-chip" style="border-left:3px solid #22c55e;">
+                                <div class="status-chip-lbl">Resolved</div>
+                                <div class="status-chip-val" style="color:#16a34a;" id="grv-resolved">0</div>
+                            </div>
+                            <div class="status-chip" style="border-left:3px solid #ef4444;">
+                                <div class="status-chip-lbl">Escalated</div>
+                                <div class="status-chip-val" style="color:#dc2626;" id="grv-escalated">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 17. STATE-WISE GRIEVANCE OVERVIEW -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">State-Wise Grievance Overview</span>
+                        <span class="badge badge-neutral">Top Volume</span>
+                    </div>
+                    <div class="card-body" style="padding:0;">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>State</th>
+                                        <th>Total Grievances</th>
+                                        <th>Pending</th>
+                                        <th>Resolved</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stateGrievanceTbody">
+                                    <!-- Loaded dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="load-more-container" id="grvLoadMoreContainer">
+                            <button type="button" class="btn btn-outline btn-sm" id="btnLoadMoreGrv" onclick="loadMoreGrvRows()">
+                                Load More States (Showing <span id="grvShownCount">4</span> of <span id="grvTotalCount">4</span>)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getNationalAnalyticsData, formatINR, formatNum } from '../js/national-analytics.js';
+        import { renderTrendChart } from '../js/chart-renderer.js';
+
+        let nationalData = null;
+        let revLimit = 5;
+        let perfLimit = 5;
+        let grvLimit = 5;
+        let activeTrendPeriod = 'monthly';
+
+        initPage({
+            title: 'National Dashboard',
+            breadcrumbs: [{ label: 'Central Government' }, { label: 'National Dashboard' }],
+            requiredRole: 'central_admin'
+        });
+
+        window.changeDateFilter = (period) => {
+            document.querySelectorAll('#dateFilterGroup .filter-pill').forEach(p => p.classList.remove('active'));
+            const activeBtn = document.querySelector(`#dateFilterGroup [data-period="${period}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Adjust values slightly based on date filter for realistic interactive behavior
+            const multipliers = { today: 0.04, week: 0.25, month: 1.0, year: 3.8, custom: 0.65 };
+            const m = multipliers[period] || 1.0;
+
+            if (nationalData) {
+                document.getElementById('card-total-apps').textContent = formatNum(Math.round(nationalData.totalApplications * m));
+                document.getElementById('card-total-revenue').textContent = formatINR(Math.round(nationalData.totalRevenue * m));
+                document.getElementById('st-submitted').textContent = formatNum(Math.round(nationalData.appOverview.submitted * m));
+                document.getElementById('st-in-progress').textContent = formatNum(Math.round(nationalData.appOverview.inProgress * m));
+                document.getElementById('st-pending').textContent = formatNum(Math.round(nationalData.appOverview.pending * m));
+                document.getElementById('st-completed').textContent = formatNum(Math.round(nationalData.appOverview.completed * m));
+                document.getElementById('st-rejected').textContent = formatNum(Math.round(nationalData.appOverview.rejected * m));
+                document.getElementById('st-query').textContent = formatNum(Math.round(nationalData.appOverview.queryRaised * m));
+            }
+        };
+
+        window.switchAppTrend = (period, btn) => {
+            activeTrendPeriod = period;
+            btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderAppTrendChart();
+        };
+
+        function renderAppTrendChart() {
+            if (!nationalData) return;
+            const container = document.getElementById('appTrendChartContainer');
+            const points = (nationalData.trends?.[activeTrendPeriod] || nationalData.timeTrends?.[activeTrendPeriod] || []).map(p => ({
+                label: p.label,
+                value: p.apps
+            }));
+            if (points.length > 0) {
+                renderTrendChart(container, points, {
+                    height: 190,
+                    lineColor: '#2563eb',
+                    fillColor: 'rgba(37, 99, 235, 0.08)',
+                    formatValue: (v) => formatNum(v)
+                });
+            }
+        }
+
+        function renderRevenueTable() {
+            if (!nationalData) return;
+            const states = nationalData.states || [];
+            const visible = states.slice(0, revLimit);
+            const tbody = document.getElementById('stateRevenueTbody');
+
+            tbody.innerHTML = visible.map(s => {
+                const srvFee = s.serviceFee !== undefined ? s.serviceFee : Math.round(s.revenue * 0.8);
+                const platFee = s.platformFee !== undefined ? s.platformFee : Math.round(s.revenue * 0.2);
+                return `
+                    <tr>
+                        <td style="font-weight:700;color:var(--navy-900);">
+                            🏛️ ${s.name} <span class="badge badge-neutral" style="margin-left:4px;">${s.code}</span>
+                        </td>
+                        <td style="font-weight:600;">${formatNum(s.applications)}</td>
+                        <td style="font-weight:700;color:#16a34a;">${formatINR(srvFee)}</td>
+                        <td style="font-weight:700;color:#0284c7;">${formatINR(platFee)}</td>
+                        <td style="font-weight:800;color:var(--navy-900);">${formatINR(s.revenue)}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="flex:1;max-width:80px;height:6px;background:var(--slate-200);border-radius:3px;overflow:hidden;">
+                                    <div style="width:${s.revenueShare || 0}%;height:100%;background:#2563eb;"></div>
+                                </div>
+                                <span style="font-weight:700;font-size:0.8125rem;">${s.revenueShare || 0}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('revShownCount').textContent = visible.length;
+            document.getElementById('revTotalCount').textContent = states.length;
+            const container = document.getElementById('revenueLoadMoreContainer');
+            if (visible.length >= states.length) {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'flex';
+            }
+        }
+
+        window.loadMoreRevenueRows = () => {
+            revLimit += 5;
+            renderRevenueTable();
+        };
+
+        function renderPerformanceTable() {
+            if (!nationalData) return;
+            const states = nationalData.states || [];
+            const visible = states.slice(0, perfLimit);
+            const tbody = document.getElementById('statePerformanceTbody');
+
+            tbody.innerHTML = visible.map(s => `
+                <tr>
+                    <td style="font-weight:700;color:var(--navy-900);">🏛️ ${s.name}</td>
+                    <td style="font-weight:600;">${formatNum(s.applications)}</td>
+                    <td><span class="badge badge-success">${formatNum(s.completed)}</span></td>
+                    <td><span class="badge badge-warning">${formatNum(s.pending)}</span></td>
+                    <td><span class="badge badge-danger">${formatNum(s.rejected)}</span></td>
+                    <td style="font-weight:700;color:#16a34a;">${formatINR(s.revenue, true)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('perfShownCount').textContent = visible.length;
+            document.getElementById('perfTotalCount').textContent = states.length;
+            const container = document.getElementById('perfLoadMoreContainer');
+            if (visible.length >= states.length) {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'flex';
+            }
+        }
+
+        window.loadMorePerfRows = () => {
+            perfLimit += 5;
+            renderPerformanceTable();
+        };
+
+        function renderGrievanceTable() {
+            if (!nationalData) return;
+            const states = nationalData.states || [];
+            const visible = states.slice(0, grvLimit);
+            const tbody = document.getElementById('stateGrievanceTbody');
+
+            tbody.innerHTML = visible.map(s => `
+                <tr>
+                    <td style="font-weight:700;color:var(--navy-900);">🏛️ ${s.name}</td>
+                    <td style="font-weight:600;">${formatNum(s.grievances)}</td>
+                    <td><span class="badge badge-warning">${formatNum(s.grvPending)}</span></td>
+                    <td><span class="badge badge-success">${formatNum(s.grvResolved)}</span></td>
+                </tr>
+            `).join('');
+
+            document.getElementById('grvShownCount').textContent = visible.length;
+            document.getElementById('grvTotalCount').textContent = states.length;
+            const container = document.getElementById('grvLoadMoreContainer');
+            if (visible.length >= states.length) {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'flex';
+            }
+        }
+
+        window.loadMoreGrvRows = () => {
+            grvLimit += 5;
+            renderGrievanceTable();
+        };
+
+        async function initDashboard() {
+            nationalData = await getNationalAnalyticsData();
+
+            // Populate Summary Cards
+            document.getElementById('card-total-states').textContent = nationalData.totalStates;
+            document.getElementById('card-active-states').textContent = nationalData.activeStates;
+            document.getElementById('card-total-citizens').textContent = formatNum(nationalData.totalCitizens);
+            document.getElementById('card-total-apps').textContent = formatNum(nationalData.totalApplications);
+            document.getElementById('card-total-revenue').textContent = formatINR(nationalData.totalRevenue);
+            const platEl = document.getElementById('card-total-platform-fee');
+            if (platEl) platEl.textContent = formatINR(nationalData.totalPlatformFees || 0);
+
+            // Update badge for federated states count
+            const perfBadge = document.getElementById('perfCountBadge');
+            if (perfBadge) perfBadge.textContent = `${nationalData.totalStates} Federated States`;
+
+            // Populate App Overview
+            document.getElementById('appTotalBadge').textContent = `${formatNum(nationalData.totalApplications)} Total`;
+            document.getElementById('st-submitted').textContent = formatNum(nationalData.appOverview.submitted);
+            document.getElementById('st-in-progress').textContent = formatNum(nationalData.appOverview.inProgress);
+            document.getElementById('st-pending').textContent = formatNum(nationalData.appOverview.pending);
+            document.getElementById('st-completed').textContent = formatNum(nationalData.appOverview.completed);
+            document.getElementById('st-rejected').textContent = formatNum(nationalData.appOverview.rejected);
+            document.getElementById('st-query').textContent = formatNum(nationalData.appOverview.queryRaised);
+
+            // Update segmented bar
+            const total = nationalData.totalApplications || 1;
+            const pCompleted = ((nationalData.appOverview.completed / total) * 100).toFixed(1);
+            const pPending = ((nationalData.appOverview.pending / total) * 100).toFixed(1);
+            const pInProgress = ((nationalData.appOverview.inProgress / total) * 100).toFixed(1);
+            const pRejected = ((nationalData.appOverview.rejected / total) * 100).toFixed(1);
+            const pQuery = ((nationalData.appOverview.queryRaised / total) * 100).toFixed(1);
+
+            const bar = document.getElementById('appStatusBar');
+            if (bar) {
+                bar.innerHTML = `
+                    <div class="app-status-seg" style="width:${pCompleted}%;background:#22c55e;" title="Completed (${pCompleted}%)"></div>
+                    <div class="app-status-seg" style="width:${pPending}%;background:#f59e0b;" title="Pending (${pPending}%)"></div>
+                    <div class="app-status-seg" style="width:${pInProgress}%;background:#3b82f6;" title="In Progress (${pInProgress}%)"></div>
+                    <div class="app-status-seg" style="width:${pRejected}%;background:#ef4444;" title="Rejected (${pRejected}%)"></div>
+                    <div class="app-status-seg" style="width:${pQuery}%;background:#8b5cf6;" title="Query Raised (${pQuery}%)"></div>
+                `;
+            }
+
+            // Populate Grievance Overview
+            document.getElementById('grv-total').textContent = formatNum(nationalData.grievanceOverview.total);
+            document.getElementById('grv-pending').textContent = formatNum(nationalData.grievanceOverview.pending);
+            document.getElementById('grv-in-progress').textContent = formatNum(nationalData.grievanceOverview.inProgress);
+            document.getElementById('grv-resolved').textContent = formatNum(nationalData.grievanceOverview.resolved);
+            document.getElementById('grv-escalated').textContent = formatNum(nationalData.grievanceOverview.escalated);
+
+            // Initial Renders
+            renderAppTrendChart();
+            renderRevenueTable();
+            renderPerformanceTable();
+            renderGrievanceTable();
+        }
+
+        window.addEventListener('pageshow', () => {
+            initDashboard();
+        });
+        window.addEventListener('focus', () => {
+            initDashboard();
+        });
+
+        initDashboard();
+    </script>
+</body>
+</html>

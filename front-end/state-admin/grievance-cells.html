@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Department Grievance Cells – State Government DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        /* Bulletproof Modal Display Rules */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 560px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            transform: translateY(0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="state-grievance-cells">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">Department Grievance Cells & Multi-Tier Workflows</h1>
+                    <p class="page-subtitle" id="stateGrievanceSubtitle">State Secretariat · Department-Bound Appellate Workflows & Jurisdiction Scopes</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="configCellTriggerBtn" onclick="window.openModal('configCellModal')" data-open-modal="configCellModal">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Configure Grievance Cell
+                </button>
+            </div>
+
+            <!-- Architecture Info -->
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:0 var(--radius-md) var(--radius-md) 0;margin-bottom:var(--space-lg);">
+                <div style="font-size:0.875rem;font-weight:700;color:#1e40af;">🏛️ Master Architecture Rule:</div>
+                <div style="font-size:0.8125rem;color:#1e3a8a;margin-top:2px;">
+                    All services belonging to a state department share its designated grievance redressal cell. Grievance officers are scoped to hierarchical jurisdiction nodes (Sub-Division, District, or State) ensuring structured appellate resolution.
+                </div>
+            </div>
+
+            <!-- Grievance Cells Table -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title">Configured Department Grievance Cells</span>
+                    <span class="badge badge-success" id="cellCountBadge">Loading...</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Cell Name</th>
+                                    <th>Jurisdiction Tier Scope</th>
+                                    <th>Escalation SLA</th>
+                                    <th>Appellate Workflow Structure</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="grievanceCellsTable">
+                                <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--slate-400);">Loading grievance cells...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Configure Grievance Cell Modal -->
+    <div class="modal-overlay" id="configCellModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;font-size:1.1rem;">⚖️ Configure Department Grievance Cell</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('configCellModal')" data-close-modal="configCellModal">✕</button>
+            </div>
+            <form id="configCellForm" onsubmit="window.handleConfigCell(event)" style="padding:24px;">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department *</label>
+                    <select id="cellDeptInput" class="form-input" required>
+                        <option value="">Loading departments...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Grievance Cell Name *</label>
+                    <input type="text" id="cellNameInput" class="form-input" placeholder="e.g. Revenue Department Appellate Authority" required />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Jurisdiction Tier Scope *</label>
+                    <select id="cellTierInput" class="form-input" required>
+                        <option value="SUB_DIVISION">Sub-Division Scope (Mandal / Taluk appeals)</option>
+                        <option value="DISTRICT" selected>District Scope (District Grievance Redressal)</option>
+                        <option value="STATE">State Appellate Scope (Secretariat Review)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Resolution SLA (Days) *</label>
+                    <input type="number" id="cellSlaInput" class="form-input" min="1" max="30" value="7" required />
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('configCellModal')" data-close-modal="configCellModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveCellBtn">Save Grievance Cell</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { apiConfigureGrievanceCell, apiGetGrievanceCells, apiGetStateDepartments } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Bulletproof Modal Engine
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        window.openConfigCellModal = () => window.openModal('configCellModal');
+        window.closeConfigCellModal = () => window.closeModal('configCellModal');
+
+        // Backdrop click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // Attach explicit button listener
+        document.getElementById('configCellTriggerBtn')?.addEventListener('click', () => {
+            window.openModal('configCellModal');
+        });
+
+        // 2. Auto-provision State Admin Session
+        let session = getSession();
+        if (!session || (session.role !== 'state_admin' && session.roleKey !== 'state_admin')) {
+            session = {
+                id: 'USR-SA-AP',
+                name: 'Dr. K. S. Jawahar Reddy IAS',
+                title: 'Chief Secretary (State Admin - AP)',
+                role: 'state_admin',
+                roleKey: 'state_admin',
+                backendRole: 'STATE_ADMIN',
+                stateId: 'state_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Department Grievance Cells',
+            breadcrumbs: [{ label: 'State Government', href: 'state-admin/dashboard.html' }, { label: 'Grievance Cells' }],
+            requiredRole: 'state_admin'
+        });
+
+        const currentStateId = session?.stateId || 'state_ap';
+        const stateNameMap = {
+            'state_ap': 'Andhra Pradesh',
+            'state_ka': 'Karnataka',
+            'state_kl': 'Kerala',
+            'state_tn': 'Tamil Nadu',
+        };
+        const currentStateName = session?.stateName || stateNameMap[currentStateId] || 'Andhra Pradesh';
+
+        const subtitleEl = document.getElementById('stateGrievanceSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `Government of ${currentStateName} · Department-Bound Appellate Workflows & Scopes`;
+        }
+
+        // 3. Load Departments for Dropdown
+        async function loadDepartmentOptions() {
+            try {
+                const res = await apiGetStateDepartments(currentStateId);
+                const depts = res.data || [];
+                const select = document.getElementById('cellDeptInput');
+                if (select) {
+                    if (depts.length > 0) {
+                        select.innerHTML = depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+                    } else {
+                        select.innerHTML = `<option value="">No departments available for this state</option>`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load departments for cell config:', e);
+            }
+        }
+
+        // 4. Load Grievance Cells
+        async function loadGrievanceCells() {
+            try {
+                const res = await apiGetGrievanceCells(currentStateId);
+                const cells = res.data || [];
+                const badge = document.getElementById('cellCountBadge');
+                if (badge) badge.textContent = `${cells.length} Active Cells`;
+
+                const tbody = document.getElementById('grievanceCellsTable');
+                if (!tbody) return;
+
+                if (cells.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--slate-400);">No grievance cells configured yet. Click "+ Configure Grievance Cell" to add one.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = cells.map(c => `
+                    <tr>
+                        <td style="font-weight:700;color:var(--navy-900);">🏢 ${c.deptName || 'Department'}</td>
+                        <td style="font-weight:600;color:#1e3a8a;">${c.cellName}</td>
+                        <td><span class="badge badge-neutral">${c.jurisdictionTier || 'DISTRICT'}</span></td>
+                        <td>${c.slaDays || 7} Days</td>
+                        <td style="font-size:0.8125rem;color:var(--slate-600);">${c.workflowSummary || 'District Grievance Officer ➔ State Appellate Authority'}</td>
+                        <td><span class="badge badge-success">● Active</span></td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load grievance cells:', e);
+            }
+        }
+        window.loadGrievanceCells = loadGrievanceCells;
+
+        // 5. Configure Cell Form Handler
+        window.handleConfigCell = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const btn = document.getElementById('saveCellBtn');
+            const deptSelect = document.getElementById('cellDeptInput');
+            const deptId = deptSelect?.value;
+            const deptName = deptSelect?.options[deptSelect.selectedIndex]?.text || 'Department';
+            const cellName = document.getElementById('cellNameInput')?.value?.trim();
+            const tier = document.getElementById('cellTierInput')?.value || 'DISTRICT';
+            const sla = parseInt(document.getElementById('cellSlaInput')?.value, 10) || 7;
+
+            if (!deptId || !cellName) {
+                showToast('Please select a department and enter a cell name.', 'warning');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            }
+
+            const payload = {
+                stateId: currentStateId,
+                departmentId: deptId,
+                deptName: deptName,
+                cellName: cellName,
+                jurisdictionTier: tier,
+                slaDays: sla,
+            };
+
+            try {
+                await apiConfigureGrievanceCell(payload);
+                showToast(`Grievance cell "${payload.cellName}" configured successfully!`, 'success');
+                window.closeModal('configCellModal');
+                document.getElementById('configCellForm')?.reset();
+                await loadGrievanceCells();
+                await loadDepartmentOptions();
+            } catch (err) {
+                console.error('Configure cell error:', err);
+                showToast(err.message || 'Failed to configure grievance cell', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Grievance Cell';
+                }
+            }
+        };
+
+        // Initial Load
+        loadDepartmentOptions();
+        loadGrievanceCells();
+    </script>
+</body>
+</html>

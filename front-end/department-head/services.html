@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Department Services – Department Head DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        /* Bulletproof Modal Display Rules */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 640px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            transform: translateY(0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="dept-services">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">Department Services Catalog</h1>
+                    <p class="page-subtitle" id="deptServicesSubtitle">Configure Dynamic Form Schemas, Required Proofs, Fees & Designation Routing</p>
+                </div>
+                <a href="service-builder.html" class="btn btn-primary btn-sm" style="text-decoration:none;">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Build New Service
+                </a>
+            </div>
+
+            <!-- Architecture Info -->
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:0 var(--radius-md) var(--radius-md) 0;margin-bottom:var(--space-lg);">
+                <div style="font-size:0.875rem;font-weight:700;color:#1e40af;">🏛️ Department Head Service Engine:</div>
+                <div style="font-size:0.8125rem;color:#1e3a8a;margin-top:2px;">
+                    Department Heads define the end-to-end citizen application lifecycle: dynamic form fields, mandatory document uploads, service fee & platform fee splits, escalation SLAs, and multi-stage designation approval routing.
+                </div>
+            </div>
+
+            <!-- Services Table Card -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title" id="tableHeaderTitle">Services Offered by Department</span>
+                    <span class="badge badge-purple" id="servicesCountBadge">Loading...</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Service Code</th>
+                                    <th>Service Name & Category</th>
+                                    <th>Fee Breakdown</th>
+                                    <th>Resolution SLA</th>
+                                    <th>Workflow Sequence</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deptServicesTable">
+                                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--slate-400);">Loading services...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Inspect Service Modal -->
+    <div class="modal-overlay" id="inspectServiceModal">
+        <div class="modal-card" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column;">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" id="inspectServiceTitle" style="font-weight:700;font-size:1.1rem;">🔍 Service Schema & Workflow Inspection</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('inspectServiceModal')">✕</button>
+            </div>
+            <div class="card-body" id="inspectServiceBody" style="padding:24px;overflow-y:auto;">
+                <div style="text-align:center;padding:24px;color:var(--slate-500);">Loading service details...</div>
+            </div>
+            <div class="card-footer" style="background:#f8fafc;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;" id="inspectServiceFooter">
+                <button type="button" class="btn btn-outline btn-sm" onclick="window.closeModal('inspectServiceModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { apiGetDepartmentServices, apiDeleteService } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Bulletproof Modal Engine
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        // Backdrop click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // 2. Auto-provision Department Head Session
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Department Services',
+            breadcrumbs: [{ label: 'Department Head', href: 'department-head/dashboard.html' }, { label: 'Services' }],
+            requiredRole: 'department_head'
+        });
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+        const currentDeptName = currentDeptId === 'dept_rev_ap' ? 'Revenue, Registration & Stamps Department' : 'Department Secretariat';
+
+        const subtitleEl = document.getElementById('deptServicesSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `${currentDeptName} · Dynamic Form Schemas, Proofs, Fees & Workflow Routing`;
+        }
+
+        const tableTitle = document.getElementById('tableHeaderTitle');
+        if (tableTitle) {
+            tableTitle.textContent = `Services Configured under ${currentDeptName}`;
+        }
+
+        let allServices = [];
+
+        // 3. Load & Render Services
+        async function loadServices() {
+            try {
+                const res = await apiGetDepartmentServices(currentDeptId);
+                allServices = res.data || [];
+                const badge = document.getElementById('servicesCountBadge');
+                if (badge) badge.textContent = `${allServices.length} Active Services`;
+
+                const tbody = document.getElementById('deptServicesTable');
+                if (!tbody) return;
+
+                if (allServices.length > 0) {
+                    tbody.innerHTML = allServices.map(s => {
+                        const serviceFee = s.serviceFee || s.fee || 35;
+                        const platformFee = s.platformFee || 15;
+                        const totalFee = s.totalFee || (serviceFee + platformFee);
+                        const sla = s.slaDays || s.sla || 7;
+
+                        // Build workflow chain sequence summary
+                        let workflowText = s.workflowSummary || '';
+                        if (!workflowText && Array.isArray(s.workflowSteps) && s.workflowSteps.length > 0) {
+                            workflowText = s.workflowSteps.map(st => st.stepName || st.requiredDesignationId).join(' ➔ ');
+                        }
+                        if (!workflowText) workflowText = 'VRO ➔ MRO ➔ Tahsildar (DSC)';
+
+                        return `
+                            <tr>
+                                <td><span class="badge badge-neutral">${s.code || s.id}</span></td>
+                                <td>
+                                    <div style="font-weight:700;color:var(--navy-900);">📜 ${s.name}</div>
+                                    <div style="font-size:0.75rem;color:var(--slate-500);">${s.description || 'Statutory citizen delivery service.'}</div>
+                                </td>
+                                <td>
+                                    <strong>₹${totalFee}</strong>
+                                    <div style="font-size:0.75rem;color:var(--slate-500);">(₹${serviceFee} Dept + ₹${platformFee} Portal)</div>
+                                </td>
+                                <td><span class="badge badge-amber">⏱️ ${sla} Days</span></td>
+                                <td><span class="badge badge-purple" style="font-size:0.75rem;white-space:normal;line-height:1.4;">${workflowText}</span></td>
+                                <td><span class="badge badge-success">● Active</span></td>
+                                <td>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                        <button type="button" class="btn btn-outline btn-sm" onclick="window.openInspectService('${s.id}')">Inspect</button>
+                                        <a href="service-builder.html?id=${s.id}" class="btn btn-ghost btn-sm">Edit</a>
+                                        <button type="button" class="btn btn-ghost btn-sm color-red" onclick="window.handleDeleteService('${s.id}')">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--slate-500);">No services configured for this department yet. Click "+ Build New Service" to create one.</td></tr>`;
+                }
+            } catch (e) {
+                console.error('loadServices error:', e);
+                const tbody = document.getElementById('deptServicesTable');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--red-500);">Failed to load services.</td></tr>`;
+            }
+        }
+        window.loadServices = loadServices;
+
+        // 4. Inspect Service Schema Modal
+        window.openInspectService = (serviceId) => {
+            const s = allServices.find(item => item.id === serviceId);
+            if (!s) return;
+
+            const titleEl = document.getElementById('inspectServiceTitle');
+            const bodyEl = document.getElementById('inspectServiceBody');
+            const footerEl = document.getElementById('inspectServiceFooter');
+
+            titleEl.textContent = `🔍 Service Schema — ${s.name}`;
+
+            const serviceFee = s.serviceFee || s.fee || 35;
+            const platformFee = s.platformFee || 15;
+            const totalFee = s.totalFee || (serviceFee + platformFee);
+
+            bodyEl.innerHTML = `
+                <div style="background:#f8fafc;border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+                    <div style="font-size:0.75rem;color:var(--slate-500);text-transform:uppercase;font-weight:700;">Service Information</div>
+                    <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);">${s.name}</div>
+                    <div style="font-size:0.8125rem;color:var(--slate-600);margin-top:2px;">
+                        Code: <code>${s.code}</code> · Total Fee: <strong>₹${totalFee}</strong> (Dept: ₹${serviceFee}, Portal: ₹${platformFee}) · SLA: <strong>${s.slaDays || 7} Days</strong>
+                    </div>
+                    <p style="font-size:0.875rem;color:var(--slate-700);margin-top:8px;">${s.description || 'Statutory departmental service.'}</p>
+                </div>
+
+                <!-- Workflow Steps -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">⚡ Multi-Stage Workflow Steps</div>
+                    ${Array.isArray(s.workflowSteps) && s.workflowSteps.length > 0 ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${s.workflowSteps.map((st, i) => `
+                                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                                    <div>
+                                        <div style="font-weight:700;color:#1e40af;font-size:0.875rem;">Step ${st.stepNumber || (i + 1)}: ${st.stepName || 'Verification'}</div>
+                                        <div style="font-size:0.75rem;color:var(--slate-600);margin-top:2px;">Assigned Role: <span class="badge badge-purple">${st.requiredDesignationId || 'Designation'}</span></div>
+                                    </div>
+                                    <div>
+                                        ${st.isFinalApprovalStep ? '<span class="badge badge-success">Final DSC Signoff</span>' : '<span class="badge badge-neutral">Review Stage</span>'}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="font-size:0.8125rem;color:var(--slate-500);">Standard multi-tier workflow: VRO Verification ➔ MRO Scrutiny ➔ Tahsildar Final Signoff</div>
+                    `}
+                </div>
+
+                <!-- Custom Form Fields -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">📝 Dynamic Citizen Form Fields</div>
+                    ${Array.isArray(s.fields) && s.fields.length > 0 ? `
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            ${s.fields.map(f => `
+                                <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:8px 12px;border-radius:var(--radius-sm);font-size:0.8125rem;">
+                                    <strong>${f.label || f.id}</strong>
+                                    <div style="font-size:0.75rem;color:var(--slate-500);">Type: <code>${f.type || 'TEXT'}</code> ${f.required ? '· Required' : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="font-size:0.8125rem;color:var(--slate-500);">Default citizen identity and address fields.</div>
+                    `}
+                </div>
+
+                <!-- Required Proofs -->
+                <div>
+                    <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">📎 Mandatory Document Uploads</div>
+                    ${Array.isArray(s.documentRequirements) && s.documentRequirements.length > 0 ? `
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                            ${s.documentRequirements.map(d => `
+                                <span class="badge badge-neutral" style="font-size:0.8125rem;padding:6px 12px;">📁 ${d.name || d.id || 'Document Proof'}</span>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div style="font-size:0.8125rem;color:var(--slate-500);">Aadhaar Card Proof and Address Verification Document.</div>
+                    `}
+                </div>
+            `;
+
+            footerEl.innerHTML = `
+                <a href="service-builder.html?id=${s.id}" class="btn btn-primary btn-sm" style="text-decoration:none;">✏️ Edit in Service Builder</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="window.closeModal('inspectServiceModal')">Close</button>
+            `;
+
+            window.openModal('inspectServiceModal');
+        };
+
+        // 5. Delete Service Handler
+        window.handleDeleteService = async (serviceId) => {
+            if (!confirm('Are you sure you want to delete this service from the catalog?')) return;
+            try {
+                await apiDeleteService(serviceId);
+                showToast('Service deleted from catalog.', 'success');
+                await loadServices();
+            } catch (err) {
+                showToast(err.message || 'Failed to delete service', 'error');
+            }
+        };
+
+        // Initial Load
+        loadServices();
+    </script>
+</body>
+</html>

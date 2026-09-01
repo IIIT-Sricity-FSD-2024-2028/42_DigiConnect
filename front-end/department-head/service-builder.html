@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Service & Workflow Builder – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .builder-card {
+            background: #fff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .builder-card-title {
+            font-size: 1.125rem;
+            font-weight: 800;
+            color: var(--navy-900);
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dynamic-item {
+            background: #f8fafc;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            margin-bottom: var(--space-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+        .dynamic-item:hover {
+            border-color: var(--slate-300);
+            background: #f1f5f9;
+        }
+        .step-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            border-left: 4px solid #2563eb;
+        }
+        .step-card.final-step {
+            border-left-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .workflow-visual-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 16px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+        }
+        .workflow-step-pill {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: var(--radius-md);
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 0.8125rem;
+            color: #1e40af;
+        }
+        .workflow-step-pill.final-step-pill {
+            border-color: #86efac;
+            background: #dcfce7;
+            color: #166534;
+        }
+        .step-arrow {
+            font-size: 1.1rem;
+            color: #94a3b8;
+            font-weight: 800;
+        }
+
+        /* Bulletproof Modal Display Rules */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 520px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="dept-service-builder">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title" id="builderPageTitle">⚙️ Dynamic Service & Workflow Builder</h1>
+                    <p class="page-subtitle" id="builderPageSubtitle">Configure Dynamic Citizen Form Schemas, Proofs, Fees & Multi-Tier Officer Routing</p>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <a href="services.html" class="btn btn-outline btn-sm">Cancel</a>
+                    <button type="button" class="btn btn-primary btn-sm" id="saveServiceBtn" onclick="window.handleSaveFullService()">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span id="saveBtnText">Publish Service & Workflow</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 1. Service Meta Details -->
+            <div class="builder-card">
+                <div class="builder-card-title">1. Basic Service Identification</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-md);">
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight:700;">Service Name *</label>
+                        <input type="text" id="srvName" class="form-input" placeholder="e.g. Integrated Caste & Income Certificate" value="Integrated Caste & Income Certificate" required />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight:700;">Service Code *</label>
+                        <input type="text" id="srvCode" class="form-input" placeholder="e.g. SRV_CIC" value="SRV_CIC" style="text-transform:uppercase;" required />
+                    </div>
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label class="form-label" style="font-weight:700;">Service Description</label>
+                        <textarea id="srvDesc" class="form-input" rows="2" placeholder="Citizen statutory certificate service for educational and economic opportunities.">Official dual-purpose caste and income certificate issued by the Revenue Department.</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Dynamic Form Fields Builder -->
+            <div class="builder-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <div class="builder-card-title" style="margin-bottom:0;">2. Configurable Form Fields (Dynamic Citizen Inputs)</div>
+                        <p style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Dynamic inputs required from citizens during application submission.</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="window.openAddFieldModal()">+ Add Input Field</button>
+                </div>
+                <div id="fieldsListContainer">
+                    <!-- Dynamic fields rendered here -->
+                </div>
+            </div>
+
+            <!-- 3. Document Requirements Builder -->
+            <div class="builder-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <div class="builder-card-title" style="margin-bottom:0;">3. Required Document Proofs (Upload Schema)</div>
+                        <p style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Mandatory and supporting certificates citizens must upload.</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="window.openAddDocModal()">+ Add Document Proof</button>
+                </div>
+                <div id="docsListContainer">
+                    <!-- Dynamic docs rendered here -->
+                </div>
+            </div>
+
+            <!-- 4. Fee & Terms Configuration -->
+            <div class="builder-card">
+                <div class="builder-card-title">4. Payment & Terms Configuration</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-md);">
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight:700;">Service Fee (₹) *</label>
+                        <input type="number" id="srvFee" class="form-input" value="35" min="0" oninput="window.calcTotalFee()" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight:700;">Platform Fee (₹) *</label>
+                        <input type="number" id="platformFee" class="form-input" value="15" min="0" oninput="window.calcTotalFee()" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-weight:700;">Total Amount Paid by Citizen</label>
+                        <input type="text" id="totalFeeDisplay" class="form-input" value="₹50" readonly style="font-weight:800;background:#f8fafc;color:#16a34a;" />
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Statutory Terms & Conditions Checkbox Text</label>
+                    <textarea id="termsText" class="form-input" rows="2">I hereby declare that all the information and certificates furnished by me are true and accurate to the best of my knowledge under penalty of perjury.</textarea>
+                </div>
+            </div>
+
+            <!-- 5. Service Workflow Officer Routing (Fully Configurable) -->
+            <div class="builder-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <div class="builder-card-title" style="margin-bottom:0;">5. Configurable Officer Workflow Routing</div>
+                        <p style="font-size:0.8125rem;color:var(--slate-600);margin-top:2px;">
+                            Define the sequential officer designations and authority levels. Applications dynamically traverse this sequence from bottom to top.
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="window.openAddStepModal()">+ Add Workflow Stage</button>
+                </div>
+
+                <!-- Visual Sequence Flow Bar -->
+                <div class="workflow-visual-bar" id="workflowVisualBar">
+                    <!-- Pills dynamically rendered here -->
+                </div>
+
+                <!-- Interactive Workflow Step Cards -->
+                <div id="workflowStepsContainer">
+                    <!-- Step configuration cards rendered here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Field Modal -->
+    <div class="modal-overlay" id="addFieldModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;">📝 Add Custom Citizen Form Field</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('addFieldModal')">✕</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Field Label *</label>
+                    <input type="text" id="newFieldLabel" class="form-input" placeholder="e.g. Annual Family Income" />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Field Type *</label>
+                    <select id="newFieldType" class="form-input" onchange="window.handleFieldTypeChange()">
+                        <option value="TEXT">TEXT (Single line text)</option>
+                        <option value="NUMBER">NUMBER (Integer / Decimal)</option>
+                        <option value="DATE">DATE (Calendar picker)</option>
+                        <option value="DROPDOWN">DROPDOWN (Select option)</option>
+                        <option value="RADIO">RADIO (Single option select)</option>
+                        <option value="CHECKBOX">CHECKBOX (Multiple selections)</option>
+                        <option value="TEXTAREA">TEXTAREA (Multi-line paragraph)</option>
+                        <option value="EMAIL">EMAIL</option>
+                        <option value="PHONE">PHONE (10 Digits)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="optionsGroup" style="display:none;margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Options (Comma-separated)</label>
+                    <input type="text" id="newFieldOptions" class="form-input" placeholder="e.g. OC, BC-A, BC-B, SC, ST" />
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+                        <input type="checkbox" id="newFieldRequired" checked /> Mandatory / Required Field
+                    </label>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;border-top:1px solid #e2e8f0;padding-top:16px;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('addFieldModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="window.confirmAddField()">Add Field</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Document Modal -->
+    <div class="modal-overlay" id="addDocModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;">📎 Add Document Proof Requirement</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('addDocModal')">✕</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Document Name *</label>
+                    <input type="text" id="newDocName" class="form-input" placeholder="e.g. Aadhaar Card, Electricity Bill, Salary Slip" />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Allowed File Extensions</label>
+                    <input type="text" id="newDocExts" class="form-input" value="pdf, jpg, png" />
+                </div>
+                <div class="form-group" style="margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+                        <input type="checkbox" id="newDocRequired" checked /> Mandatory Document Upload
+                    </label>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;border-top:1px solid #e2e8f0;padding-top:16px;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('addDocModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="window.confirmAddDoc()">Add Document</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Workflow Step Modal -->
+    <div class="modal-overlay" id="addStepModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;">⚡ Add Workflow Routing Stage</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('addStepModal')">✕</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Stage Name / Title *</label>
+                    <input type="text" id="newStepName" class="form-input" placeholder="e.g. Mandal Revenue Officer Scrutiny" />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Required Officer Designation *</label>
+                    <select id="newStepDesignation" class="form-input" required>
+                        <!-- Dynamically populated from apiGetDesignations -->
+                        <option value="desig_vro">Village Revenue Officer (VRO)</option>
+                        <option value="desig_mro">Mandal Revenue Officer (MRO)</option>
+                        <option value="desig_tahsildar">Tahsildar</option>
+                    </select>
+                </div>
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-md);padding:12px;margin-bottom:16px;">
+                    <div style="font-size:0.8125rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">Officer Authority Permissions:</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem;">
+                            <input type="checkbox" id="newStepCanApprove" checked /> Can Forward / Endorse / Approve
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem;">
+                            <input type="checkbox" id="newStepCanReject" checked /> Can Reject Application
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.875rem;">
+                            <input type="checkbox" id="newStepCanQuery" checked /> Can Raise Resubmission Query to Citizen
+                        </label>
+                    </div>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:#166534;">
+                        <input type="checkbox" id="newStepIsFinal" /> Mark as Final Approval Step (Triggers DSC & Certificate Generation)
+                    </label>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;border-top:1px solid #e2e8f0;padding-top:16px;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('addStepModal')">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="window.confirmAddStep()">Add Stage</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { 
+            apiCreateDynamicService, 
+            apiUpdateDynamicService, 
+            apiGetDepartmentServiceById, 
+            apiGetDesignations 
+        } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Bulletproof Modal Engine
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        // Backdrop click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(m => window.closeModal(m.id));
+            }
+        });
+
+        // 2. Auto-provision Department Head Session if needed
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+
+        initPage({
+            title: 'Dynamic Service Builder',
+            breadcrumbs: [{ label: 'Department Head', href: 'department-head/dashboard.html' }, { label: 'Services', href: 'department-head/services.html' }, { label: 'Service Builder' }],
+            requiredRole: 'department_head'
+        });
+
+        // 3. State Holders
+        let availableDesignations = [];
+        let fields = [
+            { id: 'f1', label: 'Applicant Full Name', type: 'TEXT', required: true },
+            { id: 'f2', label: 'Aadhaar Card Number', type: 'NUMBER', required: true, constraints: { minLength: 12, maxLength: 12 } },
+            { id: 'f3', label: 'Community / Caste Category', type: 'DROPDOWN', required: true, constraints: { options: ['OC', 'BC-A', 'BC-B', 'BC-C', 'BC-D', 'BC-E', 'SC', 'ST'] } },
+            { id: 'f4', label: 'Annual Household Income (₹)', type: 'NUMBER', required: true, constraints: { min: 0 } }
+        ];
+
+        let docs = [
+            { id: 'd1', name: 'Aadhaar Card Copy', required: true, allowedMimeTypes: ['pdf', 'jpg', 'png'], maxSizeBytes: 5242880 },
+            { id: 'd2', name: 'Residence Proof / Ration Card', required: true, allowedMimeTypes: ['pdf', 'jpg'], maxSizeBytes: 5242880 },
+            { id: 'd3', name: 'Salary Slip / Income Self-Declaration', required: false, allowedMimeTypes: ['pdf', 'jpg'], maxSizeBytes: 5242880 }
+        ];
+
+        let workflowSteps = [
+            { stepNumber: 1, stepName: 'VRO Verification & Field Inquiry', requiredDesignationId: 'desig_vro', canApprove: true, canReject: true, canRaiseQuery: true, isFinalApprovalStep: false },
+            { stepNumber: 2, stepName: 'MRO Verification & Scrutiny', requiredDesignationId: 'desig_mro', canApprove: true, canReject: true, canRaiseQuery: true, isFinalApprovalStep: false },
+            { stepNumber: 3, stepName: 'Tahsildar Digital Approval & DSC Signoff', requiredDesignationId: 'desig_tahsildar', canApprove: true, canReject: true, canRaiseQuery: true, isFinalApprovalStep: true }
+        ];
+
+        // 4. Check for Edit Mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const editServiceId = urlParams.get('id');
+
+        // 5. Fee Calculation
+        window.calcTotalFee = () => {
+            const s = parseFloat(document.getElementById('srvFee').value) || 0;
+            const p = parseFloat(document.getElementById('platformFee').value) || 0;
+            document.getElementById('totalFeeDisplay').value = `₹${s + p}`;
+        };
+
+        // 6. Render Form Fields
+        function renderFields() {
+            const container = document.getElementById('fieldsListContainer');
+            if (!container) return;
+            if (fields.length === 0) {
+                container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--slate-400);">No custom fields added yet. Default identity fields will apply.</div>`;
+                return;
+            }
+            container.innerHTML = fields.map((f, i) => `
+                <div class="dynamic-item">
+                    <div>
+                        <strong style="color:var(--navy-900);">${f.label}</strong>
+                        <span class="badge badge-neutral" style="margin-left:8px;">${f.type}</span>
+                        ${f.required ? '<span class="badge badge-danger" style="margin-left:4px;">Required</span>' : '<span class="badge badge-neutral" style="margin-left:4px;">Optional</span>'}
+                        ${f.constraints?.options ? `<span style="font-size:0.75rem;color:var(--slate-500);margin-left:8px;">Options: [${f.constraints.options.join(', ')}]</span>` : ''}
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color:#ef4444;" onclick="window.removeField(${i})" title="Remove Field">✕</button>
+                </div>
+            `).join('');
+        }
+        window.removeField = (idx) => { fields.splice(idx, 1); renderFields(); };
+
+        // 7. Render Documents
+        function renderDocs() {
+            const container = document.getElementById('docsListContainer');
+            if (!container) return;
+            if (docs.length === 0) {
+                container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--slate-400);">No required documents added yet.</div>`;
+                return;
+            }
+            container.innerHTML = docs.map((d, i) => `
+                <div class="dynamic-item">
+                    <div>
+                        <strong style="color:var(--navy-900);">📄 ${d.name}</strong>
+                        <span class="badge badge-info" style="margin-left:8px;">${(d.allowedMimeTypes || d.allowedTypes || ['pdf', 'jpg']).join(', ')}</span>
+                        ${d.required ? '<span class="badge badge-danger" style="margin-left:4px;">Required</span>' : '<span class="badge badge-neutral" style="margin-left:4px;">Optional</span>'}
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" style="color:#ef4444;" onclick="window.removeDoc(${i})" title="Remove Document">✕</button>
+                </div>
+            `).join('');
+        }
+        window.removeDoc = (idx) => { docs.splice(idx, 1); renderDocs(); };
+
+        // 8. Render Workflow Routing Canvas & Step Cards
+        function renderWorkflow() {
+            // Render Visual Stepper Bar
+            const bar = document.getElementById('workflowVisualBar');
+            if (bar) {
+                if (workflowSteps.length === 0) {
+                    bar.innerHTML = `<span style="color:var(--slate-400);font-size:0.8125rem;">No stages configured. Click "+ Add Workflow Stage" to define officer routing.</span>`;
+                } else {
+                    const pills = [];
+                    workflowSteps.forEach((st, i) => {
+                        const desigObj = availableDesignations.find(d => d.id === st.requiredDesignationId);
+                        const desigTitle = desigObj?.title || st.requiredDesignationId.replace('desig_', '').toUpperCase();
+                        const isFinal = !!st.isFinalApprovalStep;
+                        pills.push(`
+                            <div class="workflow-step-pill ${isFinal ? 'final-step-pill' : ''}">
+                                <span>${i + 1}. ${st.stepName || desigTitle} (${desigTitle})</span>
+                                ${isFinal ? '<span class="badge badge-success" style="font-size:0.6875rem;">DSC</span>' : ''}
+                            </div>
+                        `);
+                        if (i < workflowSteps.length - 1) {
+                            pills.push(`<span class="step-arrow">➔</span>`);
+                        }
+                    });
+                    bar.innerHTML = pills.join('');
+                }
+            }
+
+            // Render Detailed Step Configuration Cards
+            const container = document.getElementById('workflowStepsContainer');
+            if (!container) return;
+
+            if (workflowSteps.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center;padding:24px;border:1px dashed #cbd5e1;border-radius:var(--radius-md);color:var(--slate-500);">
+                        No workflow steps defined. Please click "+ Add Workflow Stage" to add officer approval stages.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = workflowSteps.map((st, i) => {
+                const isFinal = !!st.isFinalApprovalStep;
+                return `
+                    <div class="step-card ${isFinal ? 'final-step' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="badge ${isFinal ? 'badge-success' : 'badge-primary'}" style="font-size:0.8125rem;">Stage ${i + 1}</span>
+                                <input type="text" class="form-input" value="${st.stepName || ''}" 
+                                    placeholder="Stage Name (e.g. VRO Verification)" 
+                                    style="font-weight:700;min-width:240px;"
+                                    onchange="window.updateStepProp(${i}, 'stepName', this.value)" />
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="window.moveStep(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="Move Up">▲</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="window.moveStep(${i}, 1)" ${i === workflowSteps.length - 1 ? 'disabled' : ''} title="Move Down">▼</button>
+                                <button type="button" class="btn btn-ghost btn-sm color-red" onclick="window.removeStep(${i})" title="Delete Stage" ${workflowSteps.length <= 1 ? 'disabled' : ''}>✕ Remove</button>
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:center;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label style="font-size:0.75rem;font-weight:700;color:var(--slate-600);margin-bottom:4px;display:block;">Required Officer Designation:</label>
+                                <select class="form-input" style="font-size:0.8125rem;" onchange="window.updateStepProp(${i}, 'requiredDesignationId', this.value)">
+                                    ${availableDesignations.map(d => `
+                                        <option value="${d.id}" ${d.id === st.requiredDesignationId ? 'selected' : ''}>${d.title} (${d.code})</option>
+                                    `).join('')}
+                                    ${!availableDesignations.some(d => d.id === st.requiredDesignationId) ? `<option value="${st.requiredDesignationId}" selected>${st.requiredDesignationId}</option>` : ''}
+                                </select>
+                            </div>
+
+                            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:16px;">
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem;">
+                                    <input type="checkbox" ${st.canApprove ? 'checked' : ''} onchange="window.updateStepProp(${i}, 'canApprove', this.checked)" /> Can Approve
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem;">
+                                    <input type="checkbox" ${st.canReject ? 'checked' : ''} onchange="window.updateStepProp(${i}, 'canReject', this.checked)" /> Can Reject
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem;">
+                                    <input type="checkbox" ${st.canRaiseQuery ? 'checked' : ''} onchange="window.updateStepProp(${i}, 'canRaiseQuery', this.checked)" /> Can Query
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.8125rem;font-weight:700;color:#166534;">
+                                    <input type="checkbox" ${st.isFinalApprovalStep ? 'checked' : ''} onchange="window.setFinalStep(${i}, this.checked)" /> Final DSC Approval
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 9. Workflow Modification Helpers
+        window.updateStepProp = (idx, prop, val) => {
+            if (workflowSteps[idx]) {
+                workflowSteps[idx][prop] = val;
+                renderWorkflow();
+            }
+        };
+
+        window.setFinalStep = (idx, isChecked) => {
+            if (isChecked) {
+                // Unmark all others
+                workflowSteps.forEach((st, i) => { st.isFinalApprovalStep = (i === idx); });
+            } else {
+                workflowSteps[idx].isFinalApprovalStep = false;
+            }
+            renderWorkflow();
+        };
+
+        window.moveStep = (idx, dir) => {
+            const target = idx + dir;
+            if (target < 0 || target >= workflowSteps.length) return;
+            const temp = workflowSteps[idx];
+            workflowSteps[idx] = workflowSteps[target];
+            workflowSteps[target] = temp;
+            workflowSteps.forEach((st, i) => { st.stepNumber = i + 1; });
+            renderWorkflow();
+        };
+
+        window.removeStep = (idx) => {
+            if (workflowSteps.length <= 1) {
+                showToast('A service workflow must have at least 1 approval stage.', 'warning');
+                return;
+            }
+            workflowSteps.splice(idx, 1);
+            workflowSteps.forEach((st, i) => { st.stepNumber = i + 1; });
+            if (!workflowSteps.some(st => st.isFinalApprovalStep)) {
+                workflowSteps[workflowSteps.length - 1].isFinalApprovalStep = true;
+            }
+            renderWorkflow();
+        };
+
+        // 10. Modal Control Handlers
+        window.openAddFieldModal = () => {
+            document.getElementById('newFieldLabel').value = '';
+            document.getElementById('newFieldType').value = 'TEXT';
+            document.getElementById('newFieldRequired').checked = true;
+            document.getElementById('optionsGroup').style.display = 'none';
+            document.getElementById('newFieldOptions').value = '';
+            window.openModal('addFieldModal');
+        };
+
+        window.handleFieldTypeChange = () => {
+            const type = document.getElementById('newFieldType').value;
+            const optGroup = document.getElementById('optionsGroup');
+            optGroup.style.display = (type === 'DROPDOWN' || type === 'RADIO' || type === 'CHECKBOX') ? 'block' : 'none';
+        };
+
+        window.confirmAddField = () => {
+            const label = document.getElementById('newFieldLabel').value.trim();
+            if (!label) { showToast('Field label is required.', 'warning'); return; }
+            const type = document.getElementById('newFieldType').value;
+            const required = document.getElementById('newFieldRequired').checked;
+            const rawOpts = document.getElementById('newFieldOptions').value.trim();
+
+            const fieldObj = {
+                id: 'f_' + Date.now().toString().slice(-4),
+                label: label,
+                type: type,
+                required: required,
+            };
+
+            if (type === 'DROPDOWN' || type === 'RADIO' || type === 'CHECKBOX') {
+                const options = rawOpts ? rawOpts.split(',').map(s => s.trim()).filter(Boolean) : ['Option 1', 'Option 2'];
+                fieldObj.constraints = { options };
+            }
+
+            fields.push(fieldObj);
+            window.closeModal('addFieldModal');
+            renderFields();
+            showToast(`Added field "${label}".`, 'success');
+        };
+
+        window.openAddDocModal = () => {
+            document.getElementById('newDocName').value = '';
+            document.getElementById('newDocExts').value = 'pdf, jpg, png';
+            document.getElementById('newDocRequired').checked = true;
+            window.openModal('addDocModal');
+        };
+
+        window.confirmAddDoc = () => {
+            const name = document.getElementById('newDocName').value.trim();
+            if (!name) { showToast('Document name is required.', 'warning'); return; }
+            const exts = document.getElementById('newDocExts').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            const required = document.getElementById('newDocRequired').checked;
+
+            docs.push({
+                id: 'd_' + Date.now().toString().slice(-4),
+                name: name,
+                allowedMimeTypes: exts.length > 0 ? exts : ['pdf', 'jpg'],
+                required: required,
+                maxSizeBytes: 5242880
+            });
+
+            window.closeModal('addDocModal');
+            renderDocs();
+            showToast(`Added document requirement "${name}".`, 'success');
+        };
+
+        window.openAddStepModal = () => {
+            document.getElementById('newStepName').value = '';
+            document.getElementById('newStepCanApprove').checked = true;
+            document.getElementById('newStepCanReject').checked = true;
+            document.getElementById('newStepCanQuery').checked = true;
+            document.getElementById('newStepIsFinal').checked = false;
+            window.openModal('addStepModal');
+        };
+
+        window.confirmAddStep = () => {
+            const name = document.getElementById('newStepName').value.trim();
+            const desigId = document.getElementById('newStepDesignation').value;
+            if (!desigId) { showToast('Please select a designation.', 'warning'); return; }
+
+            const isFinal = document.getElementById('newStepIsFinal').checked;
+            if (isFinal) {
+                workflowSteps.forEach(st => { st.isFinalApprovalStep = false; });
+            }
+
+            const desigObj = availableDesignations.find(d => d.id === desigId);
+            const finalName = name || (desigObj ? `${desigObj.title} Review` : 'Officer Verification');
+
+            workflowSteps.push({
+                stepNumber: workflowSteps.length + 1,
+                stepName: finalName,
+                requiredDesignationId: desigId,
+                canApprove: document.getElementById('newStepCanApprove').checked,
+                canReject: document.getElementById('newStepCanReject').checked,
+                canRaiseQuery: document.getElementById('newStepCanQuery').checked,
+                isFinalApprovalStep: isFinal
+            });
+
+            window.closeModal('addStepModal');
+            renderWorkflow();
+            showToast(`Added workflow stage "${finalName}".`, 'success');
+        };
+
+        // 11. Save or Update Dynamic Service
+        window.handleSaveFullService = async () => {
+            const btn = document.getElementById('saveServiceBtn');
+            const btnText = document.getElementById('saveBtnText');
+            
+            const name = document.getElementById('srvName').value.trim();
+            const code = document.getElementById('srvCode').value.trim().toUpperCase();
+            const desc = document.getElementById('srvDesc').value.trim();
+            const sFee = parseFloat(document.getElementById('srvFee').value) || 0;
+            const pFee = parseFloat(document.getElementById('platformFee').value) || 0;
+            const terms = document.getElementById('termsText').value.trim();
+
+            if (!name) { showToast('Service name is required.', 'error'); return; }
+            if (!code) { showToast('Service code is required.', 'error'); return; }
+            if (workflowSteps.length === 0) { showToast('Please configure at least 1 workflow routing stage.', 'error'); return; }
+
+            // Ensure at least one final approval step
+            if (!workflowSteps.some(s => s.isFinalApprovalStep)) {
+                workflowSteps[workflowSteps.length - 1].isFinalApprovalStep = true;
+            }
+
+            const payload = {
+                departmentId: currentDeptId,
+                stateId: session.stateId || 'state_ap',
+                name: name,
+                code: code,
+                description: desc,
+                serviceFee: sFee,
+                platformFee: pFee,
+                termsAndConditions: terms,
+                fields: fields,
+                documentRequirements: docs,
+                workflowSteps: workflowSteps.map((st, i) => ({
+                    stepNumber: i + 1,
+                    stepName: st.stepName || `Step ${i + 1}`,
+                    requiredDesignationId: st.requiredDesignationId,
+                    canApprove: st.canApprove !== false,
+                    canReject: st.canReject !== false,
+                    canRaiseQuery: st.canRaiseQuery !== false,
+                    isFinalApprovalStep: !!st.isFinalApprovalStep
+                }))
+            };
+
+            btn.disabled = true;
+            btnText.textContent = editServiceId ? 'Updating Service...' : 'Publishing Service...';
+
+            try {
+                if (editServiceId) {
+                    await apiUpdateDynamicService(editServiceId, payload);
+                    showToast(`Service "${name}" updated successfully!`, 'success');
+                } else {
+                    await apiCreateDynamicService(payload);
+                    showToast(`Service "${name}" created with custom workflow!`, 'success');
+                }
+                setTimeout(() => {
+                    window.location.href = 'services.html';
+                }, 900);
+            } catch (err) {
+                console.error('Save service error:', err);
+                showToast(err.message || 'Failed to save service.', 'error');
+                btn.disabled = false;
+                btnText.textContent = editServiceId ? 'Update Service & Workflow' : 'Publish Service & Workflow';
+            }
+        };
+
+        // 12. Initialize Page Data
+        async function initBuilder() {
+            try {
+                // Fetch Designations for dropdown
+                const desigRes = await apiGetDesignations(currentDeptId);
+                availableDesignations = desigRes.data || [
+                    { id: 'desig_vro', title: 'Village Revenue Officer (VRO)', code: 'VRO' },
+                    { id: 'desig_mro', title: 'Mandal Revenue Officer (MRO)', code: 'MRO' },
+                    { id: 'desig_tahsildar', title: 'Tahsildar', code: 'TAH' }
+                ];
+
+                // Populate modal designation dropdown
+                const stepSelect = document.getElementById('newStepDesignation');
+                if (stepSelect) {
+                    stepSelect.innerHTML = availableDesignations.map(d => `
+                        <option value="${d.id}">${d.title} (${d.code})</option>
+                    `).join('');
+                }
+
+                // If editing existing service, fetch and populate
+                if (editServiceId) {
+                    document.getElementById('builderPageTitle').textContent = '✏️ Edit Department Service & Workflow';
+                    document.getElementById('builderPageSubtitle').textContent = `Editing Service ${editServiceId} · Update form fields, upload proofs, and officer workflow sequence.`;
+                    document.getElementById('saveBtnText').textContent = 'Update Service & Workflow';
+
+                    const sRes = await apiGetDepartmentServiceById(editServiceId);
+                    const s = sRes.data;
+                    if (s) {
+                        document.getElementById('srvName').value = s.name || '';
+                        document.getElementById('srvCode').value = s.code || '';
+                        document.getElementById('srvDesc').value = s.description || '';
+                        document.getElementById('srvFee').value = s.serviceFee || s.fee || 35;
+                        document.getElementById('platformFee').value = s.platformFee || 15;
+                        document.getElementById('termsText').value = s.termsAndConditions || '';
+
+                        if (Array.isArray(s.fields) && s.fields.length > 0) fields = s.fields;
+                        if (Array.isArray(s.documentRequirements) && s.documentRequirements.length > 0) docs = s.documentRequirements;
+                        if (Array.isArray(s.workflowSteps) && s.workflowSteps.length > 0) workflowSteps = s.workflowSteps;
+                    }
+                }
+            } catch (e) {
+                console.warn('initBuilder error:', e);
+            }
+
+            renderFields();
+            renderDocs();
+            renderWorkflow();
+            window.calcTotalFee();
+        }
+
+        initBuilder();
+    </script>
+</body>
+</html>

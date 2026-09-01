@@ -1,0 +1,3845 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/v1": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/v1/users/register": {
+      "post": {
+        "operationId": "UsersController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Citizen registered successfully"
+          }
+        },
+        "summary": "Register a new citizen",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/login": {
+      "post": {
+        "operationId": "UsersController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in successfully"
+          }
+        },
+        "summary": "Login a user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/request-otp": {
+      "post": {
+        "operationId": "UsersController_requestOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "aadhaar": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP generated successfully"
+          }
+        },
+        "summary": "Request Aadhaar OTP (Simulator)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/find-account/{identity}": {
+      "get": {
+        "operationId": "UsersController_findAccount",
+        "parameters": [
+          {
+            "name": "identity",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return user details for password reset"
+          }
+        },
+        "summary": "Find user account by identity for password reset",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "UsersController_findAll",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all users"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Get all users",
+        "tags": [
+          "users"
+        ]
+      },
+      "post": {
+        "operationId": "UsersController_create",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Create a new user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}": {
+      "get": {
+        "operationId": "UsersController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return user matching ID"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Get user by ID",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Update a user",
+        "tags": [
+          "users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "Delete a user",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/users/{id}/password": {
+      "patch": {
+        "operationId": "UsersController_changePassword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "in": "header",
+            "description": "ID of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully"
+          }
+        },
+        "summary": "Change user password",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/v1/applications": {
+      "post": {
+        "operationId": "ApplicationsController_submit",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApplicationDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApplicationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Application submitted successfully"
+          }
+        },
+        "summary": "Submit a new application",
+        "tags": [
+          "applications"
+        ]
+      },
+      "get": {
+        "operationId": "ApplicationsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "officerId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": false,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of applications"
+          }
+        },
+        "summary": "Get all applications (paginated, filterable)",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/simulate-payment": {
+      "post": {
+        "operationId": "ApplicationsController_simulatePayment",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "serviceId": {
+                    "type": "string"
+                  },
+                  "citizenId": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment successful"
+          }
+        },
+        "summary": "Simulate Bank Payment Handshake",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/my": {
+      "get": {
+        "operationId": "ApplicationsController_findMy",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of citizen applications"
+          }
+        },
+        "summary": "Get my applications (paginated)",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/track/{ref}": {
+      "get": {
+        "operationId": "ApplicationsController_track",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application found"
+          }
+        },
+        "summary": "Track application by reference",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/officer-queue": {
+      "get": {
+        "operationId": "ApplicationsController_getOfficerQueue",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": false,
+            "in": "header",
+            "description": "Officer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Officer queue retrieved"
+          }
+        },
+        "summary": "Get officer application queue",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/officer-queries": {
+      "get": {
+        "operationId": "ApplicationsController_getOfficerQueries",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Officer queries retrieved"
+          }
+        },
+        "summary": "Get officer pending queries",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/officer-activity": {
+      "get": {
+        "operationId": "ApplicationsController_getOfficerActivity",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Officer activity retrieved"
+          }
+        },
+        "summary": "Get officer recent activity",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/officer-sla-risks": {
+      "get": {
+        "operationId": "ApplicationsController_getOfficerSlaRisks",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SLA risks retrieved"
+          }
+        },
+        "summary": "Get SLA at-risk items for officer",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/officer-week-chart": {
+      "get": {
+        "operationId": "ApplicationsController_getOfficerWeekChart",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Week chart data retrieved"
+          }
+        },
+        "summary": "Get officer weekly performance chart data",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}": {
+      "get": {
+        "operationId": "ApplicationsController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application found"
+          }
+        },
+        "summary": "Get application by ID",
+        "tags": [
+          "applications"
+        ]
+      },
+      "delete": {
+        "operationId": "ApplicationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application withdrawn successfully"
+          }
+        },
+        "summary": "Withdraw an application",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/status": {
+      "patch": {
+        "operationId": "ApplicationsController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Application status updated"
+          }
+        },
+        "summary": "Update application status",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/approve": {
+      "post": {
+        "operationId": "ApplicationsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "Officer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "OFFICER",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Officer Action 1: APPROVE application stage",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/reject": {
+      "post": {
+        "operationId": "ApplicationsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "Officer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "OFFICER",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Officer Action 2: REJECT application",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/raise-query": {
+      "post": {
+        "operationId": "ApplicationsController_raiseQuery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "Officer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "OFFICER",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Officer Action 3: RAISE QUERY (workflow paused)",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/certificate": {
+      "get": {
+        "operationId": "ApplicationsController_getCertificate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get digital certificate metadata and download link",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/request-verification": {
+      "post": {
+        "operationId": "ApplicationsController_requestVerification",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification requested"
+          }
+        },
+        "summary": "Request cross-department verification (spawns sub-task)",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/resolve-verification": {
+      "post": {
+        "operationId": "ApplicationsController_resolveVerification",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification resolved"
+          }
+        },
+        "summary": "Resolve cross-department verification (unlocks main task)",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/applications/{id}/query-response": {
+      "patch": {
+        "operationId": "ApplicationsController_respondToQuery",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "response": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "response": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query response submitted"
+          }
+        },
+        "summary": "Respond to officer query with optional files",
+        "tags": [
+          "applications"
+        ]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_findMy",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notifications"
+          }
+        },
+        "summary": "Get all notifications for current user",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "post": {
+        "operationId": "NotificationsController_createNotification",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Notification created"
+          }
+        },
+        "summary": "Create a manual notification",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/count": {
+      "get": {
+        "operationId": "NotificationsController_getCount",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unread count"
+          }
+        },
+        "summary": "Get unread notification count for current user",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All marked as read"
+          }
+        },
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read"
+          }
+        },
+        "summary": "Mark notification as read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/geography/stats": {
+      "get": {
+        "operationId": "GeographyController_getStats",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get aggregated tier summary statistics for a state",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/audit": {
+      "get": {
+        "operationId": "GeographyController_getAuditLogs",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get recent jurisdiction lifecycle audit activities",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/tree": {
+      "get": {
+        "operationId": "GeographyController_getTree",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get visual hierarchical jurisdiction tree",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes/{id}/details": {
+      "get": {
+        "operationId": "GeographyController_getNodeDetails",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get deep jurisdiction node details with dependencies and breadcrumbs",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes/{id}": {
+      "get": {
+        "operationId": "GeographyController_getNode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get jurisdiction node details by ID",
+        "tags": [
+          "geography"
+        ]
+      },
+      "put": {
+        "operationId": "GeographyController_updateNode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "required": true,
+            "in": "header",
+            "description": "STATE_ADMIN or CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update jurisdiction node properties (renaming keeps stable ID)",
+        "tags": [
+          "geography"
+        ]
+      },
+      "delete": {
+        "operationId": "GeographyController_deleteNode",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cascade",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "required": true,
+            "in": "header",
+            "description": "STATE_ADMIN or CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete jurisdiction node (fails if dependencies exist; cascade=true deletes all descendants)",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes/{id}/children": {
+      "get": {
+        "operationId": "GeographyController_getChildren",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get direct child jurisdiction nodes",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes/{id}/ancestors": {
+      "get": {
+        "operationId": "GeographyController_getAncestors",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get ancestor path up to the State root",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/scope-check": {
+      "get": {
+        "operationId": "GeographyController_checkScope",
+        "parameters": [
+          {
+            "name": "leafNodeId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assignedNodeId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Check if a leaf node falls within an assigned officer node scope",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes": {
+      "post": {
+        "operationId": "GeographyController_createNode",
+        "parameters": [
+          {
+            "name": "x-role",
+            "required": true,
+            "in": "header",
+            "description": "STATE_ADMIN or CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create new dynamic jurisdiction node",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/geography/nodes/{id}/status": {
+      "patch": {
+        "operationId": "GeographyController_toggleStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "required": true,
+            "in": "header",
+            "description": "STATE_ADMIN or CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Activate or deactivate a jurisdiction node",
+        "tags": [
+          "geography"
+        ]
+      }
+    },
+    "/api/v1/certificates/{id}": {
+      "get": {
+        "operationId": "CertificatesController_viewCertificate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "View or print official digital certificate HTML/PDF",
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/certificates/application/{appId}": {
+      "get": {
+        "operationId": "CertificatesController_getAppCertificate",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get certificate metadata for an application",
+        "tags": [
+          "certificates"
+        ]
+      }
+    },
+    "/api/v1/grievances": {
+      "post": {
+        "operationId": "GrievancesController_raise",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrievanceDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrievanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Grievance raised successfully"
+          }
+        },
+        "summary": "Raise a new grievance",
+        "tags": [
+          "grievances"
+        ]
+      },
+      "get": {
+        "operationId": "GrievancesController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": false,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all grievances"
+          }
+        },
+        "summary": "Get all grievances (paginated)",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/grievances/my": {
+      "get": {
+        "operationId": "GrievancesController_findMy",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of citizen grievances"
+          }
+        },
+        "summary": "Get my grievances (paginated)",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/grievances/{id}": {
+      "get": {
+        "operationId": "GrievancesController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Grievance found"
+          }
+        },
+        "summary": "Get grievance by ID",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/grievances/{id}/status": {
+      "patch": {
+        "operationId": "GrievancesController_updateStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrievanceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Grievance status updated"
+          }
+        },
+        "summary": "Update grievance status",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/grievances/{id}/reply": {
+      "patch": {
+        "operationId": "GrievancesController_addReply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the caller",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reply": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reply added successfully"
+          }
+        },
+        "summary": "Reply to a grievance",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/grievances/{id}/resolve": {
+      "post": {
+        "operationId": "GrievancesController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "description": "ID of the grievance officer",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "GRIEVANCE_OFFICER",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Explicit Grievance Resolution Action (Sections 28-31)",
+        "tags": [
+          "grievances"
+        ]
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "operationId": "ServicesController_findActive",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of active services"
+          }
+        },
+        "summary": "Get all active services",
+        "tags": [
+          "services"
+        ]
+      },
+      "post": {
+        "operationId": "ServicesController_create",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service created successfully"
+          }
+        },
+        "summary": "Create a new service",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/all": {
+      "get": {
+        "operationId": "ServicesController_findAll",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all services"
+          }
+        },
+        "summary": "Get all services (including inactive/draft)",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}": {
+      "get": {
+        "operationId": "ServicesController_findById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service details"
+          }
+        },
+        "summary": "Get service by ID",
+        "tags": [
+          "services"
+        ]
+      },
+      "patch": {
+        "operationId": "ServicesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service updated successfully"
+          }
+        },
+        "summary": "Update an existing service",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}/upload-template": {
+      "post": {
+        "operationId": "ServicesController_uploadTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller (must be super_user)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template uploaded successfully"
+          }
+        },
+        "summary": "Upload Scheme guideline or certificate template for a service",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{id}/toggle": {
+      "patch": {
+        "operationId": "ServicesController_toggleStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service status toggled"
+          }
+        },
+        "summary": "Toggle service status (Active/Inactive)",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/workflow/config": {
+      "get": {
+        "operationId": "WorkflowController_getConfig",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow configs retrieved"
+          }
+        },
+        "summary": "Get service-level workflow configurations",
+        "tags": [
+          "workflow"
+        ]
+      },
+      "patch": {
+        "operationId": "WorkflowController_updateConfig",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow config updated"
+          }
+        },
+        "summary": "Update a service workflow configuration",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/workflow/transition": {
+      "post": {
+        "operationId": "WorkflowController_transition",
+        "parameters": [
+          {
+            "name": "x-user-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition successful"
+          }
+        },
+        "summary": "Transition application status",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/workflow/history/{appId}": {
+      "get": {
+        "operationId": "WorkflowController_getHistory",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History retrieved"
+          }
+        },
+        "summary": "Get application transition history",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/workflow/audit-logs": {
+      "get": {
+        "operationId": "WorkflowController_getAuditLogs",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Role of the caller",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit logs retrieved"
+          }
+        },
+        "summary": "Get system audit logs",
+        "tags": [
+          "workflow"
+        ]
+      }
+    },
+    "/api/v1/central/states": {
+      "get": {
+        "operationId": "CentralController_listStates",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all State Governments with metrics",
+        "tags": [
+          "central"
+        ]
+      },
+      "post": {
+        "operationId": "CentralController_createState",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create new State Government (1 State Admin enforced)",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/states/{id}": {
+      "get": {
+        "operationId": "CentralController_getState",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get State Government by ID",
+        "tags": [
+          "central"
+        ]
+      },
+      "patch": {
+        "operationId": "CentralController_updateState",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update State Government metadata",
+        "tags": [
+          "central"
+        ]
+      },
+      "delete": {
+        "operationId": "CentralController_deleteState",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Deactivate State Government",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/states/{id}/details": {
+      "get": {
+        "operationId": "CentralController_getStateDetails",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get full State Government monitoring details",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/states/{id}/status": {
+      "patch": {
+        "operationId": "CentralController_setStateStatus",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Activate or Deactivate State Government",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/states/{id}/admin/status": {
+      "patch": {
+        "operationId": "CentralController_setStateAdminStatus",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Activate or Deactivate State Admin Account",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/states/{id}/admin/reset-password": {
+      "post": {
+        "operationId": "CentralController_resetStateAdminPassword",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Reset State Admin temporary credentials",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/analytics/revenue": {
+      "get": {
+        "operationId": "CentralController_getStateWiseRevenue",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "State-wise revenue analysis",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/central/analytics/metrics": {
+      "get": {
+        "operationId": "CentralController_getNationalMetrics",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "Must be CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "National level key performance metrics",
+        "tags": [
+          "central"
+        ]
+      }
+    },
+    "/api/v1/state-admin/dashboard": {
+      "get": {
+        "operationId": "StateAdminController_getStateDashboard",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "State Admin overview & monitoring dashboard",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/departments": {
+      "get": {
+        "operationId": "StateAdminController_listDepartments",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List departments in state",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "post": {
+        "operationId": "StateAdminController_createDepartment",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN or CENTRAL_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDepartmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "State Admin creates department & appoints Department Head",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/departments/{id}": {
+      "get": {
+        "operationId": "StateAdminController_getDepartment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get department details by ID",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "put": {
+        "operationId": "StateAdminController_updateDepartment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDepartmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update department details",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "patch": {
+        "operationId": "StateAdminController_patchDepartment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDepartmentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update department details (PATCH alias)",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "delete": {
+        "operationId": "StateAdminController_deleteDepartment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete department (fails if dependent records exist)",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/departments/{id}/status": {
+      "patch": {
+        "operationId": "StateAdminController_updateDepartmentStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Change department operational status (ACTIVE/SUSPENDED/INACTIVE)",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/departments/{id}/head": {
+      "post": {
+        "operationId": "StateAdminController_assignDepartmentHead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Assign or replace Department Head",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "delete": {
+        "operationId": "StateAdminController_removeDepartmentHead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Remove Department Head relationship",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/grievance-cells": {
+      "post": {
+        "operationId": "StateAdminController_configureGrievanceCell",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigureGrievanceCellDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Configure department grievance cell & workflow",
+        "tags": [
+          "state-admin"
+        ]
+      },
+      "get": {
+        "operationId": "StateAdminController_listGrievanceCells",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List all grievance cells for a state (only for existing departments)",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/grievance-cells/{deptId}": {
+      "get": {
+        "operationId": "StateAdminController_getGrievanceCell",
+        "parameters": [
+          {
+            "name": "deptId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get grievance cell configuration for department",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/analytics/revenue": {
+      "get": {
+        "operationId": "StateAdminController_getDepartmentRevenue",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Department-wise revenue analysis",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/state-admin/analytics/kpis": {
+      "get": {
+        "operationId": "StateAdminController_getStateAnalytics",
+        "parameters": [
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-state-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "State Admin KPI overview",
+        "tags": [
+          "state-admin"
+        ]
+      }
+    },
+    "/api/v1/department-head/designations": {
+      "get": {
+        "operationId": "DepartmentHeadController_listDesignations",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-department-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List designations for a department",
+        "tags": [
+          "department-head"
+        ]
+      },
+      "post": {
+        "operationId": "DepartmentHeadController_createDesignation",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "DEPARTMENT_HEAD or STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDesignationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create department designation (roles, no levels)",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/designations/{id}": {
+      "delete": {
+        "operationId": "DepartmentHeadController_deleteDesignation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete designation",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/officers": {
+      "get": {
+        "operationId": "DepartmentHeadController_listOfficers",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-department-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List officers mapped to department",
+        "tags": [
+          "department-head"
+        ]
+      },
+      "post": {
+        "operationId": "DepartmentHeadController_onboardOfficer",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "DEPARTMENT_HEAD or STATE_ADMIN",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardOfficerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Onboard officer mapped to exact jurisdiction node",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/officers/{id}/status": {
+      "patch": {
+        "operationId": "DepartmentHeadController_updateOfficerStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOfficerStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Suspend / Unsuspend / Modify officer status",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/services": {
+      "get": {
+        "operationId": "DepartmentHeadController_listServices",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stateId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Browse department services",
+        "tags": [
+          "department-head"
+        ]
+      },
+      "post": {
+        "operationId": "DepartmentHeadController_createService",
+        "parameters": [
+          {
+            "name": "x-role",
+            "in": "header",
+            "description": "DEPARTMENT_HEAD",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDynamicServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create service with dynamic fields & workflow steps",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/services/{id}": {
+      "get": {
+        "operationId": "DepartmentHeadController_getService",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get complete service specification & form configuration",
+        "tags": [
+          "department-head"
+        ]
+      },
+      "put": {
+        "operationId": "DepartmentHeadController_updateService",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDynamicServiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Update existing dynamic service & workflow schema",
+        "tags": [
+          "department-head"
+        ]
+      },
+      "delete": {
+        "operationId": "DepartmentHeadController_deleteService",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Delete dynamic service from department catalog",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/services/{id}/status": {
+      "patch": {
+        "operationId": "DepartmentHeadController_updateServiceStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Enable / Disable / Suspend service",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/analytics": {
+      "get": {
+        "operationId": "DepartmentHeadController_getDepartmentAnalytics",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-department-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Department operational analytics",
+        "tags": [
+          "department-head"
+        ]
+      }
+    },
+    "/api/v1/department-head/revenue": {
+      "get": {
+        "operationId": "DepartmentHeadController_getDepartmentRevenue",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-department-id",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Department financial revenue analytics & transaction ledger",
+        "tags": [
+          "department-head"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "UCSDP Backend API",
+    "description": "Unified Citizen Service and Delivery Platform API Documentation",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "users",
+      "description": "User management and Registration"
+    },
+    {
+      "name": "applications",
+      "description": "Citizen Service Applications"
+    },
+    {
+      "name": "grievances",
+      "description": "Grievance Redressal"
+    },
+    {
+      "name": "services",
+      "description": "Government Services Catalog"
+    },
+    {
+      "name": "workflow",
+      "description": "Application Status Workflow"
+    },
+    {
+      "name": "supervisor",
+      "description": "Supervisor Dashboard & Actions"
+    },
+    {
+      "name": "super-user",
+      "description": "System Admin Operations"
+    },
+    {
+      "name": "notifications",
+      "description": "User Notifications"
+    }
+  ],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateUserDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateApplicationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateNodeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateNodeDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateGrievanceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateGrievanceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateServiceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UploadTemplateDto": {
+        "type": "object",
+        "properties": {
+          "docType": {
+            "type": "string",
+            "description": "Type of uploaded document",
+            "enum": [
+              "template",
+              "guideline"
+            ],
+            "default": "template"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The template or guideline file to upload (.pdf, .jpg, .png)"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "UpdateServiceDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "TransitionDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateStateDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDepartmentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateDepartmentDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ConfigureGrievanceCellDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDesignationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "OnboardOfficerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UpdateOfficerStatusDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateDynamicServiceDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  }
+}

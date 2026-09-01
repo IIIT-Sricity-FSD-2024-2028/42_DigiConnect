@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Designations – Department Head DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        /* Bulletproof Modal Display Rules */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 620px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            transform: translateY(0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="dept-designations">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">Department Designations Management</h1>
+                    <p class="page-subtitle" id="deptSubtitle">Executive Department Secretariat · Operational Roles & Workflow Designations</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="createDesigTriggerBtn" onclick="window.openModal('createDesigModal')" data-open-modal="createDesigModal">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Add Designation
+                </button>
+            </div>
+
+            <!-- Architecture Rule Card -->
+            <div style="background:#fefce8;border-left:4px solid #ca8a04;padding:12px 16px;border-radius:0 var(--radius-md) var(--radius-md) 0;margin-bottom:var(--space-lg);">
+                <div style="font-size:0.875rem;font-weight:700;color:#854d0e;">🏛️ Master Architecture Rule:</div>
+                <div style="font-size:0.8125rem;color:#713f12;margin-top:2px;">
+                    "Designation is NOT an officer level. Designations represent operational officer types and roles that participate in dynamic service workflows and verification stages."
+                </div>
+            </div>
+
+            <!-- Designations Table -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title">Configured Department Designations</span>
+                    <span class="badge badge-purple" id="desigCountBadge">Loading...</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Designation ID</th>
+                                    <th>Title</th>
+                                    <th>Code</th>
+                                    <th>Typical Operational Scope</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="designationsTable">
+                                <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--slate-400);">Loading designations...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Designation Modal -->
+    <div class="modal-overlay" id="createDesigModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;font-size:1.1rem;">👔 Create Department Designation</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('createDesigModal')" data-close-modal="createDesigModal">✕</button>
+            </div>
+            <form id="createDesigForm" onsubmit="window.handleCreateDesig(event)" style="padding:24px;">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Designation Title *</label>
+                    <input type="text" id="desigTitleInput" class="form-input" placeholder="e.g. Village Revenue Officer, Tahsildar, Revenue Inspector" required />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Designation Code *</label>
+                    <input type="text" id="desigCodeInput" class="form-input" placeholder="e.g. VRO, MRO, TAH, RI" style="text-transform:uppercase;" required />
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Operational Description / Role</label>
+                    <textarea id="desigDescInput" class="form-input" rows="3" placeholder="Primary responsibility in processing citizen applications and field inspections."></textarea>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('createDesigModal')" data-close-modal="createDesigModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveDesigBtn">Create Designation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inspect Role & Workflow Usage Modal -->
+    <div class="modal-overlay" id="inspectDesigModal">
+        <div class="modal-card" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column;">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" id="inspectDesigTitle" style="font-weight:700;font-size:1.1rem;">🔍 Designation Workflow Role & Usage</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('inspectDesigModal')" data-close-modal="inspectDesigModal">✕</button>
+            </div>
+            <div class="card-body" id="inspectDesigBody" style="padding:24px;overflow-y:auto;">
+                <div style="text-align:center;padding:24px;color:var(--slate-500);">Loading usage details...</div>
+            </div>
+            <div class="card-footer" style="background:#f8fafc;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e2e8f0;">
+                <a href="service-builder.html" class="btn btn-primary btn-sm" style="text-decoration:none;">⚡ Open Service & Workflow Builder</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="window.closeModal('inspectDesigModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import {
+            apiGetDesignations,
+            apiCreateDesignation,
+            apiDeleteDesignation,
+            apiGetDepartmentServices,
+            apiGetDepartmentOfficers
+        } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Bulletproof Modal Engine
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        window.openCreateDesigModal = () => window.openModal('createDesigModal');
+        window.closeCreateDesigModal = () => window.closeModal('createDesigModal');
+
+        // Backdrop click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // 2. Auto-provision Department Head Session
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Department Designations',
+            breadcrumbs: [{ label: 'Department Head', href: 'department-head/dashboard.html' }, { label: 'Designations' }],
+            requiredRole: 'department_head'
+        });
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+        const currentDeptName = currentDeptId === 'dept_rev_ap' ? 'Revenue, Registration & Stamps Department' : 'Department Secretariat';
+
+        const subtitleEl = document.getElementById('deptSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `${currentDeptName} · Operational Roles & Workflow Designations`;
+        }
+
+        let allDesignations = [];
+
+        // 3. Load & Render Designations
+        async function loadDesignations() {
+            try {
+                const res = await apiGetDesignations(currentDeptId);
+                allDesignations = res.data || [];
+                const badge = document.getElementById('desigCountBadge');
+                if (badge) badge.textContent = `${allDesignations.length} Designations`;
+
+                const tbody = document.getElementById('designationsTable');
+                if (!tbody) return;
+
+                if (allDesignations.length > 0) {
+                    tbody.innerHTML = allDesignations.map(d => `
+                        <tr>
+                            <td><code>${d.id}</code></td>
+                            <td style="font-weight:700;color:var(--navy-900);">👔 ${d.title}</td>
+                            <td><span class="badge badge-neutral">${d.code}</span></td>
+                            <td style="color:var(--slate-600);font-size:0.8125rem;">${d.description || 'Application Review & Verification'}</td>
+                            <td><span class="badge badge-success">● Active</span></td>
+                            <td>
+                                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="window.openInspectDesigModal('${d.id}')">🔍 Inspect Role & Workflows</button>
+                                    <button type="button" class="btn btn-ghost btn-sm color-red" onclick="window.handleDeleteDesig('${d.id}')">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--slate-500);">No designations configured.</td></tr>`;
+                }
+            } catch (e) {
+                console.error('loadDesignations error:', e);
+                const tbody = document.getElementById('designationsTable');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--red-500);">Failed to load designations.</td></tr>`;
+            }
+        }
+        window.loadDesignations = loadDesignations;
+
+        // 4. Inspect Role & Workflow Usage Modal
+        window.openInspectDesigModal = async (desigId) => {
+            const desig = allDesignations.find(d => d.id === desigId);
+            if (!desig) return;
+
+            const titleEl = document.getElementById('inspectDesigTitle');
+            const bodyEl = document.getElementById('inspectDesigBody');
+
+            titleEl.textContent = `🔍 Role Usage — ${desig.title} (${desig.code})`;
+            bodyEl.innerHTML = `<div style="text-align:center;padding:32px;color:var(--slate-500);">Querying active service workflows and assigned officers...</div>`;
+            window.openModal('inspectDesigModal');
+
+            try {
+                // Query linked services and officers
+                const [servicesRes, officersRes] = await Promise.all([
+                    apiGetDepartmentServices(currentDeptId),
+                    apiGetDepartmentOfficers(currentDeptId)
+                ]);
+
+                const services = servicesRes.data || [];
+                const officers = (officersRes.data || []).filter(o => o.designationId === desig.id || o.designationCode === desig.code || (o.designationTitle && o.designationTitle.includes(desig.code)));
+
+                // Find services where this designation is in workflow steps
+                const linkedServices = [];
+                services.forEach(srv => {
+                    const steps = (srv.workflowSteps || []).filter(step => step.requiredDesignationId === desig.id || (step.stepName && step.stepName.toLowerCase().includes(desig.code.toLowerCase())));
+                    if (steps.length > 0) {
+                        linkedServices.push({ service: srv, steps });
+                    }
+                });
+
+                bodyEl.innerHTML = `
+                    <!-- Role Summary Header -->
+                    <div style="background:#f8fafc;border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-size:0.75rem;color:var(--slate-500);text-transform:uppercase;font-weight:700;">Designation Identification</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);">👔 ${desig.title}</div>
+                            <div style="font-size:0.8125rem;color:var(--slate-600);margin-top:2px;">ID: <code>${desig.id}</code> · Code: <span class="badge badge-neutral">${desig.code}</span></div>
+                        </div>
+                        <div>
+                            <span class="badge badge-success" style="font-size:0.85rem;padding:6px 12px;">Workflow Status: ACTIVE</span>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Stats -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#1e40af;">${linkedServices.length}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#1e3a8a;">Linked Active Services</div>
+                        </div>
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#166534;">${officers.length}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#14532d;">Assigned Field Officers</div>
+                        </div>
+                    </div>
+
+                    <!-- Linked Service Workflows -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">📋 Active Workflow Step Participations</div>
+                        ${linkedServices.length > 0 ? `
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                ${linkedServices.map(item => `
+                                    <div style="background:#ffffff;border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:12px;">
+                                        <div style="font-weight:700;color:var(--navy-900);font-size:0.875rem;">📜 ${item.service.name}</div>
+                                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Service Code: <code>${item.service.code}</code> · SLA: ${item.service.slaDays || item.service.sla || 7} Days</div>
+                                        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">
+                                            ${item.steps.map(s => `
+                                                <div style="font-size:0.8125rem;color:#1e40af;background:#eff6ff;padding:4px 8px;border-radius:4px;">
+                                                    ⚡ <strong>Step ${s.stepNumber || 1}:</strong> ${s.stepName || 'Verification'}
+                                                    ${s.isFinalApprovalStep ? '<span class="badge badge-purple" style="margin-left:6px;">Final DSC Approval</span>' : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div style="padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-md);color:var(--slate-500);font-size:0.8125rem;">
+                                No published services currently bind this designation. Open the <strong>Service & Workflow Builder</strong> to assign this role to a workflow step.
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Assigned Officers -->
+                    <div>
+                        <div style="font-size:0.875rem;font-weight:700;color:var(--navy-900);margin-bottom:8px;">👥 Onboarded Officers with this Designation</div>
+                        ${officers.length > 0 ? `
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                ${officers.map(o => `
+                                    <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid #e2e8f0;font-size:0.8125rem;">
+                                        <div>
+                                            <strong>${o.name}</strong> · <span style="color:var(--slate-500);">${o.email}</span>
+                                        </div>
+                                        <span class="badge badge-success">● Active</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-md);color:var(--slate-500);font-size:0.8125rem;">
+                                No officers currently appointed with this designation. Go to <strong>Onboard Officers</strong> to appoint staff.
+                            </div>
+                        `}
+                    </div>
+                `;
+
+            } catch (err) {
+                console.error('Inspect error:', err);
+                bodyEl.innerHTML = `<div style="text-align:center;padding:24px;color:var(--red-500);">Failed to load role inspect details: ${err.message}</div>`;
+            }
+        };
+
+        // 5. Create Designation Handler
+        window.handleCreateDesig = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const btn = document.getElementById('saveDesigBtn');
+            const title = document.getElementById('desigTitleInput').value.trim();
+            const code = document.getElementById('desigCodeInput').value.trim().toUpperCase();
+            const description = document.getElementById('desigDescInput').value.trim();
+
+            if (!title || !code) {
+                showToast('Please fill out Title and Code.', 'warning');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            }
+
+            const payload = {
+                departmentId: currentDeptId,
+                title: title,
+                code: code,
+                description: description || `${title} Verification Officer`
+            };
+
+            try {
+                await apiCreateDesignation(payload);
+                showToast(`Designation "${payload.title}" created successfully!`, 'success');
+                window.closeModal('createDesigModal');
+                document.getElementById('createDesigForm')?.reset();
+                await loadDesignations();
+            } catch (err) {
+                console.error('Create designation error:', err);
+                showToast(err.message || 'Failed to create designation', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Create Designation';
+                }
+            }
+        };
+
+        // 6. Delete Designation Handler
+        window.handleDeleteDesig = async (desigId) => {
+            if (!confirm('Are you sure you want to delete this designation?')) return;
+            try {
+                await apiDeleteDesignation(desigId);
+                showToast('Designation deleted successfully.', 'success');
+                await loadDesignations();
+            } catch (err) {
+                showToast(err.message || 'Failed to delete designation', 'error');
+            }
+        };
+
+        // Initial Load
+        loadDesignations();
+    </script>
+</body>
+</html>

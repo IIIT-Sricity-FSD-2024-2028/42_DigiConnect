@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>National Revenue Analysis – DigiConnect Central Government</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .filter-pill-group {
+            display: inline-flex;
+            background: var(--slate-100);
+            padding: 3px;
+            border-radius: var(--radius-md);
+            gap: 2px;
+        }
+        .filter-pill {
+            border: none;
+            background: transparent;
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--slate-600);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .filter-pill.active {
+            background: #ffffff;
+            color: var(--navy-900);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .state-chip-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: #eff6ff;
+            color: #1e40af;
+            font-weight: 600;
+            font-size: 0.8125rem;
+            border: 1px solid #bfdbfe;
+        }
+        .state-chip-remove {
+            cursor: pointer;
+            font-weight: 700;
+            color: #ef4444;
+            margin-left: 2px;
+        }
+        .load-more-container {
+            display: flex;
+            justify-content: center;
+            padding: 12px 16px;
+            border-top: 1px solid var(--slate-100);
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body data-page="central-revenue-analysis">
+    <div class="app-layout">
+        <!-- Sidebar (Standard Central Admin sidebar — no new sidebar items) -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header & Back Navigation -->
+            <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:var(--space-lg);">
+                <div>
+                    <a href="dashboard.html" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:6px;padding-left:0;color:var(--navy-600);font-weight:700;">
+                        ← Back to National Dashboard
+                    </a>
+                    <h1 class="page-title">National Revenue Analysis</h1>
+                    <p class="page-subtitle">Detailed state-wise fiscal generation, revenue distribution, trends and comparative analytics.</p>
+                </div>
+                <div class="filter-pill-group" id="revTimeFilterGroup">
+                    <button type="button" class="filter-pill" onclick="changePeriod('today', this)">Today</button>
+                    <button type="button" class="filter-pill" onclick="changePeriod('week', this)">This Week</button>
+                    <button type="button" class="filter-pill active" onclick="changePeriod('month', this)">This Month</button>
+                    <button type="button" class="filter-pill" onclick="changePeriod('year', this)">This Year</button>
+                </div>
+            </div>
+
+            <!-- 7. REVENUE ANALYSIS SUMMARY (5 Cards with Platform Fee) -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-md);margin-bottom:var(--space-xl);">
+                <div class="stat-card" style="border:2px solid #2563eb;">
+                    <div class="stat-icon" style="background:#2563eb;color:#ffffff;">💰</div>
+                    <div>
+                        <div class="stat-value" id="summary-total-revenue" style="color:#2563eb;">₹0</div>
+                        <div class="stat-label">Total Revenue</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;" id="summary-states-label">Across federated states</div>
+                    </div>
+                </div>
+                <div class="stat-card" style="border:1.5px solid #0284c7;">
+                    <div class="stat-icon" style="background:#e0f2fe;color:#0284c7;">⚡</div>
+                    <div>
+                        <div class="stat-value" id="summary-platform-fee" style="color:#0284c7;">₹0</div>
+                        <div class="stat-label">Total Platform Fee</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Central e-Gov infrastructure</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">📋</div>
+                    <div>
+                        <div class="stat-value" id="summary-total-apps">0</div>
+                        <div class="stat-label">Total Applications</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">National application volume</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#f0fdf4;color:#16a34a;">📈</div>
+                    <div>
+                        <div class="stat-value" id="summary-avg-revenue">₹0</div>
+                        <div class="stat-label">Average Revenue / Application</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Service & fee blend</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fefce8;color:#ca8a04;">🏆</div>
+                    <div>
+                        <div class="stat-value" id="summary-highest-state" style="font-size:1.25rem;">—</div>
+                        <div class="stat-label">Highest Revenue State</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;" id="summary-highest-state-val">₹0 (0% share)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ROW: BAR GRAPH & PIE/DONUT DISTRIBUTION -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(400px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <!-- 8. REVENUE BY STATE — BAR GRAPH -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <div>
+                            <span class="card-title">Revenue by State</span>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">Gross revenue generated per state</div>
+                        </div>
+                        <div class="filter-pill-group" style="padding:2px;">
+                            <button type="button" class="filter-pill active" onclick="filterBarChart('top5', this)" style="padding:3px 8px;font-size:0.75rem;">Top 5</button>
+                            <button type="button" class="filter-pill" onclick="filterBarChart('top10', this)" style="padding:3px 8px;font-size:0.75rem;">Top 10</button>
+                            <button type="button" class="filter-pill" onclick="filterBarChart('bottom5', this)" style="padding:3px 8px;font-size:0.75rem;">Bottom 5</button>
+                            <button type="button" class="filter-pill" onclick="filterBarChart('all', this)" style="padding:3px 8px;font-size:0.75rem;">All States</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:var(--space-md);">
+                        <div id="revenueBarChartContainer" style="min-height:260px;"></div>
+                    </div>
+                </div>
+
+                <!-- 9. REVENUE DISTRIBUTION — PIE/DONUT -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <span class="card-title">Revenue Distribution by State</span>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">Percentage contribution to total national revenue</div>
+                        </div>
+                        <span class="badge badge-neutral">National Share</span>
+                    </div>
+                    <div class="card-body" style="padding:var(--space-lg);">
+                        <div id="revenueDonutChartContainer" style="min-height:240px;display:flex;align-items:center;justify-content:center;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 10. NATIONAL REVENUE TREND -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <span class="card-title">National Revenue Trend</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Revenue collection progression across time horizons</div>
+                    </div>
+                    <div class="filter-pill-group" style="padding:2px;">
+                        <button type="button" class="filter-pill active" onclick="switchRevTrend('monthly', this)" style="padding:4px 10px;font-size:0.8125rem;">Monthly</button>
+                        <button type="button" class="filter-pill" onclick="switchRevTrend('weekly', this)" style="padding:4px 10px;font-size:0.8125rem;">Weekly</button>
+                        <button type="button" class="filter-pill" onclick="switchRevTrend('daily', this)" style="padding:4px 10px;font-size:0.8125rem;">Daily</button>
+                        <button type="button" class="filter-pill" onclick="switchRevTrend('yearly', this)" style="padding:4px 10px;font-size:0.8125rem;">Yearly</button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:var(--space-md);">
+                    <div id="revTrendChartContainer" style="min-height:220px;"></div>
+                </div>
+            </div>
+
+            <!-- 11, 12, 13. STATE COMPARISON SECTION (REQUIRED) -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <span class="card-title">Compare States</span>
+                        <div style="font-size:0.8125rem;color:var(--slate-500);margin-top:2px;">Interactive cross-state benchmark & performance comparison</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span style="font-size:0.8125rem;font-weight:600;color:var(--slate-600);">Metric:</span>
+                        <select class="form-select" id="compareMetricSelect" onchange="handleMetricChange(this.value)" style="width:auto;padding:4px 12px;font-size:0.8125rem;font-weight:700;">
+                            <option value="revenue">Revenue (₹)</option>
+                            <option value="applications">Applications Count</option>
+                            <option value="avgRevenue">Average Revenue / Application</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-body" style="border-bottom:1px solid var(--slate-100);background:#fcfdfe;">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <span style="font-size:0.875rem;font-weight:700;color:var(--navy-900);">Selected States:</span>
+                        <div id="selectedStatesChips" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <!-- State badges -->
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <select class="form-select" id="addStateSelect" style="width:180px;padding:4px 10px;font-size:0.8125rem;">
+                                <!-- Options populated dynamically -->
+                            </select>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="addStateToCompare()" style="font-size:0.8125rem;">+ Add State</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 12. State Comparison Chart -->
+                <div class="card-body" style="padding:var(--space-lg);">
+                    <div id="comparisonChartContainer" style="min-height:230px;"></div>
+                </div>
+
+                <!-- 13. State Comparison Table -->
+                <div class="card-body" style="padding:0;border-top:1px solid var(--slate-200);">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>State</th>
+                                    <th>Applications</th>
+                                    <th>Dept. Share (₹)</th>
+                                    <th>Platform Fee (₹)</th>
+                                    <th>Total Revenue (₹)</th>
+                                    <th>Revenue Share</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compareTableTbody">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="load-more-container" id="compareLoadMoreContainer">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnLoadMoreCompare" onclick="loadMoreCompareRows()">
+                            Load More States (Showing <span id="cmpShownCount">4</span> of <span id="cmpTotalCount">4</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getNationalAnalyticsData, formatINR, formatNum } from '../js/national-analytics.js';
+        import { renderBarChart, renderDonutChart, renderTrendChart } from '../js/chart-renderer.js';
+
+        let nationalData = null;
+        let barChartFilter = 'top5';
+        let activeRevTrend = 'monthly';
+        let compareMetric = 'revenue';
+        let selectedStateCodes = ['AP', 'KA', 'TN', 'KL']; // 4 Federated States
+        let compareLimit = 5;
+
+        initPage({
+            title: 'National Revenue Analysis',
+            breadcrumbs: [{ label: 'Central Government' }, { label: 'National Dashboard', href: 'central-admin/dashboard.html' }, { label: 'Revenue Analysis' }],
+            requiredRole: 'central_admin'
+        });
+
+        window.changePeriod = (period, btn) => {
+            btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const mult = { today: 0.04, week: 0.25, month: 1.0, year: 3.8 }[period] || 1.0;
+            if (nationalData) {
+                const adjRev = Math.round(nationalData.totalRevenue * mult);
+                const adjPlat = Math.round((nationalData.totalPlatformFees || (nationalData.totalRevenue * 0.2)) * mult);
+                const adjApps = Math.round(nationalData.totalApplications * mult);
+                document.getElementById('summary-total-revenue').textContent = formatINR(adjRev, true);
+                document.getElementById('summary-platform-fee').textContent = formatINR(adjPlat, true);
+                document.getElementById('summary-total-apps').textContent = formatNum(adjApps);
+                document.getElementById('summary-avg-revenue').textContent = `₹${adjApps > 0 ? Math.round(adjRev / adjApps) : 0}`;
+            }
+        };
+
+        window.filterBarChart = (filter, btn) => {
+            barChartFilter = filter;
+            btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderRevenueBarChart();
+        };
+
+        function renderRevenueBarChart() {
+            if (!nationalData) return;
+            const states = [...nationalData.states];
+            let filtered = [];
+            if (barChartFilter === 'top5') filtered = states.slice(0, 5);
+            else if (barChartFilter === 'top10') filtered = states.slice(0, 10);
+            else if (barChartFilter === 'bottom5') filtered = states.slice(-5).reverse();
+            else filtered = states;
+
+            const chartData = filtered.map(s => ({
+                label: s.name,
+                value: s.revenue,
+                color: '#2563eb'
+            }));
+
+            renderBarChart(document.getElementById('revenueBarChartContainer'), chartData, {
+                height: 250,
+                formatValue: (v) => formatINR(v, true)
+            });
+        }
+
+        function renderRevenueDonut() {
+            if (!nationalData) return;
+            const states = nationalData.states;
+            const top = states.slice(0, 6);
+            const othersRev = states.slice(6).reduce((sum, s) => sum + s.revenue, 0);
+
+            const colors = ['#1e40af', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#94a3b8'];
+            const donutData = top.map((s, i) => ({
+                label: s.name,
+                value: s.revenue,
+                color: colors[i],
+                formattedValue: formatINR(s.revenue, true)
+            }));
+
+            if (othersRev > 0) {
+                donutData.push({
+                    label: 'Others (22 States)',
+                    value: othersRev,
+                    color: colors[6],
+                    formattedValue: formatINR(othersRev, true)
+                });
+            }
+
+            renderDonutChart(document.getElementById('revenueDonutChartContainer'), donutData, {
+                size: 210,
+                holeSize: 45
+            });
+        }
+
+        window.switchRevTrend = (period, btn) => {
+            activeRevTrend = period;
+            btn.parentElement.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderRevenueTrendChart();
+        };
+
+        function renderRevenueTrendChart() {
+            if (!nationalData) return;
+            const container = document.getElementById('revTrendChartContainer');
+            const points = (nationalData.trends[activeRevTrend] || nationalData.trends.monthly).map(p => ({
+                label: p.label,
+                value: p.revenue
+            }));
+
+            renderTrendChart(container, points, {
+                height: 210,
+                lineColor: '#16a34a',
+                fillColor: 'rgba(22, 163, 74, 0.08)',
+                formatValue: (v) => formatINR(v, true)
+            });
+        }
+
+        // ── STATE COMPARISON ENGINE ──
+        window.handleMetricChange = (metric) => {
+            compareMetric = metric;
+            renderComparisonVisualization();
+        };
+
+        window.removeCompareState = (code) => {
+            if (selectedStateCodes.length <= 2) {
+                alert('Please keep at least 2 states for comparative analysis.');
+                return;
+            }
+            selectedStateCodes = selectedStateCodes.filter(c => c !== code);
+            renderSelectedStateChips();
+            renderComparisonVisualization();
+        };
+
+        window.addStateToCompare = () => {
+            const sel = document.getElementById('addStateSelect');
+            const code = sel.value;
+            if (!code) return;
+            if (selectedStateCodes.includes(code)) return;
+            selectedStateCodes.push(code);
+            renderSelectedStateChips();
+            renderComparisonVisualization();
+        };
+
+        function renderSelectedStateChips() {
+            if (!nationalData) return;
+            const chipsEl = document.getElementById('selectedStatesChips');
+            chipsEl.innerHTML = selectedStateCodes.map(code => {
+                const s = nationalData.states.find(st => st.code === code) || { name: code };
+                return `
+                    <span class="state-chip-badge">
+                        🏛️ ${s.name}
+                        <span class="state-chip-remove" onclick="removeCompareState('${code}')" title="Remove">✕</span>
+                    </span>
+                `;
+            }).join('');
+
+            // Populate dropdown with remaining states
+            const addSel = document.getElementById('addStateSelect');
+            const remaining = nationalData.states.filter(st => !selectedStateCodes.includes(st.code));
+            addSel.innerHTML = remaining.map(st => `<option value="${st.code}">${st.name} (${st.code})</option>`).join('');
+        }
+
+        function renderComparisonVisualization() {
+            if (!nationalData) return;
+            const states = selectedStateCodes.map(code => nationalData.states.find(s => s.code === code)).filter(Boolean);
+
+            const metricLabels = {
+                revenue: 'Revenue (₹)',
+                applications: 'Applications Count',
+                avgRevenue: 'Average Revenue / Application'
+            };
+
+            const chartData = states.map(s => {
+                let val = s.revenue;
+                if (compareMetric === 'applications') val = s.applications;
+                if (compareMetric === 'avgRevenue') val = s.avgRevenue;
+                return {
+                    label: s.name,
+                    value: val,
+                    color: '#2563eb'
+                };
+            });
+
+            renderBarChart(document.getElementById('comparisonChartContainer'), chartData, {
+                height: 220,
+                formatValue: (v) => {
+                    if (compareMetric === 'applications') return formatNum(v);
+                    return formatINR(v, true);
+                }
+            });
+        }
+
+        function renderCompareTable() {
+            if (!nationalData) return;
+            const states = nationalData.states;
+            const visible = states.slice(0, compareLimit);
+            const tbody = document.getElementById('compareTableTbody');
+
+            tbody.innerHTML = visible.map(s => {
+                const srvFee = s.serviceFee !== undefined ? s.serviceFee : Math.round(s.revenue * 0.8);
+                const platFee = s.platformFee !== undefined ? s.platformFee : Math.round(s.revenue * 0.2);
+                return `
+                    <tr style="${selectedStateCodes.includes(s.code) ? 'background:#f0f7ff;' : ''}">
+                        <td style="font-weight:700;color:var(--navy-900);">
+                            🏛️ ${s.name} <span class="badge badge-neutral" style="margin-left:4px;">${s.code}</span>
+                        </td>
+                        <td style="font-weight:600;">${formatNum(s.applications)}</td>
+                        <td style="font-weight:700;color:#16a34a;">${formatINR(srvFee)}</td>
+                        <td style="font-weight:700;color:#0284c7;">${formatINR(platFee)}</td>
+                        <td style="font-weight:800;color:var(--navy-900);">${formatINR(s.revenue)}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="flex:1;max-width:80px;height:6px;background:var(--slate-200);border-radius:3px;overflow:hidden;">
+                                    <div style="width:${s.revenueShare}%;height:100%;background:#2563eb;"></div>
+                                </div>
+                                <span style="font-weight:700;font-size:0.8125rem;">${s.revenueShare}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('cmpShownCount').textContent = visible.length;
+            document.getElementById('cmpTotalCount').textContent = states.length;
+            const container = document.getElementById('compareLoadMoreContainer');
+            if (visible.length >= states.length) {
+                container.style.display = 'none';
+            } else {
+                container.style.display = 'flex';
+            }
+        }
+
+        window.loadMoreCompareRows = () => {
+            compareLimit += 5;
+            renderCompareTable();
+        };
+
+        async function initPageData() {
+            nationalData = await getNationalAnalyticsData();
+
+            // Populate top summary cards
+            document.getElementById('summary-total-revenue').textContent = formatINR(nationalData.totalRevenue, true);
+            const totalPlat = nationalData.totalPlatformFees !== undefined ? nationalData.totalPlatformFees : Math.round(nationalData.totalRevenue * 0.2);
+            document.getElementById('summary-platform-fee').textContent = formatINR(totalPlat, true);
+            document.getElementById('summary-total-apps').textContent = formatNum(nationalData.totalApplications);
+            document.getElementById('summary-avg-revenue').textContent = `₹${nationalData.avgRevPerApp}`;
+            document.getElementById('summary-highest-state').textContent = nationalData.highestRevenueState;
+            const statesLabel = document.getElementById('summary-states-label');
+            if (statesLabel) statesLabel.textContent = `Across ${nationalData.totalStates} federated states`;
+
+            const highestStateObj = nationalData.states[0];
+            if (highestStateObj) {
+                document.getElementById('summary-highest-state-val').textContent = `${formatINR(highestStateObj.revenue)} (${highestStateObj.revenueShare}% share)`;
+            }
+
+            // Render visualizations
+            renderRevenueBarChart();
+            renderRevenueDonut();
+            renderRevenueTrendChart();
+            renderSelectedStateChips();
+            renderComparisonVisualization();
+            renderCompareTable();
+        }
+
+        initPageData();
+    </script>
+</body>
+</html>

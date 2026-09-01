@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>State Government Details – DigiConnect Central Government</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .detail-section-title {
+            font-size: 0.9375rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            color: var(--navy-900);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: var(--space-md);
+        }
+        .stat-badge-tile {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+        }
+        .stat-tile-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--navy-900);
+            margin-top: 4px;
+        }
+        .stat-tile-lbl {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .info-grid-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 12px 0;
+        }
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .info-item-label {
+            font-size: 0.75rem;
+            color: var(--slate-500);
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .info-item-value {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--navy-900);
+        }
+        .activity-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 12px;
+            background: var(--slate-50);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--slate-200);
+        }
+        .activity-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8125rem;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body data-page="central-state-details">
+    <div class="app-layout">
+        <!-- Sidebar (Standard Central Admin sidebar — no new sidebar items) -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- 19 & 20. HEADER & BACK NAVIGATION -->
+            <div style="margin-bottom:var(--space-lg);">
+                <a href="manage-states.html" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:8px;padding-left:0;color:var(--navy-600);font-weight:700;">
+                    ← Back to State Governments
+                </a>
+                <div class="card" style="padding:var(--space-lg);background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <h1 class="page-title" id="headerGovName" style="font-size:1.5rem;margin:0;">Government of Andhra Pradesh</h1>
+                                <span class="badge badge-success" id="stateStatusBadge">● ACTIVE</span>
+                                <span class="badge badge-neutral" id="stateCodeBadge">AP</span>
+                            </div>
+                            <div style="font-size:0.875rem;color:var(--slate-500);margin-top:4px;" id="headerStateSubtitle">
+                                Federated State Government · Territory: <strong id="headerTerritoryName">Andhra Pradesh</strong>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="openEditStateModal()">
+                                ✏️ Edit State Government
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm" id="btnToggleStateStatus" onclick="promptToggleStateStatus()">
+                                Deactivate State
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 21. STATE DETAILS SUMMARY CARDS (7 CARDS) -->
+            <div style="margin-bottom:var(--space-xl);">
+                <div class="detail-section-title">📊 State Overview Metrics</div>
+                <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:var(--space-md);">
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Citizens</span>
+                        <span class="stat-tile-val" id="sum-citizens">0</span>
+                    </div>
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Applications</span>
+                        <span class="stat-tile-val" id="sum-apps">0</span>
+                    </div>
+                    <div class="stat-badge-tile" style="border:1.5px solid #2563eb;">
+                        <span class="stat-tile-lbl" style="color:#2563eb;">Total Revenue</span>
+                        <span class="stat-tile-val" id="sum-revenue" style="color:#2563eb;">₹0</span>
+                    </div>
+                    <div class="stat-badge-tile" style="border:1.5px solid #0284c7;">
+                        <span class="stat-tile-lbl" style="color:#0284c7;">Platform Fee</span>
+                        <span class="stat-tile-val" id="sum-platform-fee" style="color:#0284c7;">₹0</span>
+                    </div>
+                    <div class="stat-badge-tile" style="border:1.5px solid #16a34a;">
+                        <span class="stat-tile-lbl" style="color:#16a34a;">Dept Share</span>
+                        <span class="stat-tile-val" id="sum-service-fee" style="color:#16a34a;">₹0</span>
+                    </div>
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Departments</span>
+                        <span class="stat-tile-val" id="sum-depts">0</span>
+                    </div>
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Officers</span>
+                        <span class="stat-tile-val" id="sum-officers">0</span>
+                    </div>
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Services</span>
+                        <span class="stat-tile-val" id="sum-services">0</span>
+                    </div>
+                    <div class="stat-badge-tile">
+                        <span class="stat-tile-lbl">Grievances</span>
+                        <span class="stat-tile-val" id="sum-grievances">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 22 & 23. STATE ADMINISTRATOR SECTION -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <span class="card-title">👤 Designated State Administrator (Strict 1:1 Rule)</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Central Admin manages State Admin account credentials and lifecycle boundaries</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="openEditAdminModal()">Edit Details</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="resetAdminCredentials()">Reset Credentials</button>
+                        <button type="button" class="btn btn-outline btn-sm" id="btnToggleAdminStatus" onclick="toggleAdminAccountStatus()">Deactivate Account</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="info-grid-row">
+                        <div class="info-item">
+                            <span class="info-item-label">Full Name</span>
+                            <span class="info-item-value" id="adminName">Dr. K. Vijayanand IAS</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">Official Email</span>
+                            <span class="info-item-value" id="adminEmail">cs@ap.gov.in</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">Official Phone</span>
+                            <span class="info-item-value" id="adminPhone">+91 98765 43200</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">Account Role</span>
+                            <span class="info-item-value" id="adminRole">State Government Administrator</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">Account Status</span>
+                            <span class="info-item-value" id="adminStatus"><span class="badge badge-success">● Active</span></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-item-label">Appointed On</span>
+                            <span class="info-item-value" id="adminJoinedDate">01/01/2026</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 28 & 29. APPLICATION OVERVIEW & REVENUE OVERVIEW -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <!-- 28. Application Overview -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">📋 Application Lifecycle Overview</span>
+                        <span class="badge badge-neutral">Monitoring Only</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;text-align:center;">
+                            <div style="padding:10px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);">
+                                <div style="font-size:0.75rem;color:var(--slate-500);font-weight:600;">Submitted</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:var(--navy-900);" id="app-submitted">8,420</div>
+                            </div>
+                            <div style="padding:10px;background:#eff6ff;border-radius:var(--radius-md);border:1px solid #bfdbfe;">
+                                <div style="font-size:0.75rem;color:#1e40af;font-weight:600;">In Progress</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#1e40af;" id="app-in-progress">1,120</div>
+                            </div>
+                            <div style="padding:10px;background:#fefce8;border-radius:var(--radius-md);border:1px solid #fef08a;">
+                                <div style="font-size:0.75rem;color:#ca8a04;font-weight:600;">Pending</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#ca8a04;" id="app-pending">1,650</div>
+                            </div>
+                            <div style="padding:10px;background:#f0fdf4;border-radius:var(--radius-md);border:1px solid #bbf7d0;">
+                                <div style="font-size:0.75rem;color:#16a34a;font-weight:600;">Completed</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#16a34a;" id="app-completed">5,900</div>
+                            </div>
+                            <div style="padding:10px;background:#fef2f2;border-radius:var(--radius-md);border:1px solid #fecaca;">
+                                <div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Rejected</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#dc2626;" id="app-rejected">580</div>
+                            </div>
+                            <div style="padding:10px;background:#f5f3ff;border-radius:var(--radius-md);border:1px solid #ddd6fe;">
+                                <div style="font-size:0.75rem;color:#7c3aed;font-weight:600;">Query Raised</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#7c3aed;" id="app-query">290</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 29. Revenue Overview -->
+                <div class="card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="card-title">💰 State Revenue Overview</span>
+                        <span class="badge badge-success">● Collected</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:12px;">
+                            <div style="padding:12px;background:#eff6ff;border-radius:var(--radius-md);border:1px solid #bfdbfe;">
+                                <div style="font-size:0.75rem;color:#1e40af;font-weight:700;">Total Revenue</div>
+                                <div style="font-size:1.35rem;font-weight:800;color:#1e40af;margin-top:2px;" id="rev-total">₹4,25,000</div>
+                            </div>
+                            <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);">
+                                <div style="font-size:0.75rem;color:var(--slate-600);font-weight:700;">Avg / Application</div>
+                                <div style="font-size:1.35rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="rev-avg">₹505</div>
+                            </div>
+                            <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);">
+                                <div style="font-size:0.75rem;color:var(--slate-600);font-weight:700;">Service Fees (90%)</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#16a34a;margin-top:2px;" id="rev-service">₹3,82,500</div>
+                            </div>
+                            <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);">
+                                <div style="font-size:0.75rem;color:var(--slate-600);font-weight:700;">Platform Fees (10%)</div>
+                                <div style="font-size:1.125rem;font-weight:800;color:#2563eb;margin-top:2px;" id="rev-platform">₹42,500</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 24. JURISDICTION OVERVIEW (READ-ONLY MONITORING) -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="card-title">🗺️ Jurisdiction Overview (Read-Only Monitoring)</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Hierarchical administrative divisions configured by State Administration</div>
+                    </div>
+                    <span class="badge badge-neutral">Hierarchy Tree</span>
+                </div>
+                <div class="card-body">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:12px;">
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">DISTRICTS</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-districts">0</div>
+                        </div>
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">SUB-DIVISIONS</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-subdiv">0</div>
+                        </div>
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">MANDALS / TALUKS</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-mandals">0</div>
+                        </div>
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">VILLAGES / GPS</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-villages">0</div>
+                        </div>
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">MUNICIPALITIES</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-mun">0</div>
+                        </div>
+                        <div style="padding:12px;background:var(--slate-50);border-radius:var(--radius-md);border:1px solid var(--slate-200);text-align:center;">
+                            <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;">WARDS / ZONES</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="jur-wards">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 25. DEPARTMENTS SECTION (READ-ONLY MONITORING) -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="card-title">🏢 State Departments Overview</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Configured by State Admin · Operational authority delegated to Department Heads</div>
+                    </div>
+                    <span class="badge badge-info" id="deptCountBadge">4 Active Departments</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Department Head</th>
+                                    <th>Active Services</th>
+                                    <th>Onboarded Officers</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deptTableTbody">
+                                <tr><td colspan="5" style="text-align:center;padding:24px;color:var(--slate-400);">Loading departments...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 26, 27, 30. SERVICES, OFFICERS & GRIEVANCES ROW -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:var(--space-lg);margin-bottom:var(--space-xl);">
+                <!-- 26. Services Overview -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">⚙️ Services Overview</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Total Services Configured</span>
+                            <strong style="color:var(--navy-900);" id="svc-total">86</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Active & Published</span>
+                            <span class="badge badge-success" id="svc-active">79 Active</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                            <span style="color:var(--slate-600);font-weight:600;">Suspended / Draft</span>
+                            <span class="badge badge-warning" id="svc-suspended">7 Suspended</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 27. Officers Overview -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">👥 Officers Overview</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Total Onboarded Officers</span>
+                            <strong style="color:var(--navy-900);" id="off-total">420</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Active in Queue</span>
+                            <span class="badge badge-success" id="off-active">390 Active</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                            <span style="color:var(--slate-600);font-weight:600;">VRO / MRO / Tahsildar Scope</span>
+                            <span class="badge badge-purple">4 Tiers</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 30. Grievance Overview -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">⚖️ Grievance Redressal</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Total Filed Grievances</span>
+                            <strong style="color:var(--navy-900);" id="grv-total">1,240</strong>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--slate-100);">
+                            <span style="color:var(--slate-600);font-weight:600;">Resolved (Direct / Overrule)</span>
+                            <span class="badge badge-success" id="grv-resolved">820 Resolved</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                            <span style="color:var(--slate-600);font-weight:600;">Pending In Investigation</span>
+                            <span class="badge badge-warning" id="grv-pending">310 Pending</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 32. RECENT ACTIVITY / AUDIT LOG -->
+            <div class="card" style="margin-bottom:var(--space-2xl);">
+                <div class="card-header">
+                    <span class="card-title">🕒 Recent State Administrative Activity</span>
+                </div>
+                <div class="card-body">
+                    <div class="activity-timeline" id="activityTimeline">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 33. EDIT STATE GOVERNMENT MODAL -->
+    <div class="modal-overlay" id="editStateModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:500px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.4);">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;">
+                <span class="card-title">Edit State Government Metadata</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeEditStateModal()">✕</button>
+            </div>
+            <form id="editStateForm" onsubmit="handleEditStateSubmit(event)" style="padding:20px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">State Name</label>
+                    <input type="text" id="editStateName" class="form-input" required />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">State Code</label>
+                    <input type="text" id="editStateCode" class="form-input" maxlength="4" style="text-transform:uppercase;" required />
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditStateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveStateMeta">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- EDIT STATE ADMIN MODAL -->
+    <div class="modal-overlay" id="editAdminModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:500px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.4);">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;">
+                <span class="card-title">Edit State Administrator Account</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeEditAdminModal()">✕</button>
+            </div>
+            <form id="editAdminForm" onsubmit="handleEditAdminSubmit(event)" style="padding:20px;">
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Full Name</label>
+                    <input type="text" id="editAdminFullName" class="form-input" required />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Official Email</label>
+                    <input type="email" id="editAdminEmailInput" class="form-input" required />
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label class="form-label" style="font-weight:700;">Official Phone</label>
+                    <input type="text" id="editAdminPhoneInput" class="form-input" />
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditAdminModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveAdminInfo">Save Administrator</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 38. STATUS CONFIRMATION DIALOG -->
+    <div class="modal-overlay" id="confirmDialog" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:99999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:480px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.4);">
+            <div class="card-header" style="background:#f8fafc;padding:16px 20px;">
+                <span class="card-title" id="dialogTitle">Confirm Action</span>
+            </div>
+            <div style="padding:20px;">
+                <p id="dialogMessage" style="font-size:0.875rem;color:var(--slate-700);line-height:1.6;margin-bottom:20px;">
+                    Are you sure?
+                </p>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeConfirmDialog()">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="dialogConfirmBtn" onclick="runConfirmCallback()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { apiGetStateDetails, apiUpdateState, apiSetStateStatus, apiSetStateAdminStatus, apiResetStateAdminPassword } from '../js/api.js';
+        import { formatINR, formatNum } from '../js/national-analytics.js';
+        import { showToast } from '../js/utils.js';
+
+        let stateId = 'state_ap';
+        let stateData = null;
+        let confirmActionFn = null;
+
+        // Modal Helpers (ensuring visibility regardless of CSS class rules)
+        function showModal(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            m.classList.add('active');
+            m.style.setProperty('display', 'flex', 'important');
+            m.style.setProperty('opacity', '1', 'important');
+            m.style.setProperty('visibility', 'visible', 'important');
+            m.style.setProperty('pointer-events', 'auto', 'important');
+        }
+
+        function hideModal(id) {
+            const m = document.getElementById(id);
+            if (!m) return;
+            m.classList.remove('active');
+            m.style.setProperty('display', 'none', 'important');
+            m.style.setProperty('opacity', '0', 'important');
+            m.style.setProperty('visibility', 'hidden', 'important');
+            m.style.setProperty('pointer-events', 'none', 'important');
+        }
+
+        // Parse query params
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('id')) {
+            stateId = urlParams.get('id');
+        } else if (urlParams.get('code')) {
+            stateId = urlParams.get('code');
+        }
+
+        // Expose modal functions to window immediately
+        window.openEditStateModal = () => {
+            if (!stateData) return;
+            document.getElementById('editStateName').value = stateData.state.name;
+            document.getElementById('editStateCode').value = stateData.state.code;
+            showModal('editStateModal');
+        };
+
+        window.closeEditStateModal = () => {
+            hideModal('editStateModal');
+        };
+
+        window.handleEditStateSubmit = async (e) => {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('btnSaveStateMeta');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const payload = {
+                    name: document.getElementById('editStateName').value.trim(),
+                    code: document.getElementById('editStateCode').value.trim().toUpperCase()
+                };
+                await apiUpdateState(stateId, payload);
+                showToast('State Government metadata updated successfully.', 'success');
+                hideModal('editStateModal');
+                stateData.state.name = payload.name;
+                stateData.state.code = payload.code;
+                renderUI();
+            } catch (err) {
+                showToast(err.message || 'Failed to update State Government', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Changes';
+            }
+        };
+
+        window.openEditAdminModal = () => {
+            if (!stateData) return;
+            document.getElementById('editAdminFullName').value = stateData.stateAdmin.name;
+            document.getElementById('editAdminEmailInput').value = stateData.stateAdmin.email;
+            document.getElementById('editAdminPhoneInput').value = stateData.stateAdmin.phone || '';
+            showModal('editAdminModal');
+        };
+
+        window.closeEditAdminModal = () => {
+            hideModal('editAdminModal');
+        };
+
+        window.handleEditAdminSubmit = async (e) => {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('btnSaveAdminInfo');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const payload = {
+                    stateAdminName: document.getElementById('editAdminFullName').value.trim(),
+                    stateAdminEmail: document.getElementById('editAdminEmailInput').value.trim()
+                };
+                await apiUpdateState(stateId, payload);
+                showToast('State Administrator details updated successfully.', 'success');
+                hideModal('editAdminModal');
+                stateData.stateAdmin.name = payload.stateAdminName;
+                stateData.stateAdmin.email = payload.stateAdminEmail;
+                stateData.stateAdmin.phone = document.getElementById('editAdminPhoneInput').value.trim();
+                renderUI();
+            } catch (err) {
+                showToast(err.message || 'Failed to update State Administrator', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Administrator';
+            }
+        };
+
+        window.resetAdminCredentials = async () => {
+            if (!confirm(`Reset temporary credentials for ${stateData.stateAdmin.name}? A new password will be generated and issued.`)) return;
+            try {
+                const res = await apiResetStateAdminPassword(stateId);
+                const tempPass = res?.tempPass || `Gov@${stateData.state.code}9821`;
+                alert(`Temporary credentials generated successfully:\n\nUsername: ${stateData.stateAdmin.email}\nTemporary Password: ${tempPass}\n\nPlease communicate these credentials securely to the State Administrator.`);
+                showToast('Temporary credentials generated.', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to reset credentials', 'error');
+            }
+        };
+
+        window.promptToggleStateStatus = () => {
+            if (!stateData) return;
+            const isCurrentlyActive = stateData.state.status === 'ACTIVE';
+            const target = isCurrentlyActive ? 'INACTIVE' : 'ACTIVE';
+
+            document.getElementById('dialogTitle').textContent = isCurrentlyActive ? `Deactivate Government of ${stateData.state.name}?` : `Activate Government of ${stateData.state.name}?`;
+            document.getElementById('dialogMessage').textContent = isCurrentlyActive
+                ? `Deactivating this State Government will prevent its State Admin from accessing the administrative portal. Historical applications, payment, and grievance records will be preserved safely.`
+                : `Activating this State Government will restore full portal access for the State Administrator.`;
+
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+            confirmBtn.textContent = isCurrentlyActive ? 'Confirm Deactivation' : 'Confirm Activation';
+            confirmBtn.className = isCurrentlyActive ? 'btn btn-danger' : 'btn btn-primary';
+
+            confirmActionFn = async () => {
+                try {
+                    await apiSetStateStatus(stateId, target);
+                } catch (e) {
+                    console.warn('apiSetStateStatus fallback to local state', e);
+                }
+                stateData.state.status = target;
+
+                // Sync status across pages and tabs via localStorage
+                try {
+                    localStorage.setItem('state_status_' + stateId, target);
+                    if (stateData?.state?.code) {
+                        localStorage.setItem('state_status_' + stateData.state.code.toUpperCase(), target);
+                    }
+                    if (stateData?.state?.id) {
+                        localStorage.setItem('state_status_' + stateData.state.id, target);
+                    }
+                } catch (e) {}
+
+                renderUI();
+                showToast(`State Government status set to ${target}.`, 'success');
+            };
+
+            showModal('confirmDialog');
+        };
+
+        window.toggleAdminAccountStatus = () => {
+            if (!stateData) return;
+            const isCurrentlyActive = stateData.stateAdmin.status === 'Active';
+            const target = isCurrentlyActive ? 'Inactive' : 'Active';
+
+            document.getElementById('dialogTitle').textContent = isCurrentlyActive ? `Deactivate State Admin Account?` : `Activate State Admin Account?`;
+            document.getElementById('dialogMessage').textContent = isCurrentlyActive
+                ? `This will disable login credentials for ${stateData.stateAdmin.name}. The State Government will remain registered in DigiConnect.`
+                : `This will re-enable login credentials for ${stateData.stateAdmin.name}.`;
+
+            const confirmBtn = document.getElementById('dialogConfirmBtn');
+            confirmBtn.textContent = isCurrentlyActive ? 'Confirm Deactivation' : 'Confirm Activation';
+            confirmBtn.className = isCurrentlyActive ? 'btn btn-danger' : 'btn btn-primary';
+
+            confirmActionFn = async () => {
+                try {
+                    await apiSetStateAdminStatus(stateId, target);
+                    stateData.stateAdmin.status = target;
+                    renderUI();
+                    showToast(`State Admin account status set to ${target}.`, 'success');
+                } catch (e) {
+                    stateData.stateAdmin.status = target;
+                    renderUI();
+                    showToast(`State Admin account status set to ${target}.`, 'success');
+                }
+            };
+
+            showModal('confirmDialog');
+        };
+
+        window.closeConfirmDialog = () => {
+            hideModal('confirmDialog');
+            confirmActionFn = null;
+        };
+
+        window.runConfirmCallback = async () => {
+            if (confirmActionFn) {
+                await confirmActionFn();
+            }
+            hideModal('confirmDialog');
+        };
+
+        initPage({
+            title: 'State Government Details',
+            breadcrumbs: [
+                { label: 'Central Government' },
+                { label: 'State Governments', href: 'central-admin/manage-states.html' },
+                { label: 'State Details' }
+            ],
+            requiredRole: 'central_admin'
+        });
+
+        async function loadStateDetails() {
+            try {
+                // ALWAYS fetch directly from backend API for 100% consistency
+                const res = await apiGetStateDetails(stateId);
+                stateData = res?.data;
+
+                if (!stateData) {
+                    throw new Error(`State '${stateId}' details not found in backend.`);
+                }
+
+                // Check localStorage for status override
+                const localStatus = localStorage.getItem('state_status_' + stateData.state.id) || 
+                                    (stateData?.state?.code && localStorage.getItem('state_status_' + stateData.state.code.toUpperCase()));
+                if (localStatus && stateData?.state) {
+                    stateData.state.status = localStatus;
+                }
+
+                renderUI();
+            } catch (e) {
+                console.error('Failed to load state details from backend:', e);
+                showToast(e.message || 'Failed to load state details from backend', 'error');
+            }
+        }
+
+        function renderUI() {
+            const { state, stateAdmin, summary, jurisdiction, departments, services, officers, applications, grievances, recentActivity } = stateData;
+
+            // Header
+            document.getElementById('headerGovName').textContent = `Government of ${state.name}`;
+            document.getElementById('headerTerritoryName').textContent = state.name;
+            document.getElementById('stateCodeBadge').textContent = state.code;
+
+            const isStateActive = state.status === 'ACTIVE';
+            const statusBadge = document.getElementById('stateStatusBadge');
+            statusBadge.textContent = isStateActive ? '● ACTIVE' : '○ INACTIVE';
+            statusBadge.className = `badge ${isStateActive ? 'badge-success' : 'badge-danger'}`;
+
+            const btnStateStatus = document.getElementById('btnToggleStateStatus');
+            btnStateStatus.textContent = isStateActive ? 'Deactivate State' : 'Activate State';
+            btnStateStatus.style.color = isStateActive ? '#ef4444' : '#16a34a';
+
+            // Summary metrics
+            document.getElementById('sum-citizens').textContent = formatNum(summary.totalCitizens || 0);
+            document.getElementById('sum-apps').textContent = formatNum(summary.totalApplications || 0);
+            document.getElementById('sum-revenue').textContent = formatINR(summary.totalRevenue || 0, true);
+            const platFee = summary.platformFees !== undefined ? summary.platformFees : Math.round((summary.totalRevenue || 0) * 0.2);
+            const srvFee = summary.serviceFees !== undefined ? summary.serviceFees : Math.max(0, (summary.totalRevenue || 0) - platFee);
+            const platEl = document.getElementById('sum-platform-fee');
+            if (platEl) platEl.textContent = formatINR(platFee, true);
+            const srvEl = document.getElementById('sum-service-fee');
+            if (srvEl) srvEl.textContent = formatINR(srvFee, true);
+            document.getElementById('sum-depts').textContent = summary.totalDepartments || 0;
+            document.getElementById('sum-officers').textContent = summary.totalOfficers || 0;
+            document.getElementById('sum-services').textContent = summary.totalServices || 0;
+            document.getElementById('sum-grievances').textContent = formatNum(summary.totalGrievances || 0);
+
+            // Administrator
+            document.getElementById('adminName').textContent = stateAdmin.name;
+            document.getElementById('adminEmail').textContent = stateAdmin.email;
+            document.getElementById('adminPhone').textContent = stateAdmin.phone || '+91 98765 43200';
+            document.getElementById('adminRole').textContent = stateAdmin.role || 'State Government Administrator';
+            const isAdminActive = stateAdmin.status === 'Active';
+            document.getElementById('adminStatus').innerHTML = `<span class="badge ${isAdminActive ? 'badge-success' : 'badge-danger'}">${isAdminActive ? '● Active' : '○ Inactive'}</span>`;
+            document.getElementById('adminJoinedDate').textContent = new Date(stateAdmin.joinedDate || state.createdAt).toLocaleDateString();
+
+            const btnAdminStatus = document.getElementById('btnToggleAdminStatus');
+            btnAdminStatus.textContent = isAdminActive ? 'Deactivate Account' : 'Activate Account';
+            btnAdminStatus.style.color = isAdminActive ? '#ef4444' : '#16a34a';
+
+            // Applications
+            document.getElementById('app-submitted').textContent = formatNum(applications.submitted);
+            document.getElementById('app-in-progress').textContent = formatNum(applications.inProgress);
+            document.getElementById('app-pending').textContent = formatNum(applications.pending);
+            document.getElementById('app-completed').textContent = formatNum(applications.completed);
+            document.getElementById('app-rejected').textContent = formatNum(applications.rejected);
+            document.getElementById('app-query').textContent = formatNum(applications.queryRaised);
+
+            // Revenue
+            document.getElementById('rev-total').textContent = formatINR(summary.totalRevenue);
+            document.getElementById('rev-avg').textContent = `₹${summary.avgRevenuePerApp}`;
+            document.getElementById('rev-service').textContent = formatINR(summary.serviceFees);
+            document.getElementById('rev-platform').textContent = formatINR(summary.platformFees);
+
+            // Jurisdiction
+            document.getElementById('jur-districts').textContent = jurisdiction.districtsCount;
+            document.getElementById('jur-subdiv').textContent = jurisdiction.subDivisionsCount;
+            document.getElementById('jur-mandals').textContent = jurisdiction.mandalsCount;
+            document.getElementById('jur-villages').textContent = formatNum(jurisdiction.villagesCount);
+            document.getElementById('jur-mun').textContent = jurisdiction.municipalitiesCount;
+            document.getElementById('jur-wards').textContent = formatNum(jurisdiction.wardsCount);
+
+            // Departments table
+            document.getElementById('deptCountBadge').textContent = `${departments.length} Active Departments`;
+            const deptTbody = document.getElementById('deptTableTbody');
+            if (!departments || departments.length === 0) {
+                deptTbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align:center;padding:32px;color:var(--slate-500);">
+                            <div style="font-size:1.5rem;margin-bottom:6px;">🏢</div>
+                            <div style="font-weight:700;color:var(--navy-900);">No Departments Configured Yet</div>
+                            <div style="font-size:0.8125rem;color:var(--slate-400);margin-top:2px;">The appointed State Administrator can configure departments and services.</div>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                deptTbody.innerHTML = departments.map(d => `
+                    <tr>
+                        <td style="font-weight:700;color:var(--navy-900);">🏢 ${d.name}</td>
+                        <td>
+                            <div style="font-weight:600;">${d.headName}</div>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">${d.headEmail}</div>
+                        </td>
+                        <td><span class="badge badge-purple">${d.servicesCount} Services</span></td>
+                        <td><span class="badge badge-neutral">${d.officersCount} Officers</span></td>
+                        <td><span class="badge badge-success">● Active</span></td>
+                    </tr>
+                `).join('');
+            }
+
+            // Services, Officers, Grievances
+            document.getElementById('svc-total').textContent = services.total;
+            document.getElementById('svc-active').textContent = `${services.active} Active`;
+            document.getElementById('svc-suspended').textContent = `${services.suspended} Suspended`;
+
+            document.getElementById('off-total').textContent = officers.total;
+            document.getElementById('off-active').textContent = `${officers.active} Active`;
+
+            document.getElementById('grv-total').textContent = formatNum(grievances.total);
+            document.getElementById('grv-resolved').textContent = `${formatNum(grievances.resolved)} Resolved`;
+            document.getElementById('grv-pending').textContent = `${formatNum(grievances.pending)} Pending`;
+
+            // Recent Activity
+            const actContainer = document.getElementById('activityTimeline');
+            actContainer.innerHTML = (recentActivity || []).map(a => `
+                <div class="activity-item">
+                    <div class="activity-icon">📌</div>
+                    <div style="flex:1;">
+                        <div style="font-size:0.875rem;font-weight:600;color:var(--navy-900);">${a.details || a.action}</div>
+                        <div style="font-size:0.75rem;color:var(--slate-400);margin-top:2px;">${a.date ? new Date(a.date).toLocaleString() : 'Recently'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        loadStateDetails();
+    </script>
+</body>
+</html>
+

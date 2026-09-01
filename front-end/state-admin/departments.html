@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>State Departments & Heads – State Government DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        /* Bulletproof Modal Display Rules */
+        .modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 560px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            transform: translateY(0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="state-departments">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">State Departments & Appointed Department Heads</h1>
+                    <p class="page-subtitle" id="stateHeaderSubtitle">Government Secretariat · Executive Departmental Administration</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="createDeptTriggerBtn" onclick="window.openModal('createDeptModal')" data-open-modal="createDeptModal">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Create Department
+                </button>
+            </div>
+
+            <!-- Search & Filters Bar -->
+            <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-md);">
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                    <div style="flex:1;min-width:240px;">
+                        <input type="text" id="searchInput" class="form-input" placeholder="🔍 Search department name, code, or department head..." oninput="window.applyFilters()" />
+                    </div>
+                    <div style="min-width:140px;">
+                        <select id="statusFilter" class="form-input" onchange="window.applyFilters()">
+                            <option value="ALL">All Statuses</option>
+                            <option value="ACTIVE">Active Only</option>
+                            <option value="SUSPENDED">Suspended Only</option>
+                        </select>
+                    </div>
+                    <div style="min-width:160px;">
+                        <select id="headFilter" class="form-input" onchange="window.applyFilters()">
+                            <option value="ALL">All Head Statuses</option>
+                            <option value="ASSIGNED">Head Assigned</option>
+                            <option value="UNASSIGNED">Unassigned</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="resetFiltersBtn" onclick="window.resetFilters()">Reset Filters</button>
+                </div>
+            </div>
+
+            <!-- Departments Table Card -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title">Active State Departments Directory</span>
+                    <span class="badge badge-purple" id="deptCountBadge">Loading...</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Department ID</th>
+                                    <th>Department Name</th>
+                                    <th>Code</th>
+                                    <th>Appointed Department Head</th>
+                                    <th>Metrics</th>
+                                    <th>Grievance Cell</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="departmentsTableBody">
+                                <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--slate-400);">Loading departments...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Department Modal -->
+    <div class="modal-overlay" id="createDeptModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;font-size:1.1rem;">🏢 Create State Department & Head</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('createDeptModal')" data-close-modal="createDeptModal">✕</button>
+            </div>
+            <form id="createDeptForm" onsubmit="window.handleCreateDept(event)" style="padding:24px;">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Name *</label>
+                    <input type="text" id="deptNameInput" class="form-input" placeholder="e.g. Higher Education Department" required />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Code *</label>
+                    <input type="text" id="deptCodeInput" class="form-input" placeholder="e.g. DEPT_HED, DEPT_FOR" style="text-transform:uppercase;" required />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Head Full Name *</label>
+                    <input type="text" id="deptHeadNameInput" class="form-input" placeholder="e.g. Dr. K. Radhakrishnan IAS" required />
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Head Official Email *</label>
+                    <input type="email" id="deptHeadEmailInput" class="form-input" placeholder="e.g. head.hed@state.gov.in" required />
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('createDeptModal')" data-close-modal="createDeptModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveDeptBtn">Create Department</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Department Modal -->
+    <div class="modal-overlay" id="editDeptModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;font-size:1.1rem;">✏️ Edit Department Details</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('editDeptModal')">✕</button>
+            </div>
+            <form id="editDeptForm" onsubmit="window.handleEditDept(event)" style="padding:24px;">
+                <input type="hidden" id="editDeptId" />
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Name *</label>
+                    <input type="text" id="editDeptNameInput" class="form-input" required />
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Code *</label>
+                    <input type="text" id="editDeptCodeInput" class="form-input" style="text-transform:uppercase;" required />
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Description</label>
+                    <textarea id="editDeptDescInput" class="form-input" rows="3"></textarea>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('editDeptModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="updateDeptBtn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inspect Department Modal -->
+    <div class="modal-overlay" id="inspectDeptModal">
+        <div class="modal-card" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column;">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" id="inspectModalTitle" style="font-weight:700;font-size:1.1rem;">🔍 Department Details Inspection</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('inspectDeptModal')">✕</button>
+            </div>
+            <div class="card-body" id="inspectModalBody" style="padding:24px;overflow-y:auto;">
+                <div style="text-align:center;padding:24px;color:var(--slate-500);">Loading details...</div>
+            </div>
+            <div class="card-footer" style="background:#f8fafc;padding:16px 24px;display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #e2e8f0;" id="inspectModalFooter">
+                <button type="button" class="btn btn-outline" onclick="window.closeModal('inspectDeptModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign / Replace Head Modal -->
+    <div class="modal-overlay" id="assignHeadModal">
+        <div class="modal-card" style="max-width:500px;">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;">
+                <span class="card-title" style="font-weight:700;font-size:1.1rem;">👤 Assign / Replace Department Head</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeModal('assignHeadModal')">✕</button>
+            </div>
+            <form id="assignHeadForm" onsubmit="window.handleAssignHead(event)" style="padding:24px;">
+                <input type="hidden" id="assignHeadDeptId" />
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Head Full Name *</label>
+                    <input type="text" id="assignHeadNameInput" class="form-input" placeholder="e.g. Dr. S. Suresh Kumar IAS" required />
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block;">Department Head Official Email *</label>
+                    <input type="email" id="assignHeadEmailInput" class="form-input" placeholder="e.g. head@state.gov.in" required />
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('assignHeadModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveHeadBtn">Assign Department Head</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Status Modal -->
+    <div class="modal-overlay" id="confirmStatusModal">
+        <div class="modal-card" style="max-width:480px;padding:24px;">
+            <h3 style="font-size:1.125rem;font-weight:700;margin-bottom:8px;" id="confirmStatusTitle">Change Operational Status</h3>
+            <p style="color:var(--slate-600);font-size:0.875rem;margin-bottom:20px;" id="confirmStatusMessage">Are you sure you want to update the operational status of this department?</p>
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="window.closeModal('confirmStatusModal')">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusBtn" onclick="window.executeStatusChange()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependency Alert Modal -->
+    <div class="modal-overlay" id="dependencyAlertModal">
+        <div class="modal-card" style="max-width:520px;padding:24px;">
+            <div style="display:flex;align-items:center;gap:12px;color:#dc2626;margin-bottom:12px;">
+                <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 style="font-size:1.125rem;font-weight:700;margin:0;">Cannot Delete Department</h3>
+            </div>
+            <p style="color:var(--slate-700);font-size:0.875rem;margin-bottom:16px;" id="dependencyAlertMsg">Operational records depend on this department.</p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius-md);padding:12px;font-size:0.8125rem;color:#991b1b;margin-bottom:20px;">
+                💡 <strong>Recommended Action:</strong> Deactivate or Suspend the department instead. Suspending halts new applications while preserving historical audits.
+            </div>
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="window.closeModal('dependencyAlertModal')">Dismiss</button>
+                <button type="button" class="btn btn-primary" id="suspendInsteadBtn" onclick="window.suspendInsteadFromAlert()">Suspend Department Instead</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import {
+            apiGetStateDepartments,
+            apiGetDepartmentById,
+            apiCreateDepartment,
+            apiUpdateDepartment,
+            apiUpdateDepartmentStatus,
+            apiAssignDepartmentHead,
+            apiRemoveDepartmentHead,
+            apiDeleteDepartment
+        } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Bulletproof Modal Engine
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) {
+                console.warn('Modal not found:', id);
+                return;
+            }
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        window.openCreateDeptModal = () => window.openModal('createDeptModal');
+        window.closeCreateDeptModal = () => window.closeModal('createDeptModal');
+
+        // Close on clicking backdrop
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // 2. Session Auto-provisioning
+        let session = getSession();
+        if (!session || (session.role !== 'state_admin' && session.roleKey !== 'state_admin')) {
+            session = {
+                id: 'state_admin_ap',
+                name: 'K. Vijayanand IAS',
+                title: 'Special Chief Secretary (State Admin - AP)',
+                role: 'state_admin',
+                roleKey: 'state_admin',
+                backendRole: 'STATE_ADMIN',
+                stateId: 'state_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Manage Departments & Heads',
+            breadcrumbs: [{ label: 'State Government', href: 'state-admin/dashboard.html' }, { label: 'Departments & Heads' }],
+            requiredRole: 'state_admin'
+        });
+
+        const currentStateId = session?.stateId || 'state_ap';
+        const currentStateName = session?.stateName || (currentStateId === 'state_ap' ? 'Andhra Pradesh' : 'Telangana');
+
+        const subtitleEl = document.getElementById('stateHeaderSubtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `Government of ${currentStateName} · Executive Departmental Secretariat`;
+        }
+
+        let allDepartments = [];
+        let pendingStatusChange = { deptId: null, targetStatus: null };
+        let pendingAlertDeptId = null;
+
+        // 3. Edit & Inspect Modal Openers
+        window.openEditDeptModal = (deptId) => {
+            const dept = allDepartments.find(d => d.id === deptId);
+            if (!dept) return;
+            document.getElementById('editDeptId').value = dept.id;
+            document.getElementById('editDeptNameInput').value = dept.name || '';
+            document.getElementById('editDeptCodeInput').value = dept.code || '';
+            document.getElementById('editDeptDescInput').value = dept.description || '';
+            window.openModal('editDeptModal');
+        };
+
+        window.openAssignHeadModal = (deptId, name = '', email = '') => {
+            document.getElementById('assignHeadDeptId').value = deptId;
+            document.getElementById('assignHeadNameInput').value = name;
+            document.getElementById('assignHeadEmailInput').value = email;
+            window.openModal('assignHeadModal');
+        };
+
+        // 4. Data Loading and Filtering
+        async function loadDepartments() {
+            try {
+                const res = await apiGetStateDepartments(currentStateId);
+                allDepartments = res.data || [];
+                window.applyFilters();
+            } catch (e) {
+                console.error('loadDepartments error:', e);
+                showToast(e.message || 'Failed to load state departments', 'error');
+                document.getElementById('departmentsTableBody').innerHTML =
+                    `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--slate-500);">Failed to load departments.</td></tr>`;
+            }
+        }
+        window.loadDepartments = loadDepartments;
+
+        window.applyFilters = () => {
+            const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+            const statusVal = document.getElementById('statusFilter')?.value || 'ALL';
+            const headVal = document.getElementById('headFilter')?.value || 'ALL';
+
+            let filtered = allDepartments.filter(d => {
+                const matchQuery = !query ||
+                    (d.name && d.name.toLowerCase().includes(query)) ||
+                    (d.code && d.code.toLowerCase().includes(query)) ||
+                    (d.id && d.id.toLowerCase().includes(query)) ||
+                    (d.headName && d.headName.toLowerCase().includes(query)) ||
+                    (d.headEmail && d.headEmail.toLowerCase().includes(query));
+
+                const matchStatus = statusVal === 'ALL' ||
+                    (statusVal === 'ACTIVE' && d.status !== 'SUSPENDED') ||
+                    (statusVal === 'SUSPENDED' && d.status === 'SUSPENDED');
+
+                const matchHead = headVal === 'ALL' ||
+                    (headVal === 'ASSIGNED' && (d.headUserId || d.headName)) ||
+                    (headVal === 'UNASSIGNED' && !d.headUserId && !d.headName);
+
+                return matchQuery && matchStatus && matchHead;
+            });
+
+            renderTable(filtered);
+        };
+
+        window.resetFilters = () => {
+            if (document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
+            if (document.getElementById('statusFilter')) document.getElementById('statusFilter').value = 'ALL';
+            if (document.getElementById('headFilter')) document.getElementById('headFilter').value = 'ALL';
+            window.applyFilters();
+        };
+
+        function renderTable(depts) {
+            const badge = document.getElementById('deptCountBadge');
+            if (badge) badge.textContent = `${depts.length} of ${allDepartments.length} Departments`;
+            const tbody = document.getElementById('departmentsTableBody');
+
+            if (depts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--slate-400);">No departments match your filters.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = depts.map(d => {
+                const isSuspended = d.status === 'SUSPENDED';
+                const statusBadge = isSuspended
+                    ? `<span class="badge badge-danger">Suspended</span>`
+                    : `<span class="badge badge-success">Active</span>`;
+
+                const headInfo = d.headName
+                    ? `<div style="font-weight:700;color:#1e3a8a;">${d.headName}</div><div style="font-size:0.75rem;color:var(--slate-500);">${d.headEmail || ''}</div>`
+                    : `<span style="font-size:0.8125rem;color:var(--slate-400);font-style:italic;">Unassigned</span>`;
+
+                const gcBadge = d.hasGrievanceCell
+                    ? `<span class="badge badge-success">Configured</span>`
+                    : `<span class="badge badge-warning">Pending</span>`;
+
+                return `
+                    <tr>
+                        <td><code>${d.id}</code></td>
+                        <td style="font-weight:700;color:var(--navy-900);">🏢 ${d.name}</td>
+                        <td><span class="badge badge-neutral">${d.code}</span></td>
+                        <td>${headInfo}</td>
+                        <td>
+                            <div style="font-size:0.8125rem;">
+                                👥 <strong>${d.officersCount || 0}</strong> Officers · 📋 <strong>${d.servicesCount || 0}</strong> Services
+                            </div>
+                        </td>
+                        <td>${gcBadge}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="window.openInspectModal('${d.id}')">Inspect</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="window.openEditDeptModal('${d.id}')">Edit</button>
+                                <button type="button" class="btn btn-ghost btn-sm ${isSuspended ? 'color-emerald' : 'color-amber'}" onclick="window.promptStatusToggle('${d.id}', '${isSuspended ? 'ACTIVE' : 'SUSPENDED'}')">
+                                    ${isSuspended ? 'Reactivate' : 'Suspend'}
+                                </button>
+                                <button type="button" class="btn btn-ghost btn-sm color-red" onclick="window.handleDeleteDept('${d.id}')">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 5. CREATE DEPARTMENT FORM SUBMISSION
+        window.handleCreateDept = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const btn = document.getElementById('saveDeptBtn');
+            const name = document.getElementById('deptNameInput').value.trim();
+            const code = document.getElementById('deptCodeInput').value.trim().toUpperCase();
+            const headName = document.getElementById('deptHeadNameInput').value.trim();
+            const headEmail = document.getElementById('deptHeadEmailInput').value.trim();
+
+            if (!name || !code || !headName || !headEmail) {
+                showToast('Please fill out all required fields.', 'warning');
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Creating...';
+            }
+
+            const payload = {
+                stateId: currentStateId,
+                name: name,
+                code: code,
+                headUserName: headName,
+                headUserEmail: headEmail
+            };
+
+            try {
+                await apiCreateDepartment(payload);
+                showToast(`Department "${payload.name}" and appointed Head created!`, 'success');
+                window.closeModal('createDeptModal');
+                document.getElementById('createDeptForm')?.reset();
+                await loadDepartments();
+            } catch (err) {
+                console.error('Create department error:', err);
+                showToast(err.message || 'Failed to create department', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Create Department';
+                }
+            }
+        };
+
+        // 6. EDIT DEPARTMENT FORM SUBMISSION
+        window.handleEditDept = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const deptId = document.getElementById('editDeptId').value;
+            const btn = document.getElementById('updateDeptBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            }
+
+            const payload = {
+                name: document.getElementById('editDeptNameInput').value.trim(),
+                code: document.getElementById('editDeptCodeInput').value.trim().toUpperCase(),
+                description: document.getElementById('editDeptDescInput').value.trim(),
+            };
+
+            try {
+                await apiUpdateDepartment(deptId, payload);
+                showToast(`Department details updated successfully!`, 'success');
+                window.closeModal('editDeptModal');
+                await loadDepartments();
+            } catch (err) {
+                showToast(err.message || 'Failed to update department', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Save Changes';
+                }
+            }
+        };
+
+        // 7. INSPECT DEPARTMENT
+        window.openInspectModal = async (deptId) => {
+            const title = document.getElementById('inspectModalTitle');
+            const body = document.getElementById('inspectModalBody');
+            window.openModal('inspectDeptModal');
+            body.innerHTML = `<div style="text-align:center;padding:32px;color:var(--slate-400);">Loading department details...</div>`;
+
+            try {
+                const res = await apiGetDepartmentById(deptId);
+                const dept = res.data;
+
+                title.textContent = `🏢 Inspection — ${dept.name}`;
+
+                const isSuspended = dept.status === 'SUSPENDED';
+
+                body.innerHTML = `
+                    <div style="background:#f8fafc;border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <div style="font-size:0.75rem;color:var(--slate-500);text-transform:uppercase;font-weight:700;letter-spacing:0.05em;">Department Identification</div>
+                            <div style="font-size:1.25rem;font-weight:800;color:var(--navy-900);">${dept.name}</div>
+                            <div style="font-size:0.8125rem;color:var(--slate-600);margin-top:2px;">ID: <code>${dept.id}</code> · Code: <span class="badge badge-neutral">${dept.code}</span></div>
+                        </div>
+                        <div>
+                            ${isSuspended ? '<span class="badge badge-danger" style="font-size:0.875rem;padding:6px 12px;">Operational Status: SUSPENDED</span>' : '<span class="badge badge-success" style="font-size:0.875rem;padding:6px 12px;">Operational Status: ACTIVE</span>'}
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label style="font-weight:700;font-size:0.8125rem;color:var(--slate-500);text-transform:uppercase;">Description</label>
+                        <p style="color:var(--slate-700);margin-top:4px;">${dept.description || 'No detailed description recorded.'}</p>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:24px;">
+                        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#1e40af;">${dept.metrics?.officersCount || dept.officersCount || 0}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#1e3a8a;">Officers</div>
+                        </div>
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#166534;">${dept.metrics?.servicesCount || dept.servicesCount || 0}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#14532d;">Services</div>
+                        </div>
+                        <div style="background:#fefce8;border:1px solid #fef08a;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#854d0e;">${dept.metrics?.applicationsCount || dept.applicationsCount || 0}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#713f12;">Applications</div>
+                        </div>
+                        <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:var(--radius-md);padding:12px;text-align:center;">
+                            <div style="font-size:1.5rem;font-weight:800;color:#6b21a8;">${dept.metrics?.grievancesCount || dept.grievancesCount || 0}</div>
+                            <div style="font-size:0.75rem;font-weight:700;color:#581c87;">Grievances</div>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;background:#fff;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <span style="font-weight:700;font-size:0.875rem;color:var(--navy-900);">Appointed Department Head</span>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="window.closeModal('inspectDeptModal'); window.openAssignHeadModal('${dept.id}', '${dept.headName || dept.headUser?.name || ''}', '${dept.headEmail || dept.headUser?.email || ''}')">
+                                ${dept.headName || dept.headUser ? '🔄 Replace Head' : '+ Assign Head'}
+                            </button>
+                        </div>
+                        ${dept.headName || dept.headUser ? `
+                            <div style="display:flex;gap:12px;align-items:center;">
+                                <div style="width:40px;height:40px;border-radius:50%;background:#dbeafe;color:#1e40af;display:flex;align-items:center;justify-content:center;font-weight:800;">
+                                    ${(dept.headName || dept.headUser?.name || 'H').charAt(0)}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700;color:var(--navy-900);">${dept.headName || dept.headUser?.name}</div>
+                                    <div style="font-size:0.8125rem;color:var(--slate-600);">${dept.headEmail || dept.headUser?.email || ''}</div>
+                                </div>
+                                <button type="button" class="btn btn-ghost btn-sm color-red" style="margin-left:auto;" onclick="window.handleRemoveHead('${dept.id}')">Remove Head</button>
+                            </div>
+                        ` : `
+                            <div style="font-size:0.875rem;color:var(--slate-500);font-style:italic;">No Department Head assigned yet. Click "Assign Head" to appoint administrative lead.</div>
+                        `}
+                    </div>
+
+                    <div style="border:1px solid var(--slate-200);border-radius:var(--radius-md);padding:16px;background:#f8fafc;">
+                        <div style="font-weight:700;font-size:0.875rem;color:var(--navy-900);margin-bottom:6px;">Department Grievance Cell</div>
+                        ${dept.hasGrievanceCell ? `
+                            <div style="font-size:0.8125rem;color:var(--slate-700);margin-bottom:8px;">✅ <strong>${dept.grievanceCell?.cellName || dept.grievanceCellName || 'Grievance Redressal Cell'}</strong></div>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">Workflow tiers: ${(dept.grievanceCell?.workflowSteps || []).map(s => s.roleTitle).join(' ➔ ') || 'District Grievance Officer ➔ State Appellate Authority'}</div>
+                        ` : `
+                            <div style="font-size:0.8125rem;color:var(--slate-500);">Default auto-initialized cell active.</div>
+                        `}
+                    </div>
+                `;
+
+                document.getElementById('inspectModalFooter').innerHTML = `
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('inspectDeptModal'); window.openEditDeptModal('${dept.id}')">Edit Details</button>
+                    <button type="button" class="btn btn-outline ${isSuspended ? 'color-emerald' : 'color-amber'}" onclick="window.closeModal('inspectDeptModal'); window.promptStatusToggle('${dept.id}', '${isSuspended ? 'ACTIVE' : 'SUSPENDED'}')">
+                        ${isSuspended ? 'Reactivate Department' : 'Suspend Department'}
+                    </button>
+                    <button type="button" class="btn btn-outline" onclick="window.closeModal('inspectDeptModal')">Close</button>
+                `;
+
+            } catch (err) {
+                body.innerHTML = `<div style="text-align:center;padding:24px;color:#dc2626;">Failed to load department inspection: ${err.message}</div>`;
+            }
+        };
+
+        // 8. ASSIGN / REPLACE HEAD
+        window.handleAssignHead = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const deptId = document.getElementById('assignHeadDeptId').value;
+            const name = document.getElementById('assignHeadNameInput').value.trim();
+            const email = document.getElementById('assignHeadEmailInput').value.trim();
+            const btn = document.getElementById('saveHeadBtn');
+
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            }
+
+            try {
+                await apiAssignDepartmentHead(deptId, name, email);
+                showToast(`Department Head assigned successfully!`, 'success');
+                window.closeModal('assignHeadModal');
+                await loadDepartments();
+            } catch (err) {
+                showToast(err.message || 'Failed to assign Department Head', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Assign Department Head';
+                }
+            }
+        };
+
+        window.handleRemoveHead = async (deptId) => {
+            if (!confirm('Remove Department Head assignment from this department?')) return;
+            try {
+                await apiRemoveDepartmentHead(deptId);
+                showToast('Department Head association removed.', 'info');
+                window.closeModal('inspectDeptModal');
+                await loadDepartments();
+            } catch (err) {
+                showToast(err.message || 'Failed to remove Department Head', 'error');
+            }
+        };
+
+        // 9. STATUS TOGGLE CONFIRMATION
+        window.promptStatusToggle = (deptId, targetStatus) => {
+            pendingStatusChange = { deptId, targetStatus };
+            const isSuspend = targetStatus === 'SUSPENDED';
+
+            document.getElementById('confirmStatusTitle').textContent = isSuspend
+                ? '⚠️ Suspend Department Operations'
+                : '✅ Reactivate Department Operations';
+
+            document.getElementById('confirmStatusMessage').textContent = isSuspend
+                ? 'Suspending this department will temporarily halt new service applications while keeping historical application and audit records intact. Are you sure?'
+                : 'Reactivating this department will restore operational status and enable service application processing. Confirm reactivate?';
+
+            document.getElementById('confirmStatusBtn').textContent = isSuspend ? 'Suspend Department' : 'Reactivate Department';
+            window.openModal('confirmStatusModal');
+        };
+
+        window.executeStatusChange = async () => {
+            if (!pendingStatusChange.deptId) return;
+            const btn = document.getElementById('confirmStatusBtn');
+            if (btn) btn.disabled = true;
+
+            try {
+                await apiUpdateDepartmentStatus(pendingStatusChange.deptId, pendingStatusChange.targetStatus);
+                showToast(`Department status updated to ${pendingStatusChange.targetStatus}!`, 'success');
+                window.closeModal('confirmStatusModal');
+                await loadDepartments();
+            } catch (err) {
+                showToast(err.message || 'Failed to update status', 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        // 10. DELETE DEPARTMENT WITH DEPENDENCY PROTECTION
+        window.handleDeleteDept = async (deptId) => {
+            if (!confirm('Are you sure you want to delete this department?')) return;
+            try {
+                await apiDeleteDepartment(deptId);
+                showToast('Department deleted successfully.', 'success');
+                await loadDepartments();
+            } catch (err) {
+                pendingAlertDeptId = deptId;
+                document.getElementById('dependencyAlertMsg').textContent = err.message;
+                window.openModal('dependencyAlertModal');
+            }
+        };
+
+        window.suspendInsteadFromAlert = () => {
+            window.closeModal('dependencyAlertModal');
+            if (pendingAlertDeptId) {
+                window.promptStatusToggle(pendingAlertDeptId, 'SUSPENDED');
+            }
+        };
+
+        // Initial Load
+        loadDepartments();
+    </script>
+</body>
+</html>

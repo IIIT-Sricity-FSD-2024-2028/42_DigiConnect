@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Department Revenue & Financials | DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <link rel="stylesheet" href="../css/forms.css" />
+    <style>
+        .fee-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .fee-pill.dept { background: #dcfce7; color: #166534; }
+        .fee-pill.platform { background: #dbeafe; color: #1e40af; }
+        .fee-pill.total { background: #f3e8ff; color: #6b21a8; }
+        .trans-table th {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: #f8fafc;
+        }
+        .filter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: var(--space-md);
+        }
+    </style>
+</head>
+<body data-page="department-revenue">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:var(--space-lg);">
+                <div>
+                    <h1 class="page-title" id="revenuePageTitle">Department Revenue & Treasury Collections</h1>
+                    <p class="page-subtitle" id="revenuePageSubtitle">Live departmental receipts, statutory service fees, platform fee segregation, and transaction ledger.</p>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="exportTransactionsCSV()" style="display:inline-flex;align-items:center;gap:6px;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Export CSV
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="loadRevenueData()" style="display:inline-flex;align-items:center;gap:6px;">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.033 8.033 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Top Summary Stats Grid -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit, minmax(210px, 1fr));gap:var(--space-md);margin-bottom:var(--space-xl);">
+                <!-- Total Realized Revenue -->
+                <div class="stat-card" style="border:2px solid #8b5cf6;">
+                    <div class="stat-icon" style="background:#8b5cf6;color:#ffffff;">💰</div>
+                    <div>
+                        <div class="stat-value" id="statTotalRevenue" style="color:#7c3aed;">₹0</div>
+                        <div class="stat-label">Total Realized Revenue</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Consolidated receipts</div>
+                    </div>
+                </div>
+
+                <!-- Department Service Fee -->
+                <div class="stat-card" style="border:1.5px solid #10b981;">
+                    <div class="stat-icon" style="background:#ecfdf5;color:#059669;">🏢</div>
+                    <div>
+                        <div class="stat-value" id="statServiceFee" style="color:#059669;">₹0</div>
+                        <div class="stat-label">Department Share</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Statutory service fees</div>
+                    </div>
+                </div>
+
+                <!-- Platform Fee -->
+                <div class="stat-card" style="border:1.5px solid #3b82f6;">
+                    <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">⚡</div>
+                    <div>
+                        <div class="stat-value" id="statPlatformFee" style="color:#2563eb;">₹0</div>
+                        <div class="stat-label">Total Platform Fee</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Platform infra & gateway</div>
+                    </div>
+                </div>
+
+                <!-- Paid Transactions -->
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fefce8;color:#ca8a04;">📜</div>
+                    <div>
+                        <div class="stat-value" id="statPaidCount">0</div>
+                        <div class="stat-label">Paid Transactions</div>
+                        <div style="font-size:0.75rem;color:var(--slate-500);margin-top:2px;">Successful applications</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Breakdown by Service -->
+            <div class="card" style="margin-bottom:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="card-title">📊 Revenue & Fee Breakdown by Service</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Segregation of departmental service fees vs e-Governance platform fees per service</div>
+                    </div>
+                    <span class="badge badge-purple" id="servicesCountBadge">0 Services</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Service Name</th>
+                                    <th>Category</th>
+                                    <th>Fee Structure</th>
+                                    <th>Paid Submissions</th>
+                                    <th>Dept. Fee Share</th>
+                                    <th>Platform Fee Share</th>
+                                    <th>Total Collected</th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceBreakdownTbody">
+                                <tr>
+                                    <td colspan="7" style="text-align:center;padding:32px;color:var(--slate-400);">Loading revenue breakdown...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Transaction Ledger -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <span class="card-title">🧾 Transaction Ledger & Payment Records</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Audit trail of individual payments, transaction references, and fee allocations</div>
+                    </div>
+                    <span class="badge badge-success" id="transactionsCountBadge">0 Transactions</span>
+                </div>
+                <div class="card-body">
+                    <!-- Filters & Search -->
+                    <div class="filter-row">
+                        <div class="search-box" style="flex:1;max-width:360px;">
+                            <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="txSearchInput" placeholder="Search by Application ID, Citizen, or Txn ID..." oninput="filterTransactions()" />
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                            <select class="form-select" id="txServiceFilter" onchange="filterTransactions()" style="width:auto;padding:6px 12px;font-size:0.8125rem;">
+                                <option value="">All Services</option>
+                            </select>
+                            <select class="form-select" id="txSortSelect" onchange="filterTransactions()" style="width:auto;padding:6px 12px;font-size:0.8125rem;">
+                                <option value="date-desc">Newest First</option>
+                                <option value="date-asc">Oldest First</option>
+                                <option value="fee-desc">Highest Amount</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="table-container" style="border:1px solid var(--slate-200);border-radius:var(--radius-md);">
+                        <table class="table trans-table">
+                            <thead>
+                                <tr>
+                                    <th>Application ID</th>
+                                    <th>Citizen Name</th>
+                                    <th>Service Name</th>
+                                    <th>Total Fee</th>
+                                    <th>Dept. Share</th>
+                                    <th>Platform Fee</th>
+                                    <th>Payment Method</th>
+                                    <th>Transaction Ref</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTbody">
+                                <tr>
+                                    <td colspan="10" style="text-align:center;padding:32px;color:var(--slate-400);">Loading transaction ledger...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { apiGetDepartmentRevenue } from '../js/api.js';
+        import { formatINR, formatNum, showToast } from '../js/utils.js';
+
+        // Auto-provision session if accessed directly
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Department Revenue & Financials',
+            breadcrumbs: [{ label: 'Department Head' }, { label: 'Financials & Revenue' }],
+            requiredRole: 'department_head'
+        });
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+        let rawRevenueData = null;
+        let allTransactions = [];
+
+        async function loadRevenueData() {
+            try {
+                const res = await apiGetDepartmentRevenue(currentDeptId);
+                rawRevenueData = res?.data || {};
+
+                // Update Department titles
+                const deptTitle = document.getElementById('revenuePageTitle');
+                if (deptTitle && rawRevenueData.departmentName) {
+                    deptTitle.textContent = `${rawRevenueData.departmentName} Revenue Collections`;
+                }
+
+                // Summary Stats
+                const totalRev = Number(rawRevenueData.totalRevenue) || 0;
+                const platformFee = Number(rawRevenueData.totalPlatformFee) || 0;
+                const serviceFee = Number(rawRevenueData.totalServiceFee) || Math.max(0, totalRev - platformFee);
+                const paidCount = Number(rawRevenueData.paidTransactionsCount) || 0;
+
+                document.getElementById('statTotalRevenue').textContent = formatINR(totalRev);
+                document.getElementById('statServiceFee').textContent = formatINR(serviceFee);
+                document.getElementById('statPlatformFee').textContent = formatINR(platformFee);
+                document.getElementById('statPaidCount').textContent = formatNum(paidCount);
+
+                // Service Breakdown
+                renderServiceBreakdown(rawRevenueData.serviceBreakdown || []);
+
+                // Populate service filter dropdown
+                const srvFilter = document.getElementById('txServiceFilter');
+                if (srvFilter) {
+                    const existingVal = srvFilter.value;
+                    const services = rawRevenueData.serviceBreakdown || [];
+                    srvFilter.innerHTML = `<option value="">All Services</option>` +
+                        services.map(s => `<option value="${s.serviceId}">${s.serviceName}</option>`).join('');
+                    srvFilter.value = existingVal;
+                }
+
+                // Transactions
+                allTransactions = rawRevenueData.transactions || [];
+                filterTransactions();
+
+            } catch (err) {
+                console.error('Failed to load department revenue data:', err);
+                showToast('Unable to fetch department revenue information.', 'error');
+            }
+        }
+        window.loadRevenueData = loadRevenueData;
+
+        function renderServiceBreakdown(services) {
+            const tbody = document.getElementById('serviceBreakdownTbody');
+            const badge = document.getElementById('servicesCountBadge');
+            if (badge) badge.textContent = `${services.length} Services`;
+
+            if (!services || services.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--slate-400);">No service fee records found for this department.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = services.map(s => `
+                <tr>
+                    <td style="font-weight:700;color:var(--navy-900);">
+                        ${s.serviceName}
+                        <div style="font-size:0.75rem;color:var(--slate-500);">${s.code || s.serviceId}</div>
+                    </td>
+                    <td><span class="badge badge-neutral">${s.category || 'Standard'}</span></td>
+                    <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <span class="fee-pill dept" title="Department Fee">Dept: ₹${s.serviceFee || 0}</span>
+                            <span class="fee-pill platform" title="Platform Fee">Plat: ₹${s.platformFee || 0}</span>
+                            <span class="fee-pill total" title="Total Fee">Total: ₹${s.totalFee || 0}</span>
+                        </div>
+                    </td>
+                    <td style="font-weight:700;color:var(--navy-900);">${formatNum(s.paidApplications || 0)}</td>
+                    <td style="font-weight:700;color:#16a34a;">${formatINR(s.serviceCollected || 0)}</td>
+                    <td style="font-weight:700;color:#2563eb;">${formatINR(s.platformCollected || 0)}</td>
+                    <td style="font-weight:800;color:#7c3aed;">${formatINR(s.totalCollected || 0)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function filterTransactions() {
+            const query = (document.getElementById('txSearchInput')?.value || '').trim().toLowerCase();
+            const serviceId = document.getElementById('txServiceFilter')?.value || '';
+            const sortVal = document.getElementById('txSortSelect')?.value || 'date-desc';
+
+            let list = allTransactions.filter(t => {
+                const matchQuery = !query ||
+                    (t.id && t.id.toLowerCase().includes(query)) ||
+                    (t.citizenName && t.citizenName.toLowerCase().includes(query)) ||
+                    (t.paymentTransactionId && t.paymentTransactionId.toLowerCase().includes(query)) ||
+                    (t.serviceName && t.serviceName.toLowerCase().includes(query));
+
+                const matchService = !serviceId || t.serviceId === serviceId;
+                return matchQuery && matchService;
+            });
+
+            if (sortVal === 'date-desc') {
+                list.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+            } else if (sortVal === 'date-asc') {
+                list.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+            } else if (sortVal === 'fee-desc') {
+                list.sort((a, b) => (b.fee || 0) - (a.fee || 0));
+            }
+
+            renderTransactionsTable(list);
+        }
+        window.filterTransactions = filterTransactions;
+
+        function renderTransactionsTable(list) {
+            const tbody = document.getElementById('transactionsTbody');
+            const badge = document.getElementById('transactionsCountBadge');
+            if (badge) badge.textContent = `${list.length} Records`;
+
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--slate-400);">No matching transactions found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(t => {
+                const dateStr = t.date ? new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                return `
+                    <tr>
+                        <td><code>${t.id}</code></td>
+                        <td style="font-weight:600;color:var(--navy-900);">${t.citizenName || 'Citizen'}</td>
+                        <td style="font-size:0.8125rem;">${t.serviceName}</td>
+                        <td style="font-weight:700;color:var(--navy-900);">₹${t.fee || 0}</td>
+                        <td style="font-weight:700;color:#16a34a;">₹${t.serviceFee || 0}</td>
+                        <td style="font-weight:700;color:#2563eb;">₹${t.platformFee || 0}</td>
+                        <td style="font-size:0.75rem;color:var(--slate-600);">${t.paymentMethod || 'Online'}</td>
+                        <td><code style="font-size:0.75rem;">${t.paymentTransactionId || '—'}</code></td>
+                        <td style="font-size:0.75rem;color:var(--slate-500);">${dateStr}</td>
+                        <td><span class="badge badge-success">PAID</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        window.exportTransactionsCSV = () => {
+            if (!allTransactions || allTransactions.length === 0) {
+                showToast('No transactions to export.', 'warning');
+                return;
+            }
+            const headers = ['Application ID', 'Citizen Name', 'Service Name', 'Total Fee', 'Department Fee', 'Platform Fee', 'Payment Method', 'Transaction ID', 'Date', 'Status'];
+            const rows = allTransactions.map(t => [
+                `"${t.id || ''}"`,
+                `"${t.citizenName || ''}"`,
+                `"${t.serviceName || ''}"`,
+                t.fee || 0,
+                t.serviceFee || 0,
+                t.platformFee || 0,
+                `"${t.paymentMethod || ''}"`,
+                `"${t.paymentTransactionId || ''}"`,
+                `"${t.date || ''}"`,
+                `"${t.paymentStatus || 'PAID'}"`,
+            ]);
+
+            const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `${currentDeptId}_revenue_ledger.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Transaction ledger exported to CSV successfully.', 'success');
+        };
+
+        // Initialize
+        loadRevenueData();
+    </script>
+</body>
+</html>

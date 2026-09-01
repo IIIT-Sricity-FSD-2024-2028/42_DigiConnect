@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Officer Onboarding & Jurisdiction Node Scoping – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .modal-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.75) !important;
+            backdrop-filter: blur(6px) !important;
+            z-index: 99999 !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.2s ease, visibility 0.2s ease !important;
+        }
+
+        .modal-overlay.active,
+        .modal-overlay[data-visible="true"] {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 560px;
+            background: #ffffff !important;
+            border-radius: var(--radius-lg, 12px);
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--slate-200, #e2e8f0);
+            animation: modalPop 0.2s ease-out;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.96) translateY(12px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body data-page="dept-officers">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">Officer Onboarding & Jurisdiction Scoping</h1>
+                    <p class="page-subtitle" id="deptSubtitle">Revenue Department · Bind Officers to Exact Jurisdiction Nodes (Village, Mandal, District)</p>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="window.openOnboardOfficerModal()" id="openOnboardModalBtn">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    + Onboard Field Officer
+                </button>
+            </div>
+
+            <!-- Architecture Info -->
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:12px 16px;border-radius:0 var(--radius-md) var(--radius-md) 0;margin-bottom:var(--space-lg);">
+                <div style="font-size:0.875rem;font-weight:700;color:#1e40af;">Hierarchical Officer Scoping Rule:</div>
+                <div style="font-size:0.8125rem;color:#1e3a8a;margin-top:2px;">
+                    "Every officer is assigned to an exact <code>assignedNodeId</code> in the tree. An officer assigned to a Mandal automatically covers all child villages; a District officer covers all descendant nodes. Applications are routed using <code>isNodeWithinScope(leafNodeId, assignedNodeId)</code>."
+                </div>
+            </div>
+
+            <!-- Officers Table Card -->
+            <div class="card">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title">Onboarded Department Field Officers</span>
+                    <span class="badge badge-info" id="officersCountBadge">Loading...</span>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Officer ID</th>
+                                    <th>Officer Name</th>
+                                    <th>Designation</th>
+                                    <th>Assigned Jurisdiction Node</th>
+                                    <th>Hierarchy Coverage Scope</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="officersTableBody">
+                                <tr>
+                                    <td colspan="7" style="text-align:center;padding:24px;color:var(--slate-400);">Loading officers...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Onboard Officer Modal -->
+    <div class="modal-overlay" id="onboardOfficerModal">
+        <div class="modal-card">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--slate-200);">
+                <span class="card-title" style="font-size:1.0625rem;font-weight:700;color:var(--navy-900);display:flex;align-items:center;gap:8px;">
+                    👮 Onboard New Field Officer
+                </span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="window.closeOnboardOfficerModal()" style="font-size:1.25rem;line-height:1;padding:4px 8px;">✕</button>
+            </div>
+            <form id="onboardOfficerForm" onsubmit="window.handleOnboardOfficer(event)" style="padding:20px 24px;">
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Officer Full Name *</label>
+                    <input type="text" id="offName" class="form-input" placeholder="e.g. GOKUL RAO" required />
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Official Email Address *</label>
+                    <input type="email" id="offEmail" class="form-input" placeholder="e.g. gokul.vro@digiconnect.gov.in" required />
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Contact Phone Number</label>
+                    <input type="tel" id="offPhone" class="form-input" placeholder="e.g. 9876543210" pattern="[0-9]{10}" />
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Assigned Role Designation *</label>
+                    <select id="offDesig" class="form-input" required>
+                        <option value="desig_vro">Village Revenue Officer (VRO)</option>
+                        <option value="desig_mro">Mandal Revenue Officer (MRO)</option>
+                        <option value="desig_tahsildar">Tahsildar</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-lg);">
+                    <label class="form-label" style="font-weight:700;">Assigned Jurisdiction Node (Coverage Anchor) *</label>
+                    <select id="offNode" class="form-input" required>
+                        <option value="node_cg_vil">🌾 Chandragiri Village (node_cg_vil - Rural Leaf)</option>
+                        <option value="node_cg_man">🏛️ Chandragiri Mandal (node_cg_man - Mandal Scope)</option>
+                        <option value="node_tpt_sub">🏢 Tirupati Revenue Sub-Division (node_tpt_sub)</option>
+                        <option value="node_tpt">🏢 Tirupati District (node_tpt - District Scope)</option>
+                        <option value="node_tpt_w14">🏙️ Ward 14 (node_tpt_w14 - Urban Leaf)</option>
+                    </select>
+                    <small style="color:var(--slate-500);font-size:0.75rem;margin-top:4px;display:block;">
+                        The officer will have verification authority over this node and all its child nodes.
+                    </small>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--slate-100);">
+                    <button type="button" class="btn btn-outline" onclick="window.closeOnboardOfficerModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveOfficerBtn">Onboard Officer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { 
+            apiGetDepartmentOfficers, 
+            apiOnboardDepartmentOfficer, 
+            apiGetDesignations, 
+            apiUpdateOfficerStatus 
+        } from '../js/api.js';
+        import { showToast } from '../js/utils.js';
+
+        // 1. Auto-provision Department Head Demo Session if needed
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+
+        // 2. Initialize Page Layout
+        initPage({
+            title: 'Officer Onboarding',
+            breadcrumbs: [{ label: 'Department Head', href: 'department-head/dashboard.html' }, { label: 'Officers' }],
+            requiredRole: 'department_head'
+        });
+
+        // 3. Reliable Modal Control Helpers
+        window.openModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.add('active');
+            modal.setAttribute('data-visible', 'true');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.setProperty('opacity', '1', 'important');
+            modal.style.setProperty('visibility', 'visible', 'important');
+            modal.style.setProperty('pointer-events', 'auto', 'important');
+        };
+
+        window.closeModal = function(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.classList.remove('active');
+            modal.removeAttribute('data-visible');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.setProperty('opacity', '0', 'important');
+            modal.style.setProperty('visibility', 'hidden', 'important');
+            modal.style.setProperty('pointer-events', 'none', 'important');
+        };
+
+        window.openOnboardOfficerModal = async () => {
+            await loadDesignationsDropdown();
+            window.openModal('onboardOfficerModal');
+        };
+
+        window.closeOnboardOfficerModal = () => {
+            window.closeModal('onboardOfficerModal');
+        };
+
+        // Backdrop click to close
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    window.closeModal(overlay.id);
+                }
+            });
+        });
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.closeModal('onboardOfficerModal');
+            }
+        });
+
+        // 4. Load Dynamic Designations for Dropdown
+        async function loadDesignationsDropdown() {
+            try {
+                const res = await apiGetDesignations(currentDeptId);
+                const desigs = res.data || [];
+                const select = document.getElementById('offDesig');
+                if (select && desigs.length > 0) {
+                    select.innerHTML = desigs.map(d => `<option value="${d.id}">${d.title} (${d.code})</option>`).join('');
+                }
+            } catch (e) {
+                console.warn('Could not load designations for dropdown:', e);
+            }
+        }
+
+        // 5. Load & Render Officers List
+        async function loadOfficers() {
+            try {
+                const res = await apiGetDepartmentOfficers(currentDeptId);
+                const officers = res.data || [];
+                const badge = document.getElementById('officersCountBadge');
+                if (badge) badge.textContent = `${officers.length} Officers`;
+
+                const tbody = document.getElementById('officersTableBody');
+                if (!tbody) return;
+
+                if (officers.length > 0) {
+                    tbody.innerHTML = officers.map(o => {
+                        const isAct = (o.status === 'Active' || o.status === 'ACTIVE');
+                        const statusClass = isAct ? 'badge-success' : 'badge-danger';
+                        const statusText = isAct ? '● Active' : '● Suspended';
+                        const nextStatus = isAct ? 'Suspended' : 'Active';
+                        const toggleText = isAct ? 'Suspend' : 'Activate';
+
+                        // Derive coverage scope description
+                        let scopeNote = 'Specific Node Scope';
+                        if (o.assignedNodeId?.includes('vil')) scopeNote = 'Village Leaf Node Only';
+                        else if (o.assignedNodeId?.includes('man') || o.assignedNodeId?.includes('mdl')) scopeNote = 'Covers Mandal & Child Villages';
+                        else if (o.assignedNodeId?.includes('sub')) scopeNote = 'Covers Sub-Division Hierarchy';
+                        else if (o.assignedNodeId?.includes('tpt') || o.assignedNodeId?.includes('dist')) scopeNote = 'Covers Entire District Scope';
+                        else if (o.assignedNodeId?.includes('w14')) scopeNote = 'Urban Ward Leaf Node Only';
+
+                        return `
+                            <tr>
+                                <td><code>${o.id}</code></td>
+                                <td style="font-weight:700;color:var(--navy-900);">
+                                    ${o.name}
+                                    <div style="font-size:0.75rem;color:var(--slate-500);font-weight:normal;">${o.email}</div>
+                                </td>
+                                <td><span class="badge badge-purple">${o.designationTitle || o.title || 'Department Officer'}</span></td>
+                                <td><strong style="color:#1e3a8a;">🏢 ${o.assignedNodeId}</strong></td>
+                                <td style="font-size:0.8125rem;color:var(--slate-600);">${scopeNote}</td>
+                                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                                <td>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="window.toggleOfficerStatus('${o.id}', '${nextStatus}')">
+                                        ${toggleText}
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--slate-500);">No officers onboarded yet. Click "+ Onboard Field Officer" to add one.</td></tr>`;
+                }
+            } catch (err) {
+                console.error('loadOfficers error:', err);
+                const tbody = document.getElementById('officersTableBody');
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--red-500);">Failed to load officers: ${err.message}</td></tr>`;
+            }
+        }
+        window.loadOfficers = loadOfficers;
+
+        // 6. Toggle Officer Status
+        window.toggleOfficerStatus = async (officerId, newStatus) => {
+            try {
+                await apiUpdateOfficerStatus(officerId, newStatus);
+                showToast(`Officer status updated to ${newStatus}.`, 'success');
+                await loadOfficers();
+            } catch (err) {
+                showToast(err.message || 'Failed to update status', 'error');
+            }
+        };
+
+        // 7. Handle Form Submission
+        window.handleOnboardOfficer = async (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const btn = document.getElementById('saveOfficerBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Onboarding...';
+            }
+
+            const payload = {
+                departmentId: currentDeptId,
+                name: document.getElementById('offName').value.trim(),
+                email: document.getElementById('offEmail').value.trim(),
+                phone: document.getElementById('offPhone').value.trim() || '9876543210',
+                designationId: document.getElementById('offDesig').value,
+                assignedNodeId: document.getElementById('offNode').value
+            };
+
+            try {
+                await apiOnboardDepartmentOfficer(payload);
+                showToast(`Officer "${payload.name}" onboarded and bound to node "${payload.assignedNodeId}"!`, 'success');
+                window.closeOnboardOfficerModal();
+                document.getElementById('onboardOfficerForm').reset();
+                await loadOfficers();
+            } catch (err) {
+                console.error('Onboard officer error:', err);
+                showToast(err.message || 'Failed to onboard officer', 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Onboard Officer';
+                }
+            }
+        };
+
+        // Initial Load
+        loadDesignationsDropdown();
+        loadOfficers();
+    </script>
+</body>
+</html>

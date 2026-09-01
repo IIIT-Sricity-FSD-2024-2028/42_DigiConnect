@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Department Head Dashboard – DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+</head>
+<body data-page="dept-head-dashboard">
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+                <div>
+                    <h1 class="page-title">Revenue Department Executive Dashboard</h1>
+                    <p class="page-subtitle">Dr. B. R. Ambedkar IAS · Head of Department (Revenue Services & Land Records)</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" onclick="window.location.href='designations.html'">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Designations
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="window.location.href='service-builder.html'">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        + Create Dynamic Service
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#eff6ff;color:#2563eb;">📑</div>
+                    <div>
+                        <div class="stat-value" id="stat-services">0</div>
+                        <div class="stat-label">Active Services</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#f0fdf4;color:#16a34a;">👔</div>
+                    <div>
+                        <div class="stat-value" id="stat-designations">0</div>
+                        <div class="stat-label">Role Designations</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fefce8;color:#ca8a04;">👮</div>
+                    <div>
+                        <div class="stat-value" id="stat-officers">0</div>
+                        <div class="stat-label">Onboarded Officers</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon" style="background:#fdf2f8;color:#db2777;">📋</div>
+                    <div>
+                        <div class="stat-value" id="stat-apps">0</div>
+                        <div class="stat-label">Total Applications</div>
+                    </div>
+                </div>
+                <div class="stat-card" style="border:2px solid #8b5cf6;cursor:pointer;" onclick="window.location.href='revenue.html'">
+                    <div class="stat-icon" style="background:#8b5cf6;color:#ffffff;">💰</div>
+                    <div>
+                        <div class="stat-value" id="stat-revenue" style="color:#8b5cf6;">₹0</div>
+                        <div class="stat-label">Revenue Realized</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Functional Pillars -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-lg);margin-top:var(--space-xl);">
+                <div class="card" style="cursor:pointer;" onclick="window.location.href='designations.html'">
+                    <div class="card-header">
+                        <span class="card-title">👔 Designations Management</span>
+                    </div>
+                    <div class="card-body">
+                        <p style="font-size:0.875rem;color:var(--slate-600);line-height:1.6;margin-bottom:var(--space-md);">
+                            Manage department designations (*VRO, MRO, Tahsildar, Revenue Inspector*). Designations represent operational job roles, strictly avoiding numeric officer levels.
+                        </p>
+                        <button class="btn btn-outline btn-sm">Configure Designations →</button>
+                    </div>
+                </div>
+
+                <div class="card" style="cursor:pointer;" onclick="window.location.href='service-builder.html'">
+                    <div class="card-header">
+                        <span class="card-title">⚙️ Dynamic Service & Workflow Builder</span>
+                    </div>
+                    <div class="card-body">
+                        <p style="font-size:0.875rem;color:var(--slate-600);line-height:1.6;margin-bottom:var(--space-md);">
+                            Configure custom form fields (*TEXT, NUMBER, DATE, SELECT*), document proofs, fees (Service + Platform), Terms & Conditions, and multi-step officer workflow sequences.
+                        </p>
+                        <button class="btn btn-outline btn-sm">Launch Service Builder →</button>
+                    </div>
+                </div>
+
+                <div class="card" style="cursor:pointer;" onclick="window.location.href='officers.html'">
+                    <div class="card-header">
+                        <span class="card-title">📍 Officer Onboarding & Node Scoping</span>
+                    </div>
+                    <div class="card-body">
+                        <p style="font-size:0.875rem;color:var(--slate-600);line-height:1.6;margin-bottom:var(--space-md);">
+                            Onboard field officers by assigning their exact designation and binding them directly to a jurisdiction node (*Village, Mandal, or District*).
+                        </p>
+                        <button class="btn btn-outline btn-sm">Onboard Officers →</button>
+                    </div>
+                </div>
+
+                <div class="card" style="cursor:pointer;" onclick="window.location.href='revenue.html'">
+                    <div class="card-header">
+                        <span class="card-title">💰 Financials & Revenue</span>
+                    </div>
+                    <div class="card-body">
+                        <p style="font-size:0.875rem;color:var(--slate-600);line-height:1.6;margin-bottom:var(--space-md);">
+                            Inspect departmental revenue receipts, statutory service fees, e-Governance platform fee shares, and individual citizen payment transaction ledgers.
+                        </p>
+                        <button class="btn btn-outline btn-sm">View Revenue Collections →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Department Services -->
+            <div class="card" style="margin-top:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="card-title">Configured Department Services</span>
+                    <a href="services.html" class="btn btn-ghost btn-sm">View All Services →</a>
+                </div>
+                <div class="card-body" style="padding:0;">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Service Name</th>
+                                    <th>Fee (Service + Platform)</th>
+                                    <th>Workflow Sequence</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="servicesList">
+                                <tr>
+                                    <td colspan="5" style="text-align:center;padding:24px;color:var(--slate-500);">
+                                        Loading configured department services...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession, setSession } from '../js/auth.js';
+        import { apiGetDepartmentServices, apiGetDepartmentAnalytics } from '../js/api.js';
+
+        // Auto-provision session if accessed directly
+        let session = getSession();
+        if (!session || (session.role !== 'department_head' && session.roleKey !== 'department_head')) {
+            session = {
+                id: 'dept_head_rev_ap',
+                name: 'Dr. B. R. Ambedkar IAS',
+                title: 'Director / Head of Revenue (AP)',
+                role: 'department_head',
+                roleKey: 'department_head',
+                backendRole: 'DEPARTMENT_HEAD',
+                stateId: 'state_ap',
+                departmentId: 'dept_rev_ap',
+                assignedNodeId: 'node_ap',
+            };
+            setSession(session);
+        }
+
+        initPage({
+            title: 'Department Head Dashboard',
+            breadcrumbs: [{ label: 'Department Head' }, { label: 'Dashboard' }],
+            requiredRole: 'department_head'
+        });
+
+        const currentDeptId = session?.departmentId || 'dept_rev_ap';
+
+        async function loadDashboardData() {
+            try {
+                // 1. Fetch Department Analytics
+                const analyticsRes = await apiGetDepartmentAnalytics(currentDeptId);
+                const stats = analyticsRes?.data || {};
+
+                const statServices = document.getElementById('stat-services');
+                if (statServices) statServices.textContent = stats.activeServices ?? stats.totalServices ?? '0';
+
+                const statDesig = document.getElementById('stat-designations');
+                if (statDesig) statDesig.textContent = stats.totalDesignations ?? '0';
+
+                const statOfficers = document.getElementById('stat-officers');
+                if (statOfficers) statOfficers.textContent = stats.totalOfficers ?? '0';
+
+                const statApps = document.getElementById('stat-apps');
+                if (statApps) statApps.textContent = stats.totalApplications ?? '0';
+
+                const statRevenue = document.getElementById('stat-revenue');
+                if (statRevenue) statRevenue.textContent = `₹${(stats.totalRevenue || 0).toLocaleString()}`;
+            } catch (err) {
+                console.error('Failed to load department analytics:', err);
+            }
+
+            try {
+                // 2. Fetch and render Active Services
+                const servicesRes = await apiGetDepartmentServices(currentDeptId);
+                const services = servicesRes?.data || [];
+
+                const statServices = document.getElementById('stat-services');
+                if (statServices && services.length > 0) {
+                    statServices.textContent = services.length;
+                }
+
+                const tbody = document.getElementById('servicesList');
+                if (tbody) {
+                    if (services.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" style="text-align:center;padding:32px;color:var(--slate-500);">
+                                    No services configured yet for this department. <a href="service-builder.html" style="color:var(--navy-600);font-weight:600;">Create one now →</a>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        tbody.innerHTML = services.map(s => {
+                            const serviceFee = s.serviceFee || 35;
+                            const platformFee = s.platformFee || 15;
+                            const totalFee = s.totalFee || (serviceFee + platformFee);
+
+                            let workflowSummary = s.workflowSummary || '';
+                            if (!workflowSummary && Array.isArray(s.workflowSteps) && s.workflowSteps.length > 0) {
+                                workflowSummary = s.workflowSteps.map(step => step.stepName || step.requiredDesignationId).join(' ➔ ');
+                            }
+                            if (!workflowSummary) workflowSummary = 'VRO ➔ MRO ➔ Tahsildar (DSC)';
+
+                            return `
+                                <tr>
+                                    <td style="font-weight:700;color:var(--navy-900);">
+                                        📜 ${s.name}
+                                        <div style="font-size:0.75rem;font-weight:400;color:var(--slate-500);margin-top:2px;">${s.description || 'Statutory citizen delivery service.'}</div>
+                                    </td>
+                                    <td>
+                                        <strong>₹${totalFee}</strong>
+                                        <span style="font-size:0.75rem;color:var(--slate-500);">(₹${serviceFee} + ₹${platformFee})</span>
+                                    </td>
+                                    <td><span class="badge badge-purple" style="font-size:0.75rem;white-space:normal;line-height:1.4;">${workflowSummary}</span></td>
+                                    <td><span class="badge badge-success">● ${s.status || 'Active'}</span></td>
+                                    <td>
+                                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                            <a href="service-builder.html?id=${s.id}" class="btn btn-ghost btn-sm">Edit Config</a>
+                                            <a href="services.html" class="btn btn-outline btn-sm">Catalog</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load department services:', err);
+            }
+        }
+
+        loadDashboardData();
+    </script>
+</body>
+</html>

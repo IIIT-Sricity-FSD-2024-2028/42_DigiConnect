@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Jurisdiction Tree – State Government DigiConnect</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
+    <style>
+        .page-header-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: var(--space-lg);
+        }
+        .jurisdiction-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: var(--space-xl);
+        }
+        .j-stat-card {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+        .j-stat-card:hover {
+            border-color: var(--navy-300);
+            box-shadow: var(--shadow-sm);
+        }
+        .j-stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-sm);
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+        }
+        .j-stat-val {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--navy-900);
+            line-height: 1.2;
+        }
+        .j-stat-lbl {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-top: 2px;
+        }
+
+        /* Filter Toolbar */
+        .filter-toolbar {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .search-input-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 260px;
+        }
+        .search-input-wrap input {
+            width: 100%;
+            padding: 9px 12px 9px 36px;
+            font-size: 0.875rem;
+            border: 1px solid var(--slate-300);
+            border-radius: var(--radius-sm);
+            background: #ffffff;
+            color: var(--navy-900);
+        }
+        .search-input-wrap input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+        .search-icon-svg {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--slate-400);
+            pointer-events: none;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Tree Layout */
+        .tree-layout-wrapper {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-lg);
+            align-items: start;
+        }
+        @media (min-width: 1024px) {
+            .tree-layout-wrapper.drawer-open {
+                grid-template-columns: 1fr 380px;
+            }
+        }
+
+        .tree-viewport-card {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .tree-container {
+            padding: 16px 20px;
+            background: #f8fafc;
+            min-height: 480px;
+        }
+
+        /* Node Styling */
+        .tree-node-wrapper {
+            margin: 4px 0;
+        }
+        .tree-node-card {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transition: all 0.15s ease;
+        }
+        .tree-node-card:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 2px 6px rgba(15,23,42,0.06);
+            background: #ffffff;
+        }
+        .tree-node-card.active-selected {
+            border-color: #2563eb;
+            background: #eff6ff;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+        }
+        .tree-node-card.search-highlight {
+            border-color: #eab308;
+            background: #fefce8;
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(234,179,8,0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(234,179,8,0); }
+            100% { box-shadow: 0 0 0 0 rgba(234,179,8,0); }
+        }
+        .tree-node-card.inactive-node {
+            opacity: 0.72;
+            background: #f1f5f9;
+            border-style: dashed;
+        }
+        .tree-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 0.8125rem;
+            color: var(--slate-600);
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+        .tree-toggle-btn:hover {
+            background: var(--slate-100);
+            color: var(--navy-900);
+        }
+        .tree-children-container {
+            margin-left: 26px;
+            padding-left: 14px;
+            border-left: 2px dashed #cbd5e1;
+        }
+
+        /* Tier & Status Badges */
+        .tier-badge {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .tier-rural { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .tier-urban { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+        .tier-common { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+
+        /* Side Drawer Inspection Panel */
+        .node-drawer-card {
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            position: sticky;
+            top: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .drawer-prop-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--slate-100);
+            font-size: 0.8125rem;
+        }
+        .drawer-prop-lbl {
+            color: var(--slate-500);
+            font-weight: 600;
+        }
+        .drawer-prop-val {
+            color: var(--navy-900);
+            font-weight: 700;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+
+        /* Activity Timeline */
+        .timeline-item-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 14px;
+            background: #ffffff;
+            border: 1px solid var(--slate-200);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            font-size: 0.8125rem;
+        }
+
+        /* Modal display overrides */
+        .modal-overlay.active,
+        .modal-overlay[style*="display: flex"] {
+            opacity: 1 !important;
+            visibility: visible !important;
+            display: flex !important;
+        }
+    </style>
+</head>
+<body data-page="state-jurisdictions">
+    <div class="app-layout">
+        <!-- Sidebar (UNCHANGED: strictly preserved State Admin sidebar) -->
+        <aside class="sidebar" id="sidebar"></aside>
+
+        <!-- Topbar -->
+        <header class="topbar"></header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- 1. State Identity & Action Header -->
+            <div class="page-header-row">
+                <div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <h1 class="page-title" id="headerStateTitle">Government of Andhra Pradesh</h1>
+                        <span class="badge badge-success" id="stateActiveBadge">● ACTIVE SECRETARIAT</span>
+                        <span class="badge badge-neutral" id="stateCodeBadge">AP</span>
+                    </div>
+                    <p class="page-subtitle" style="margin-top:4px;">
+                        Dynamic Jurisdiction Tree · Authoritative Geographic & Administrative Hierarchy
+                    </p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="loadTreeAndStats()">
+                        ⟳ Refresh Hierarchy
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openAddDistrictModal()">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        + Add District
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Dynamic Summary Counters (6 Pillars) -->
+            <div class="jurisdiction-summary-grid">
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">🏛️</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-districts">--</div>
+                        <div class="j-stat-lbl">Districts</div>
+                    </div>
+                </div>
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">🏢</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-subdivisions">--</div>
+                        <div class="j-stat-lbl">Sub-Divisions</div>
+                    </div>
+                </div>
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">🌾</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-mandals">--</div>
+                        <div class="j-stat-lbl">Mandals / Taluks</div>
+                    </div>
+                </div>
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">🏡</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-villages">--</div>
+                        <div class="j-stat-lbl">Villages / GPs</div>
+                    </div>
+                </div>
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">🏙️</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-municipalities">--</div>
+                        <div class="j-stat-lbl">Municipalities / ULBs</div>
+                    </div>
+                </div>
+                <div class="j-stat-card">
+                    <div class="j-stat-icon">📍</div>
+                    <div>
+                        <div class="j-stat-val" id="stat-wards">--</div>
+                        <div class="j-stat-lbl">Wards / Zones</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Search & Filter Bar -->
+            <div class="filter-toolbar">
+                <div class="search-input-wrap">
+                    <svg class="search-icon-svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="treeSearchInput" placeholder="Search jurisdictions by name, code, or ID..." oninput="handleSearch(this.value)" />
+                </div>
+                <div class="filter-group">
+                    <select id="filterTierSelect" class="form-input" style="padding:7px 10px;font-size:0.8125rem;" onchange="applyFilters()">
+                        <option value="ALL">All Tiers</option>
+                        <option value="DISTRICT">Districts</option>
+                        <option value="SUB_DIVISION">Sub-Divisions</option>
+                        <option value="MANDAL">Mandals / Taluks</option>
+                        <option value="VILLAGE">Villages / Gram Panchayats</option>
+                        <option value="MUNICIPALITY">Municipalities</option>
+                        <option value="WARD">Wards / Zones</option>
+                    </select>
+                    <select id="filterAreaSelect" class="form-input" style="padding:7px 10px;font-size:0.8125rem;" onchange="applyFilters()">
+                        <option value="ALL">All Area Types</option>
+                        <option value="RURAL">Rural Branch Only</option>
+                        <option value="URBAN">Urban Branch Only</option>
+                    </select>
+                    <select id="filterStatusSelect" class="form-input" style="padding:7px 10px;font-size:0.8125rem;" onchange="applyFilters()">
+                        <option value="ALL">All Status</option>
+                        <option value="Active">Active Only</option>
+                        <option value="Inactive">Inactive Only</option>
+                    </select>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="expandAllNodes()">Expand All</button>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="collapseAllNodes()">Collapse All</button>
+                </div>
+            </div>
+
+            <!-- Search result indicator -->
+            <div id="searchResultInfo" style="display:none;margin-bottom:12px;font-size:0.8125rem;color:var(--slate-600);display:flex;justify-content:space-between;align-items:center;">
+                <span id="searchResultCountText">Found matching nodes</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="clearSearch()">Clear Search ✕</button>
+            </div>
+
+            <!-- 4. Interactive Tree View & Inspection Drawer -->
+            <div class="tree-layout-wrapper" id="treeLayoutWrapper">
+                <!-- Tree Card -->
+                <div class="tree-viewport-card">
+                    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;background:#ffffff;">
+                        <div>
+                            <span class="card-title">Administrative Structure</span>
+                            <div style="font-size:0.75rem;color:var(--slate-500);">Adjacency List Hierarchy (<code>parentId → node.id</code>)</div>
+                        </div>
+                        <span class="badge badge-neutral" id="treeTotalNodesBadge">Loading nodes...</span>
+                    </div>
+                    <div class="tree-container" id="treeContainer">
+                        <div style="text-align:center;padding:48px;color:var(--slate-400);">Loading dynamic jurisdiction hierarchy...</div>
+                    </div>
+                </div>
+
+                <!-- Node Details Inspection Drawer (Hidden until node selected) -->
+                <div class="node-drawer-card" id="nodeDetailsDrawer" style="display:none;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+                        <div>
+                            <span class="badge badge-purple" id="drawerTierBadge" style="font-size:0.7rem;">DISTRICT</span>
+                            <h3 style="font-size:1.15rem;font-weight:800;color:var(--navy-900);margin:4px 0 2px 0;" id="drawerNodeName">Guntur District</h3>
+                            <div style="font-size:0.75rem;color:var(--slate-400);font-family:monospace;" id="drawerNodeId">node_guntur</div>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="closeDrawer()" title="Close Details">✕</button>
+                    </div>
+
+                    <!-- Breadcrumb trail -->
+                    <div style="background:var(--slate-50);border:1px solid var(--slate-200);border-radius:4px;padding:8px 10px;margin-bottom:14px;font-size:0.75rem;color:var(--slate-600);line-height:1.4;" id="drawerBreadcrumb">
+                        Andhra Pradesh › Guntur District
+                    </div>
+
+                    <!-- Properties Table -->
+                    <div style="margin-bottom:16px;">
+                        <div class="drawer-prop-row">
+                            <span class="drawer-prop-lbl">Status</span>
+                            <span class="drawer-prop-val" id="drawerStatusVal"><span class="badge badge-success">● Active</span></span>
+                        </div>
+                        <div class="drawer-prop-row">
+                            <span class="drawer-prop-lbl">Governance Branch</span>
+                            <span class="drawer-prop-val" id="drawerGovTypeVal">RURAL</span>
+                        </div>
+                        <div class="drawer-prop-row">
+                            <span class="drawer-prop-lbl">Jurisdiction Code</span>
+                            <span class="drawer-prop-val" id="drawerCodeVal">AP_GNT</span>
+                        </div>
+                        <div class="drawer-prop-row">
+                            <span class="drawer-prop-lbl">Direct Children</span>
+                            <span class="drawer-prop-val" id="drawerChildrenCountVal">0 units</span>
+                        </div>
+                        <div class="drawer-prop-row">
+                            <span class="drawer-prop-lbl">Total Descendants</span>
+                            <span class="drawer-prop-val" id="drawerDescendantsVal">0 units</span>
+                        </div>
+                    </div>
+
+                    <!-- Dependencies Section -->
+                    <div style="background:#f8fafc;border:1px solid var(--slate-200);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;">
+                        <div style="font-size:0.75rem;font-weight:700;color:var(--navy-900);text-transform:uppercase;margin-bottom:8px;">
+                            🔗 Operational Dependencies
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;text-align:center;">
+                            <div style="background:#fff;border:1px solid var(--slate-200);padding:6px;border-radius:4px;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#2563eb;" id="depOfficersCount">0</div>
+                                <div style="font-size:0.65rem;color:var(--slate-500);text-transform:uppercase;">Officers</div>
+                            </div>
+                            <div style="background:#fff;border:1px solid var(--slate-200);padding:6px;border-radius:4px;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#16a34a;" id="depAppsCount">0</div>
+                                <div style="font-size:0.65rem;color:var(--slate-500);text-transform:uppercase;">Applications</div>
+                            </div>
+                            <div style="background:#fff;border:1px solid var(--slate-200);padding:6px;border-radius:4px;">
+                                <div style="font-size:1.1rem;font-weight:800;color:#dc2626;" id="depGrievancesCount">0</div>
+                                <div style="font-size:0.65rem;color:var(--slate-500);text-transform:uppercase;">Grievances</div>
+                            </div>
+                        </div>
+                        <div id="deleteBlockWarning" style="display:none;margin-top:8px;font-size:0.725rem;color:#b91c1c;background:#fef2f2;padding:6px 8px;border-radius:4px;border:1px solid #fca5a5;">
+                            ⚠️ Deletion protected: Dependent records exist. Deactivate this node instead to maintain historical integrity.
+                        </div>
+                    </div>
+
+                    <!-- Drawer Action Buttons -->
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="drawerAddChildBtn" onclick="openAddChildFromDrawer()">
+                            + Add Child Jurisdiction
+                        </button>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="btn btn-outline btn-sm" style="flex:1;" onclick="openEditFromDrawer()">
+                                ✏️ Edit / Rename
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm" style="flex:1;" id="drawerToggleStatusBtn" onclick="toggleStatusFromDrawer()">
+                                Deactivate
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-ghost btn-sm" style="color:#ef4444;" id="drawerDeleteBtn" onclick="handleDeleteFromDrawer()">
+                            🗑️ Delete Jurisdiction
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Recent Administrative Activity Section -->
+            <div class="card" style="margin-top:var(--space-xl);">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span class="card-title">📌 Recent Jurisdiction Lifecycle Activities</span>
+                        <div style="font-size:0.75rem;color:var(--slate-500);">Live Secretariat audit trail of creations, renames, and status updates</div>
+                    </div>
+                    <span class="badge badge-neutral">● Secretariat Audit</span>
+                </div>
+                <div class="card-body" id="jurisdictionAuditContainer" style="padding:var(--space-md);">
+                    <div style="text-align:center;padding:20px;color:var(--slate-400);">Loading recent jurisdiction activities...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Add Jurisdiction Node (Context-Aware) -->
+    <div class="modal-overlay" id="addNodeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:540px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;">
+                <span class="card-title" id="addModalTitle">+ Add Jurisdiction Unit</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeAddNodeModal()">✕</button>
+            </div>
+            <form id="addNodeForm" onsubmit="handleCreateNode(event)" style="padding:var(--space-xl);">
+                <input type="hidden" id="addParentIdInput" value="" />
+                <input type="hidden" id="addParentTierInput" value="" />
+
+                <!-- Parent Info Display -->
+                <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:var(--space-md);">
+                    <div style="font-size:0.75rem;color:var(--slate-500);font-weight:700;text-transform:uppercase;">Parent Jurisdiction</div>
+                    <div style="font-size:0.9375rem;font-weight:800;color:var(--navy-900);margin-top:2px;" id="addParentNameDisplay">Andhra Pradesh (State Root)</div>
+                </div>
+
+                <!-- Governance Branch -->
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Governance / Area Type *</label>
+                    <div style="display:flex;gap:16px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+                            <input type="radio" name="addGovTypeRadio" value="RURAL" id="addRadioRural" onchange="onAddGovTypeChange('RURAL')" checked />
+                            🌾 Rural Branch
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+                            <input type="radio" name="addGovTypeRadio" value="URBAN" id="addRadioUrban" onchange="onAddGovTypeChange('URBAN')" />
+                            🏙️ Urban Branch
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tier Level (Context-Restricted) -->
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Administrative Tier *</label>
+                    <select id="addTierSelect" class="form-input" required>
+                        <!-- Injected dynamically based on parent -->
+                    </select>
+                    <div style="font-size:0.75rem;color:var(--slate-500);margin-top:3px;" id="addTierHelpText">
+                        Only valid child tiers allowed under this parent.
+                    </div>
+                </div>
+
+                <!-- Jurisdiction Name -->
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Jurisdiction Name *</label>
+                    <input type="text" id="addNodeNameInput" class="form-input" placeholder="e.g. Tenali Sub-Division, Ward 12" required />
+                </div>
+
+                <!-- Jurisdiction Code (Optional) -->
+                <div class="form-group" style="margin-bottom:var(--space-lg);">
+                    <label class="form-label" style="font-weight:700;">Jurisdiction Code (Optional)</label>
+                    <input type="text" id="addNodeCodeInput" class="form-input" placeholder="e.g. AP_TNL_01" />
+                </div>
+
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeAddNodeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveAddNodeBtn">Create Jurisdiction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Edit / Rename Jurisdiction -->
+    <div class="modal-overlay" id="editNodeModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:520px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <div class="card-header" style="background:#f8fafc;display:flex;justify-content:space-between;align-items:center;">
+                <span class="card-title">✏️ Edit / Rename Jurisdiction</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeEditNodeModal()">✕</button>
+            </div>
+            <form id="editNodeForm" onsubmit="handleUpdateNode(event)" style="padding:var(--space-xl);">
+                <input type="hidden" id="editNodeIdInput" value="" />
+
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:var(--space-md);font-size:0.75rem;color:#1e40af;">
+                    💡 <strong>Stable ID Guarantee:</strong> Renaming this jurisdiction updates all referencing records in-place without breaking officer, application, or grievance links.
+                </div>
+
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Jurisdiction Name *</label>
+                    <input type="text" id="editNodeNameInput" class="form-input" required />
+                </div>
+
+                <div class="form-group" style="margin-bottom:var(--space-md);">
+                    <label class="form-label" style="font-weight:700;">Jurisdiction Code</label>
+                    <input type="text" id="editNodeCodeInput" class="form-input" />
+                </div>
+
+                <div class="form-group" style="margin-bottom:var(--space-lg);">
+                    <label class="form-label" style="font-weight:700;">Status</label>
+                    <select id="editNodeStatusSelect" class="form-input">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditNodeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveEditNodeBtn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmation for Deactivation -->
+    <div class="modal-overlay" id="confirmStatusModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:460px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="card-header" style="background:#fefce8;display:flex;justify-content:space-between;align-items:center;">
+                <span class="card-title" id="confirmStatusTitle" style="color:#854d0e;">⚠️ Confirm Status Change</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeStatusModal()">✕</button>
+            </div>
+            <div style="padding:var(--space-lg);" id="confirmStatusBody">
+                Are you sure?
+            </div>
+            <div style="padding:12px 16px;background:#f8fafc;display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeStatusModal()">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm" id="confirmStatusBtn" onclick="executeStatusChange()">Proceed</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="confirmDeleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+        <div class="card" style="width:100%;max-width:480px;background:#fff;border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="card-header" style="background:#fef2f2;display:flex;justify-content:space-between;align-items:center;">
+                <span class="card-title" style="color:#b91c1c;">🗑️ Confirm Deletion</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeDeleteModal()">✕</button>
+            </div>
+            <div style="padding:var(--space-lg);" id="confirmDeleteBody">Are you sure?</div>
+            <div style="padding:12px 16px;background:#f8fafc;display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-sm" id="confirmDeleteBtn" style="background:#dc2626;color:#fff;border:none;" onclick="executeDeleteNode()">Delete Permanently</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initPage } from '../js/navigation.js';
+        import { getSession } from '../js/auth.js';
+        import { isRoleAllowed } from '../js/role-manager.js';
+        import {
+            apiGetJurisdictionTree,
+            apiGetJurisdictionStats,
+            apiGetJurisdictionDetails,
+            apiCreateJurisdictionNode,
+            apiUpdateJurisdictionNode,
+            apiToggleJurisdictionStatus,
+            apiDeleteJurisdictionNode,
+            apiGetJurisdictionAudit,
+        } from '../js/api.js';
+        import { showToast, formatNum } from '../js/utils.js';
+
+        // Auto-seed session fallback if accessed directly
+        let currentSession = getSession();
+        if (!currentSession || !isRoleAllowed(currentSession.roleKey || currentSession.role, 'state_admin')) {
+            const defaultStateAdmin = {
+                id: 'state_admin_ap',
+                name: 'K. Vijayanand IAS',
+                role: 'state_admin',
+                roleKey: 'state_admin',
+                backendRole: 'STATE_ADMIN',
+                actualRole: 'STATE_ADMIN',
+                stateId: 'state_ap',
+                departmentId: '',
+                assignedNodeId: 'node_ap',
+                title: 'Special Chief Secretary (State Admin - AP)',
+                email: 'state_admin_ap@digiconnect.gov.in',
+                token: 'demo-token-state_admin_ap'
+            };
+            localStorage.setItem('DigiConnect_session', JSON.stringify(defaultStateAdmin));
+            localStorage.setItem('active_role', 'state_admin');
+            currentSession = defaultStateAdmin;
+        }
+
+        initPage({
+            title: 'Dynamic Jurisdiction Tree',
+            breadcrumbs: [{ label: 'State Government', href: 'state-admin/dashboard.html' }, { label: 'Dynamic Jurisdiction Tree' }],
+            requiredRole: 'state_admin'
+        });
+
+        // App State
+        const stateId = currentSession?.stateId || 'state_ap';
+        let rawTreeData = null;
+        let selectedNodeId = null;
+        let selectedNodeDetails = null;
+        let expandedNodeIds = new Set();
+        let currentSearchTerm = '';
+        let pendingStatusChange = null;
+
+        // Friendly Tier Labels
+        const TIER_DISPLAY_NAMES = {
+            STATE: 'State',
+            DISTRICT: 'District',
+            SUB_DIVISION: 'Sub-Division',
+            MANDAL: 'Mandal / Taluk',
+            VILLAGE: 'Village / GP',
+            GRAM_PANCHAYAT: 'Gram Panchayat',
+            MUNICIPALITY: 'Municipality / ULB',
+            WARD: 'Ward',
+            ZONE: 'Zone',
+        };
+
+        const TIER_ICONS = {
+            STATE: '🏛️',
+            DISTRICT: '🏢',
+            SUB_DIVISION: '🏢',
+            MANDAL: '🌾',
+            VILLAGE: '🏡',
+            GRAM_PANCHAYAT: '🏡',
+            MUNICIPALITY: '🏙️',
+            WARD: '📍',
+            ZONE: '📍',
+        };
+
+        // Allowed Child Tiers mapping
+        const ALLOWED_CHILD_OPTIONS = {
+            STATE: [
+                { tier: 'DISTRICT', label: 'District', gov: 'COMMON' }
+            ],
+            DISTRICT: [
+                { tier: 'SUB_DIVISION', label: 'Revenue / Urban Sub-Division', gov: 'RURAL' },
+                { tier: 'SUB_DIVISION', label: 'Urban Sub-Division', gov: 'URBAN' }
+            ],
+            SUB_DIVISION: {
+                RURAL: [
+                    { tier: 'MANDAL', label: 'Mandal / Taluk', gov: 'RURAL' }
+                ],
+                URBAN: [
+                    { tier: 'MUNICIPALITY', label: 'Municipality / Municipal Corporation', gov: 'URBAN' }
+                ],
+                COMMON: [
+                    { tier: 'MANDAL', label: 'Mandal / Taluk (Rural)', gov: 'RURAL' },
+                    { tier: 'MUNICIPALITY', label: 'Municipality / ULB (Urban)', gov: 'URBAN' }
+                ]
+            },
+            MANDAL: [
+                { tier: 'VILLAGE', label: 'Village', gov: 'RURAL' },
+                { tier: 'GRAM_PANCHAYAT', label: 'Gram Panchayat', gov: 'RURAL' }
+            ],
+            MUNICIPALITY: [
+                { tier: 'WARD', label: 'Ward', gov: 'URBAN' },
+                { tier: 'ZONE', label: 'Zone', gov: 'URBAN' }
+            ],
+        };
+
+        async function loadTreeAndStats() {
+            try {
+                const [statsRes, treeRes, auditRes] = await Promise.all([
+                    apiGetJurisdictionStats(stateId),
+                    apiGetJurisdictionTree(stateId),
+                    apiGetJurisdictionAudit(stateId),
+                ]);
+
+                // Render Top Summary Counters
+                const stats = statsRes?.data;
+                if (stats) {
+                    document.getElementById('stat-districts').textContent = stats.districtsCount;
+                    document.getElementById('stat-subdivisions').textContent = stats.subDivisionsCount;
+                    document.getElementById('stat-mandals').textContent = stats.mandalsCount;
+                    document.getElementById('stat-villages').textContent = formatNum(stats.villagesCount);
+                    document.getElementById('stat-municipalities').textContent = stats.municipalitiesCount;
+                    document.getElementById('stat-wards').textContent = formatNum(stats.wardsCount);
+                }
+
+                // Render Tree
+                const treeList = treeRes?.data || [];
+                rawTreeData = treeList.length > 0 ? treeList[0] : null;
+
+                if (!rawTreeData) {
+                    document.getElementById('treeContainer').innerHTML = `
+                        <div style="text-align:center;padding:48px;color:var(--slate-500);">
+                            <div style="font-size:2rem;margin-bottom:8px;">🏛️</div>
+                            <div style="font-weight:700;font-size:1.1rem;color:var(--navy-900);">No Jurisdiction Hierarchy Found</div>
+                            <div style="font-size:0.875rem;margin-top:4px;">Get started by adding the first District to this state.</div>
+                            <button type="button" class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="openAddDistrictModal()">+ Add First District</button>
+                        </div>
+                    `;
+                    document.getElementById('treeTotalNodesBadge').textContent = '0 Units';
+                    return;
+                }
+
+                // Auto-expand root and first tier districts by default
+                expandedNodeIds.add(rawTreeData.id);
+                if (rawTreeData.children) {
+                    rawTreeData.children.forEach(c => expandedNodeIds.add(c.id));
+                }
+
+                renderTreeUI();
+                renderAuditLogs(auditRes?.data || []);
+            } catch (err) {
+                console.error('Failed to load jurisdiction hierarchy:', err);
+                document.getElementById('treeContainer').innerHTML = `
+                    <div style="color:#ef4444;text-align:center;padding:40px;">
+                        <div style="font-weight:700;font-size:1.05rem;">Unable to load jurisdiction hierarchy</div>
+                        <div style="font-size:0.8125rem;margin-top:4px;">${err.message || 'Check backend connection'}</div>
+                        <button type="button" class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="loadTreeAndStats()">Retry</button>
+                    </div>
+                `;
+                showToast(err.message || 'Failed to load jurisdiction tree', 'error');
+            }
+        }
+
+        function renderTreeUI() {
+            if (!rawTreeData) return;
+
+            const totalNodes = countNodes(rawTreeData);
+            document.getElementById('treeTotalNodesBadge').textContent = `${totalNodes} Total Administrative Units`;
+
+            const filterTier = document.getElementById('filterTierSelect').value;
+            const filterArea = document.getElementById('filterAreaSelect').value;
+            const filterStatus = document.getElementById('filterStatusSelect').value;
+
+            const html = renderNodeRecursive(rawTreeData, filterTier, filterArea, filterStatus);
+            document.getElementById('treeContainer').innerHTML = html;
+        }
+
+        function countNodes(node) {
+            let count = 1;
+            if (node.children) {
+                node.children.forEach(c => count += countNodes(c));
+            }
+            return count;
+        }
+
+        function renderNodeRecursive(node, filterTier, filterArea, filterStatus) {
+            const isMatch = doesNodeMatchFilter(node, currentSearchTerm, filterTier, filterArea, filterStatus);
+            const hasMatchingDescendant = doesDescendantMatch(node, currentSearchTerm, filterTier, filterArea, filterStatus);
+
+            // If neither this node nor any descendant matches active filters, skip
+            if (!isMatch && !hasMatchingDescendant && (currentSearchTerm || filterTier !== 'ALL' || filterArea !== 'ALL' || filterStatus !== 'ALL')) {
+                return '';
+            }
+
+            const isExpanded = expandedNodeIds.has(node.id) || currentSearchTerm.length > 0;
+            const hasChildren = node.children && node.children.length > 0;
+            const isLeaf = ['VILLAGE', 'GRAM_PANCHAYAT', 'WARD', 'ZONE'].includes(node.tierLevel);
+            const isRoot = node.tierLevel === 'STATE';
+            const isSelected = selectedNodeId === node.id;
+            const isInactive = node.status === 'Inactive';
+            const isSearchHit = currentSearchTerm && node.name.toLowerCase().includes(currentSearchTerm.toLowerCase());
+
+            const badgeCls = node.governanceType === 'RURAL' ? 'tier-rural' : node.governanceType === 'URBAN' ? 'tier-urban' : 'tier-common';
+            const icon = TIER_ICONS[node.tierLevel] || '📍';
+            const tierLabel = TIER_DISPLAY_NAMES[node.tierLevel] || node.tierLevel;
+
+            let childrenHtml = '';
+            if (hasChildren && isExpanded) {
+                const childRows = node.children.map(c => renderNodeRecursive(c, filterTier, filterArea, filterStatus)).join('');
+                if (childRows) {
+                    childrenHtml = `<div class="tree-children-container" id="children-${node.id}">${childRows}</div>`;
+                }
+            }
+
+            return `
+                <div class="tree-node-wrapper" id="node-wrap-${node.id}">
+                    <div class="tree-node-card ${isSelected ? 'active-selected' : ''} ${isSearchHit ? 'search-highlight' : ''} ${isInactive ? 'inactive-node' : ''}" onclick="selectNode('${node.id}', event)">
+                        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                            ${hasChildren ? `
+                                <button type="button" class="tree-toggle-btn" onclick="toggleExpand('${node.id}', event)" title="${isExpanded ? 'Collapse' : 'Expand'}">
+                                    ${isExpanded ? '▼' : '▶'}
+                                </button>
+                            ` : `<span style="width:20px;display:inline-block;"></span>`}
+
+                            <span style="font-size:1.15rem;">${icon}</span>
+                            <div style="min-width:0;flex:1;">
+                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <strong style="color:var(--navy-900);font-size:0.875rem;">${node.name}</strong>
+                                    ${node.code ? `<code style="font-size:0.7rem;color:var(--slate-400);background:#f1f5f9;padding:1px 5px;border-radius:3px;">${node.code}</code>` : ''}
+                                    <span class="tier-badge ${badgeCls}">${node.governanceType}</span>
+                                    <span class="badge badge-neutral" style="font-size:0.6875rem;">${tierLabel}</span>
+                                    ${isInactive ? `<span class="badge badge-danger" style="font-size:0.65rem;">Inactive</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            ${hasChildren ? `<span style="font-size:0.75rem;color:var(--slate-400);font-weight:600;margin-right:4px;">${node.children.length} children</span>` : ''}
+
+                            ${!isLeaf ? `
+                                <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px;font-size:0.75rem;" onclick="openAddChildModal('${node.id}', '${node.name}', '${node.tierLevel}', '${node.governanceType}', event)">
+                                    + Child
+                                </button>
+                            ` : ''}
+
+                            <button type="button" class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:0.75rem;" onclick="openDetails('${node.id}', event)">
+                                Inspect →
+                            </button>
+                        </div>
+                    </div>
+                    ${childrenHtml}
+                </div>
+            `;
+        }
+
+        function doesNodeMatchFilter(node, search, filterTier, filterArea, filterStatus) {
+            if (search) {
+                const s = search.toLowerCase();
+                const matchName = node.name.toLowerCase().includes(s);
+                const matchCode = node.code && node.code.toLowerCase().includes(s);
+                const matchId = node.id.toLowerCase().includes(s);
+                if (!matchName && !matchCode && !matchId) return false;
+            }
+            if (filterTier !== 'ALL') {
+                if (filterTier === 'VILLAGE') {
+                    if (node.tierLevel !== 'VILLAGE' && node.tierLevel !== 'GRAM_PANCHAYAT') return false;
+                } else if (filterTier === 'WARD') {
+                    if (node.tierLevel !== 'WARD' && node.tierLevel !== 'ZONE') return false;
+                } else if (node.tierLevel !== filterTier) {
+                    return false;
+                }
+            }
+            if (filterArea !== 'ALL') {
+                if (node.governanceType !== filterArea && node.governanceType !== 'COMMON') return false;
+            }
+            if (filterStatus !== 'ALL') {
+                const status = node.status || 'Active';
+                if (status !== filterStatus) return false;
+            }
+            return true;
+        }
+
+        function doesDescendantMatch(node, search, filterTier, filterArea, filterStatus) {
+            if (!node.children) return false;
+            return node.children.some(c => doesNodeMatchFilter(c, search, filterTier, filterArea, filterStatus) || doesDescendantMatch(c, search, filterTier, filterArea, filterStatus));
+        }
+
+        window.toggleExpand = (nodeId, event) => {
+            if (event) event.stopPropagation();
+            if (expandedNodeIds.has(nodeId)) {
+                expandedNodeIds.delete(nodeId);
+            } else {
+                expandedNodeIds.add(nodeId);
+            }
+            renderTreeUI();
+        };
+
+        window.expandAllNodes = () => {
+            const addAll = (n) => {
+                expandedNodeIds.add(n.id);
+                if (n.children) n.children.forEach(addAll);
+            };
+            if (rawTreeData) addAll(rawTreeData);
+            renderTreeUI();
+        };
+
+        window.collapseAllNodes = () => {
+            expandedNodeIds.clear();
+            if (rawTreeData) expandedNodeIds.add(rawTreeData.id);
+            renderTreeUI();
+        };
+
+        window.handleSearch = (val) => {
+            currentSearchTerm = val.trim();
+            const resInfo = document.getElementById('searchResultInfo');
+            if (currentSearchTerm) {
+                resInfo.style.display = 'flex';
+                document.getElementById('searchResultCountText').textContent = `Filtering tree for "${currentSearchTerm}"`;
+            } else {
+                resInfo.style.display = 'none';
+            }
+            renderTreeUI();
+        };
+
+        window.clearSearch = () => {
+            document.getElementById('treeSearchInput').value = '';
+            currentSearchTerm = '';
+            document.getElementById('searchResultInfo').style.display = 'none';
+            renderTreeUI();
+        };
+
+        window.applyFilters = () => {
+            renderTreeUI();
+        };
+
+        // Select & Inspect Node
+        window.selectNode = async (nodeId, event) => {
+            if (event) event.stopPropagation();
+            selectedNodeId = nodeId;
+            renderTreeUI();
+            openDetails(nodeId);
+        };
+
+        window.openDetails = async (nodeId, event) => {
+            if (event) event.stopPropagation();
+            selectedNodeId = nodeId;
+
+            const drawer = document.getElementById('nodeDetailsDrawer');
+            const layout = document.getElementById('treeLayoutWrapper');
+            drawer.style.display = 'block';
+            layout.classList.add('drawer-open');
+
+            try {
+                const res = await apiGetJurisdictionDetails(nodeId);
+                selectedNodeDetails = res?.data;
+                renderDrawerDetails(selectedNodeDetails);
+            } catch (err) {
+                console.error('Failed to load node details:', err);
+                showToast('Failed to load jurisdiction details', 'error');
+            }
+        };
+
+        function renderDrawerDetails(details) {
+            if (!details) return;
+
+            document.getElementById('drawerTierBadge').textContent = TIER_DISPLAY_NAMES[details.tierLevel] || details.tierLevel;
+            document.getElementById('drawerNodeName').textContent = details.name;
+            document.getElementById('drawerNodeId').textContent = details.id;
+            document.getElementById('drawerBreadcrumb').textContent = details.breadcrumb || details.name;
+
+            const isInactive = details.status === 'Inactive';
+            document.getElementById('drawerStatusVal').innerHTML = isInactive
+                ? `<span class="badge badge-danger">○ Inactive</span>`
+                : `<span class="badge badge-success">● Active</span>`;
+
+            document.getElementById('drawerGovTypeVal').textContent = details.governanceType;
+            document.getElementById('drawerCodeVal').textContent = details.code || '--';
+            document.getElementById('drawerChildrenCountVal').textContent = `${details.childrenCount} direct units`;
+            document.getElementById('drawerDescendantsVal').textContent = `${details.descendantsCount} total units`;
+
+            // Dependencies
+            document.getElementById('depOfficersCount').textContent = details.dependencies?.officersCount || 0;
+            document.getElementById('depAppsCount').textContent = details.dependencies?.applicationsCount || 0;
+            document.getElementById('depGrievancesCount').textContent = details.dependencies?.grievancesCount || 0;
+
+            const deleteWarning = document.getElementById('deleteBlockWarning');
+            const deleteBtn = document.getElementById('drawerDeleteBtn');
+            const toggleStatusBtn = document.getElementById('drawerToggleStatusBtn');
+            const addChildBtn = document.getElementById('drawerAddChildBtn');
+
+            // Hide add child for leaf nodes
+            const isLeaf = ['VILLAGE', 'GRAM_PANCHAYAT', 'WARD', 'ZONE'].includes(details.tierLevel);
+            addChildBtn.style.display = isLeaf ? 'none' : 'block';
+
+            toggleStatusBtn.textContent = isInactive ? 'Activate Jurisdiction' : 'Deactivate Jurisdiction';
+            toggleStatusBtn.className = isInactive ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+
+            // Protect root node
+            if (details.tierLevel === 'STATE') {
+                deleteBtn.style.display = 'none';
+                toggleStatusBtn.style.display = 'none';
+                deleteWarning.style.display = 'none';
+            } else {
+                deleteBtn.style.display = 'block';
+                toggleStatusBtn.style.display = 'block';
+                const hasOperationalRecords =
+                    (details.dependencies?.officersCount || 0) > 0 ||
+                    (details.dependencies?.applicationsCount || 0) > 0 ||
+                    (details.dependencies?.grievancesCount || 0) > 0;
+                const hasChildren = (details.childrenCount || 0) > 0;
+
+                if (hasOperationalRecords) {
+                    deleteBtn.disabled = true;
+                    deleteBtn.style.opacity = '0.5';
+                    deleteWarning.style.display = 'block';
+                    deleteWarning.textContent = `⚠️ Deletion Protected: ${details.deleteBlockReason}`;
+                } else if (hasChildren) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.style.opacity = '1';
+                    deleteWarning.style.display = 'block';
+                    deleteWarning.style.color = '#b45309';
+                    deleteWarning.style.background = '#fffbeb';
+                    deleteWarning.style.borderColor = '#fbbf24';
+                    deleteWarning.textContent = `⚠️ ${details.childrenCount} child unit(s) will also be deleted (cascade).`;
+                } else {
+                    deleteBtn.disabled = false;
+                    deleteBtn.style.opacity = '1';
+                    deleteWarning.style.display = 'none';
+                }
+            }
+        }
+
+        window.closeDrawer = () => {
+            document.getElementById('nodeDetailsDrawer').style.display = 'none';
+            document.getElementById('treeLayoutWrapper').classList.remove('drawer-open');
+            selectedNodeId = null;
+            renderTreeUI();
+        };
+
+        // Context-Aware Add Child
+        window.openAddDistrictModal = () => {
+            if (!rawTreeData) return;
+            openAddChildModal(rawTreeData.id, rawTreeData.name, 'STATE', 'COMMON');
+        };
+
+        window.openAddChildFromDrawer = () => {
+            if (!selectedNodeDetails) return;
+            openAddChildModal(
+                selectedNodeDetails.id,
+                selectedNodeDetails.name,
+                selectedNodeDetails.tierLevel,
+                selectedNodeDetails.governanceType
+            );
+        };
+
+        window.openAddChildModal = (parentId, parentName, parentTier, parentGovType, event) => {
+            if (event) event.stopPropagation();
+
+            document.getElementById('addParentIdInput').value = parentId;
+            document.getElementById('addParentTierInput').value = parentTier;
+            document.getElementById('addParentNameDisplay').textContent = `${parentName} (${TIER_DISPLAY_NAMES[parentTier] || parentTier})`;
+            document.getElementById('addModalTitle').textContent = `+ Add Child under ${parentName}`;
+            document.getElementById('addNodeForm').reset();
+
+            // Populate valid allowed tiers
+            const tierSelect = document.getElementById('addTierSelect');
+            let allowedTiers = [];
+
+            if (parentTier === 'STATE') {
+                allowedTiers = [
+                    { tier: 'DISTRICT', label: 'District (Standard State Geographic Unit)', gov: 'COMMON' }
+                ];
+            } else if (parentTier === 'DISTRICT') {
+                allowedTiers = [
+                    { tier: 'SUB_DIVISION', label: 'Revenue Sub-Division (Rural)', gov: 'RURAL' },
+                    { tier: 'SUB_DIVISION', label: 'Urban Sub-Division (Urban)', gov: 'URBAN' }
+                ];
+            } else if (parentTier === 'SUB_DIVISION') {
+                if (parentGovType === 'URBAN') {
+                    allowedTiers = [
+                        { tier: 'MUNICIPALITY', label: 'Municipality / Municipal Corporation', gov: 'URBAN' }
+                    ];
+                } else {
+                    allowedTiers = [
+                        { tier: 'MANDAL', label: 'Mandal / Taluk (Rural)', gov: 'RURAL' }
+                    ];
+                }
+            } else if (parentTier === 'MANDAL') {
+                allowedTiers = [
+                    { tier: 'VILLAGE', label: 'Village', gov: 'RURAL' },
+                    { tier: 'GRAM_PANCHAYAT', label: 'Gram Panchayat', gov: 'RURAL' }
+                ];
+            } else if (parentTier === 'MUNICIPALITY') {
+                allowedTiers = [
+                    { tier: 'WARD', label: 'Ward', gov: 'URBAN' },
+                    { tier: 'ZONE', label: 'Zone', gov: 'URBAN' }
+                ];
+            }
+
+            if (allowedTiers.length === 0) {
+                showToast('Leaf jurisdictions cannot have child units.', 'warning');
+                return;
+            }
+
+            tierSelect.innerHTML = allowedTiers.map(t => `<option value="${t.tier}" data-gov="${t.gov}">${t.label}</option>`).join('');
+
+            // Preset governance radio
+            const firstGov = allowedTiers[0].gov;
+            if (firstGov === 'URBAN') {
+                document.getElementById('addRadioUrban').checked = true;
+            } else {
+                document.getElementById('addRadioRural').checked = true;
+            }
+
+            const modal = document.getElementById('addNodeModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        };
+
+        window.closeAddNodeModal = () => {
+            const modal = document.getElementById('addNodeModal');
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        };
+
+        window.onAddGovTypeChange = (type) => {
+            // Re-check tier options if applicable
+        };
+
+        window.handleCreateNode = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveAddNodeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            const parentId = document.getElementById('addParentIdInput').value;
+            const tier = document.getElementById('addTierSelect').value;
+            const govType = document.querySelector('input[name="addGovTypeRadio"]:checked')?.value || 'RURAL';
+            const name = document.getElementById('addNodeNameInput').value.trim();
+            const code = document.getElementById('addNodeCodeInput').value.trim();
+
+            const payload = {
+                stateId,
+                parentId: parentId || null,
+                tierLevel: tier,
+                governanceType: govType,
+                name,
+                code: code || undefined,
+                status: 'Active',
+            };
+
+            try {
+                const res = await apiCreateJurisdictionNode(payload);
+                showToast(`Jurisdiction "${name}" created successfully!`, 'success');
+                closeAddNodeModal();
+                expandedNodeIds.add(parentId);
+                await loadTreeAndStats();
+                if (res.data?.id) {
+                    openDetails(res.data.id);
+                }
+            } catch (err) {
+                console.error('Failed to create jurisdiction node:', err);
+                showToast(err.message || 'Failed to create jurisdiction', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Jurisdiction';
+            }
+        };
+
+        // Edit / Rename Modal
+        window.openEditFromDrawer = () => {
+            if (!selectedNodeDetails) return;
+
+            document.getElementById('editNodeIdInput').value = selectedNodeDetails.id;
+            document.getElementById('editNodeNameInput').value = selectedNodeDetails.name;
+            document.getElementById('editNodeCodeInput').value = selectedNodeDetails.code || '';
+            document.getElementById('editNodeStatusSelect').value = selectedNodeDetails.status || 'Active';
+            const modal = document.getElementById('editNodeModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        };
+
+        window.closeEditNodeModal = () => {
+            const modal = document.getElementById('editNodeModal');
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+        };
+
+        window.handleUpdateNode = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveEditNodeBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            const nodeId = document.getElementById('editNodeIdInput').value;
+            const name = document.getElementById('editNodeNameInput').value.trim();
+            const code = document.getElementById('editNodeCodeInput').value.trim();
+            const status = document.getElementById('editNodeStatusSelect').value;
+
+            try {
+                await apiUpdateJurisdictionNode(nodeId, {
+                    name,
+                    code: code || undefined,
+                    status
+                });
+                showToast(`Jurisdiction updated successfully!`, 'success');
+                closeEditNodeModal();
+                await loadTreeAndStats();
+                openDetails(nodeId);
+            } catch (err) {
+                console.error('Failed to update jurisdiction:', err);
+                showToast(err.message || 'Failed to update jurisdiction', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Changes';
+            }
+        };
+
+        // Status Toggle (Activate / Deactivate)
+        window.toggleStatusFromDrawer = () => {
+            if (!selectedNodeDetails) return;
+            const newStatus = selectedNodeDetails.status === 'Inactive' ? 'Active' : 'Inactive';
+
+            pendingStatusChange = {
+                id: selectedNodeDetails.id,
+                name: selectedNodeDetails.name,
+                status: newStatus
+            };
+
+            document.getElementById('confirmStatusTitle').textContent = newStatus === 'Inactive'
+                ? '⚠️ Deactivate Jurisdiction?'
+                : '✅ Activate Jurisdiction?';
+
+            document.getElementById('confirmStatusBody').innerHTML = newStatus === 'Inactive'
+                ? `<p>Are you sure you want to deactivate <strong>${selectedNodeDetails.name}</strong>?</p>
+                   <p style="font-size:0.8125rem;color:var(--slate-500);margin-top:6px;">
+                     This unit will no longer be available for new officer or service mappings. <strong>Historical records (applications, grievances, and payments) will remain intact.</strong>
+                   </p>`
+                : `<p>Activate <strong>${selectedNodeDetails.name}</strong> to make it available for operational assignments?</p>`;
+
+            const modal = document.getElementById('confirmStatusModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        };
+
+        window.closeStatusModal = () => {
+            const modal = document.getElementById('confirmStatusModal');
+            modal.style.display = 'none';
+            modal.classList.remove('active');
+            pendingStatusChange = null;
+        };
+
+        window.executeStatusChange = async () => {
+            if (!pendingStatusChange) return;
+            const { id, name, status } = pendingStatusChange;
+            closeStatusModal();
+
+            try {
+                await apiToggleJurisdictionStatus(id, status);
+                showToast(`Jurisdiction "${name}" is now ${status}.`, 'success');
+                await loadTreeAndStats();
+                openDetails(id);
+            } catch (err) {
+                console.error('Failed to toggle jurisdiction status:', err);
+                showToast(err.message || 'Failed to change status', 'error');
+            }
+        };
+
+        // ── Delete Confirmation Modal helpers ──
+        let pendingDeleteCascade = false;
+
+        window.closeDeleteModal = () => {
+            const modal = document.getElementById('confirmDeleteModal');
+            modal.classList.remove('active');
+            modal.style.display = 'none';
+        };
+
+        window.executeDeleteNode = async () => {
+            closeDeleteModal();
+            if (!selectedNodeDetails) return;
+            try {
+                await apiDeleteJurisdictionNode(selectedNodeDetails.id, pendingDeleteCascade);
+                showToast(
+                    pendingDeleteCascade
+                        ? `Jurisdiction "${selectedNodeDetails.name}" and all child units deleted.`
+                        : `Jurisdiction "${selectedNodeDetails.name}" deleted.`,
+                    'success'
+                );
+                closeDrawer();
+                await loadTreeAndStats();
+            } catch (err) {
+                console.error('Failed to delete jurisdiction:', err);
+                showToast(err.message || 'Failed to delete jurisdiction', 'error');
+            }
+        };
+
+        // Delete Jurisdiction — opens custom modal instead of browser confirm()
+        window.handleDeleteFromDrawer = () => {
+            if (!selectedNodeDetails) return;
+
+            // Hard block: operational records (officers/apps/grievances) attached
+            const { officersCount = 0, applicationsCount = 0, grievancesCount = 0 } = selectedNodeDetails.dependencies || {};
+            if (officersCount > 0 || applicationsCount > 0 || grievancesCount > 0) {
+                showToast(`Cannot delete: ${selectedNodeDetails.deleteBlockReason}`, 'error');
+                return;
+            }
+
+            // STATE root cannot be deleted
+            if (selectedNodeDetails.tierLevel === 'STATE') {
+                showToast('The State root jurisdiction cannot be deleted.', 'error');
+                return;
+            }
+
+            const hasChildren = (selectedNodeDetails.childrenCount || 0) > 0;
+            pendingDeleteCascade = hasChildren;
+
+            const bodyEl = document.getElementById('confirmDeleteBody');
+            if (hasChildren) {
+                bodyEl.innerHTML = `
+                    <p style="margin:0 0 10px;">You are about to delete <strong>${selectedNodeDetails.name}</strong> and all <strong>${selectedNodeDetails.childrenCount} child jurisdiction(s)</strong> under it.</p>
+                    <p style="margin:0;color:#b91c1c;font-weight:600;">⚠️ This action is permanent and cannot be undone.</p>`;
+            } else {
+                bodyEl.innerHTML = `
+                    <p style="margin:0 0 10px;">Are you sure you want to permanently delete <strong>${selectedNodeDetails.name}</strong>?</p>
+                    <p style="margin:0;color:#b91c1c;font-weight:600;">⚠️ This action cannot be undone.</p>`;
+            }
+
+            const modal = document.getElementById('confirmDeleteModal');
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        };
+
+        function renderAuditLogs(logs) {
+            const container = document.getElementById('jurisdictionAuditContainer');
+            if (!logs || logs.length === 0) {
+                container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--slate-400);">No recent jurisdiction activity recorded.</div>`;
+                return;
+            }
+
+            container.innerHTML = logs.map(l => `
+                <div class="timeline-item-row">
+                    <div style="font-size:1.15rem;">📌</div>
+                    <div style="flex:1;">
+                        <div style="font-weight:700;color:var(--navy-900);">${l.details || l.action}</div>
+                        <div style="font-size:0.725rem;color:var(--slate-400);margin-top:2px;">
+                            ${l.actor ? `<span style="font-weight:600;color:var(--slate-600);">${l.actor}</span> · ` : ''}
+                            ${l.date ? new Date(l.date).toLocaleString() : 'Recently'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Global functions for window access
+        window.loadTreeAndStats = loadTreeAndStats;
+
+        // Auto load on init
+        loadTreeAndStats();
+    </script>
+</body>
+</html>
