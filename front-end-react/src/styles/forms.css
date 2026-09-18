@@ -578,3 +578,232 @@
         display: none;
     }
 }
+
+/* ── Form Stepper & Application Wizard (From apply-service.html) ── */
+.form-stepper {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+    margin-bottom: var(--space-xl);
+    width: 100%;
+}
+
+.form-step {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    position: relative;
+}
+
+.form-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 17px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--color-border);
+    z-index: 0;
+}
+
+.form-step.active:not(:last-child)::after,
+.form-step.completed:not(:last-child)::after {
+    background: var(--navy-600);
+}
+
+.form-step-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    z-index: 1;
+    transition: all 0.2s;
+}
+
+.form-step.active .form-step-circle {
+    border-color: var(--navy-600);
+    background: var(--navy-600);
+    color: white;
+}
+
+.form-step.completed .form-step-circle {
+    border-color: var(--green-500);
+    background: var(--green-500);
+    color: white;
+}
+
+.form-step-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.form-step.active .form-step-label {
+    color: var(--navy-700);
+    font-weight: 700;
+}
+
+.form-step.completed .form-step-label {
+    color: var(--green-600);
+    font-weight: 700;
+}
+
+/* ── Payment Method Cards & Summary (From apply-service.html) ── */
+.payment-method-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 10px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    user-select: none;
+}
+
+.payment-method-card:hover {
+    border-color: var(--navy-300);
+    color: var(--navy-600);
+    background: var(--slate-50);
+}
+
+.payment-method-card.active {
+    border-color: var(--navy-600);
+    background: var(--navy-50);
+    color: var(--navy-700);
+    box-shadow: 0 0 0 1px var(--navy-600);
+}
+
+.payment-summary {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.payment-summary-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy-900);
+    margin-bottom: var(--space-lg);
+}
+
+.payment-summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: var(--slate-700);
+    margin-bottom: var(--space-sm);
+}
+
+.payment-summary-divider {
+    border-top: 2px solid var(--navy-200);
+    margin: var(--space-md) 0;
+}
+
+.payment-summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--navy-900);
+}
+
+/* ── Review Cards ── */
+.review-card {
+    background: var(--slate-50);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-lg);
+}
+
+.review-card-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--navy-500);
+    margin-bottom: var(--space-md);
+}
+
+.review-row {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--slate-100);
+    font-size: 0.8125rem;
+}
+
+.review-row:last-child {
+    border-bottom: none;
+}
+
+.review-label {
+    color: var(--color-text-muted);
+}
+
+.review-value {
+    font-weight: 600;
+    color: var(--navy-900);
+    text-align: right;
+}
+
+/* ── Upload Slot ── */
+.upload-slot {
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    transition: all 0.2s;
+    background: var(--color-surface);
+}
+
+.upload-slot:hover {
+    border-color: var(--navy-400);
+    background: var(--navy-50);
+}
+
+.upload-slot.uploaded {
+    border-color: var(--green-400);
+    border-style: solid;
+    background: var(--green-50);
+}
+
+.upload-slot-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--slate-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.upload-slot.uploaded .upload-slot-icon {
+    background: var(--green-100);
+    color: var(--green-600);
+}
