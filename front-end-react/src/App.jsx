@@ -6,20 +6,21 @@ import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
 
-
+import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
+import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 
 function App() {
   return (
     <Routes>
-      {/* ── Citizen Portal Routes (Member 3 Shell) ── */}
+      {/* ── Citizen Portal Routes ── */}
       <Route path="/citizen" element={<DashboardLayout />}>
         <Route index element={<Navigate to="/citizen/dashboard" replace />} />
         <Route path="dashboard" element={<CitizenDashboard />} />
         <Route path="apply" element={<ApplyServicePage />} />
+        <Route path="applications" element={<MyApplicationsPage />} />
+        <Route path="track" element={<TrackApplicationPage />} />
 
         {/* Teammate Extension Placeholders:
-            <Route path="applications" element={<MyApplicationsPage />} /> (Member 5)
-            <Route path="track" element={<TrackApplicationPage />} />     (Member 5)
             <Route path="raise-grievance" element={<RaiseGrievancePage />} />
             <Route path="my-grievances" element={<MyGrievancesPage />} />
         */}
@@ -29,14 +30,14 @@ function App() {
       <Route path="/" element={<LandingPage />} />
 
       {/* Placeholder stubs — replace with real pages as team builds them */}
-      <Route path="/login" element={<LoginPage/>}/>
-      {/* <Route path="/register" element={<RegisterPage/>}/> */}
+      <Route path="/login" element={<LoginPage />} />
+      {/* <Route path="/register" element={<RegisterPage />} /> */}
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
 
       {/* Default redirect to Citizen Dashboard */}
-      {/* <Route path="/" element={<Navigate to="/citizen/dashboard" replace />} />
+      {/* <Route path="/" element={<Navigate to="/citizen/dashboard" replace />} 
       <Route path="*" element={<Navigate to="/citizen/dashboard" replace />} /> */}
     </Routes>
   );
