@@ -15,10 +15,13 @@ export function AuthProvider({ children }) {
   });
 
   // [Hooks / useEffect] Synchronize state with localStorage
+  // Mirrors the 3 localStorage keys from front-end/js/auth.js:
+  //   DigiConnect_session, active_role, current_user
   useEffect(() => {
     if (user) {
       localStorage.setItem('DigiConnect_session', JSON.stringify(user));
-      localStorage.setItem('active_role', user.role || 'citizen');
+      localStorage.setItem('active_role', user.roleKey || user.role || 'citizen');
+      localStorage.setItem('current_user', JSON.stringify(user));
     } else {
       localStorage.removeItem('DigiConnect_session');
       localStorage.removeItem('active_role');
