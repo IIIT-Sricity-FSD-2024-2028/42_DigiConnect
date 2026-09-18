@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import LandingPage from './pages/public/LandingPage';
+import LoginPage from './pages/public/LoginPage.jsx';
+
 
 
 function App() {
@@ -26,8 +28,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
 
       {/* Placeholder stubs — replace with real pages as team builds them */}
-      <Route path="/login" element={<div style={{padding:'2rem', fontFamily:'sans-serif'}}><h2>Login Page — Coming Soon (Member 2)</h2></div>} />
-      <Route path="/register" element={<div style={{padding:'2rem', fontFamily:'sans-serif'}}><h2>Register Page — Coming Soon</h2></div>} />
+      <Route path="/login" element={<LoginPage/>}/>
+      {/* <Route path="/register" element={<RegisterPage/>}/> */}
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
