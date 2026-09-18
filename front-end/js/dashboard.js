@@ -4,7 +4,7 @@
 
 import { getSession } from './auth.js';
 import { initPage } from './navigation.js';
-import { showToast, getGreeting, formatDate, formatDateTime } from './utils.js';
+import { showToast, getGreeting, formatDate, formatDateTime, downloadDigitalCertificate } from './utils.js';
 import { renderNotifPanel } from './notifications.js';
 
 import {
@@ -88,6 +88,7 @@ export async function initCitizenDashboard() {
       const typeClass = a.serviceType === 'certificate' ? 'cert' : a.serviceType === 'welfare' ? 'welfare' : a.serviceType === 'permission' ? 'permission' : 'correction';
       const statusClass = a.status === 'approved' ? 'badge-success' : a.status === 'rejected' ? 'badge-danger' : a.status === 'query' ? 'badge-warning' : 'badge-info';
       const statusLabel = a.status === 'under-review' ? 'Under Review' : a.status.charAt(0).toUpperCase() + a.status.slice(1);
+      const isApproved = a.status === 'approved' || a.status === 'completed';
       return `
         <div class="application-item" style="cursor:pointer;" onclick="window.location.href='track-application.html?id=${a.id}'" data-testid="recent-app-${a.id}">
           <div class="app-type-icon ${typeClass}"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
@@ -95,7 +96,14 @@ export async function initCitizenDashboard() {
             <div class="app-title">${a.serviceName}</div>
             <div class="app-meta">${a.id} · Submitted ${formatDate(a.submittedDate)}</div>
           </div>
-          <span class="badge ${statusClass}">${statusLabel}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge ${statusClass}">${statusLabel}</span>
+            ${isApproved ? `
+              <button class="btn btn-outline btn-sm" data-action="download-cert" data-app-id="${a.id}" title="Download Certificate" style="padding:4px 8px;font-size:0.75rem;" onclick="event.stopPropagation();">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              </button>
+            ` : ''}
+          </div>
         </div>`;
     }).join('') || '<div style="padding:var(--space-lg);text-align:center;color:var(--color-text-muted);">No applications yet. <a href="apply-service.html">Apply now</a></div>';
   }
@@ -165,7 +173,7 @@ export async function initCitizenDashboard() {
           <div class="timeline">${timelineItems || '<div style="color:var(--color-text-muted);font-size:0.875rem;">No timeline events yet.</div>'}</div>
           ${canDownload ? `
           <div style="margin-top:var(--space-lg);">
-            <button class="btn btn-primary w-full" onclick="window.showToast && window.showToast('Certificate downloaded!','success')">
+            <button class="btn btn-primary w-full" id="latestDownloadCertBtn" data-action="download-cert" data-app-id="${latest.id}">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
@@ -176,6 +184,17 @@ export async function initCitizenDashboard() {
             <a href="track-application.html?id=${latest.id}" class="btn btn-outline w-full">View Full Details →</a>
           </div>`}
         </div>`;
+
+      if (canDownload) {
+        const certBtn = document.getElementById('latestDownloadCertBtn');
+        if (certBtn) {
+          certBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            downloadDigitalCertificate(latest);
+          });
+        }
+      }
     } else {
       latestCard.innerHTML = `
         <div class="card-header">
@@ -191,7 +210,16 @@ export async function initCitizenDashboard() {
   }
 
   document.querySelectorAll('[data-action="download-cert"]').forEach(btn => {
-    btn.addEventListener('click', () => showToast('Certificate downloaded!', 'success'));
+    if (btn.id === 'latestDownloadCertBtn') return; // Handled directly above
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const appId = btn.dataset.appId;
+      const targetApp = apps.find(a => a.id === appId) || (latest?.id === appId ? latest : null);
+      if (targetApp) {
+        downloadDigitalCertificate(targetApp);
+      }
+    });
   });
 }
 
