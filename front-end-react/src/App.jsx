@@ -4,6 +4,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
+import ApplyServicePage from './pages/citizen/ApplyServicePage';
 
 
 
@@ -14,9 +15,9 @@ function App() {
       <Route path="/citizen" element={<DashboardLayout />}>
         <Route index element={<Navigate to="/citizen/dashboard" replace />} />
         <Route path="dashboard" element={<CitizenDashboard />} />
+        <Route path="apply" element={<ApplyServicePage />} />
 
         {/* Teammate Extension Placeholders:
-            <Route path="apply" element={<ApplyServicePage />} />         (Member 4)
             <Route path="applications" element={<MyApplicationsPage />} /> (Member 5)
             <Route path="track" element={<TrackApplicationPage />} />     (Member 5)
             <Route path="raise-grievance" element={<RaiseGrievancePage />} />
