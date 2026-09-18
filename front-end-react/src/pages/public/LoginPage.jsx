@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiLogin } from '../../api/authApi';
+import { apiLogin, apiGetUsers, apiUpdateProfile } from '../../api/authApi';
 
 // ── Role configuration list (used to render the role-selector grid via .map) ──
 const ROLES = [
@@ -229,8 +229,7 @@ export default function LoginPage() {
       return;
     }
     try {
-      // We use the apiGetUsers or a lookup - for now search by fetching users
-      const { apiGetUsers } = await import('../../api/authApi');
+      // Search account by fetching users
       const res = await apiGetUsers();
       const users = res.data || res;
       const found = (Array.isArray(users) ? users : []).find(
@@ -273,7 +272,6 @@ export default function LoginPage() {
       return;
     }
     try {
-      const { apiUpdateProfile } = await import('../../api/authApi');
       await apiUpdateProfile(fpUserId, { password: fpNewPassword });
       // Close modal and show success
       setFpOpen(false);
