@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetMyApplications, apiGetMyGrievances } from '../../api/citizenApi';
 import StatCard from '../../components/common/StatCard';
+import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
 
 export default function CitizenDashboard() {
   const { user } = useAuth();
@@ -17,9 +18,9 @@ export default function CitizenDashboard() {
         setLoading(true);
         setError(null);
 
-        // Fetch real data from backend APIs
+        // Fetch real data from backend APIs with consistent limit (100)
         const [appsRes, grievRes] = await Promise.all([
-          apiGetMyApplications(1, 50).catch((err) => {
+          apiGetMyApplications(1, 100).catch((err) => {
             console.error('Error fetching applications:', err);
             return { data: [] };
           }),
@@ -48,19 +49,14 @@ export default function CitizenDashboard() {
     loadData();
   }, []);
 
-  // Compute status metrics
-  const IN_PROGRESS = ['submitted', 'under-review', 'officer-approved', 'supervisor-review', 'pending_external_verification', 'IN_REVIEW', 'SUBMITTED', 'PENDING'];
+  // Compute status metrics consistently with MyApplicationsPage via shared statusHelper
   const totalApps = applications.length;
-  const approvedCount = applications.filter(
-    (a) => a.status?.toLowerCase() === 'approved' || a.status?.toLowerCase() === 'completed'
-  ).length;
-  const pendingCount = applications.filter((a) =>
-    IN_PROGRESS.some((st) => st.toLowerCase() === a.status?.toLowerCase())
-  ).length;
-  const queryApps = applications.filter((a) => a.status?.toLowerCase() === 'query');
+  const approvedCount = applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
+  const pendingCount = applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
+  const queryApps = applications.filter((a) => checkStatusCategory(a.status).isQuery);
   const queryCount = queryApps.length;
   const openGrievancesCount = grievances.filter(
-    (g) => !['resolved', 'rejected', 'escalated-resolved'].includes(g.status?.toLowerCase())
+    (g) => !['resolved', 'rejected', 'escalated-resolved'].includes((g.status || '').toLowerCase())
   ).length;
 
   const approvalRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
@@ -70,15 +66,6 @@ export default function CitizenDashboard() {
     if (!dateStr) return 'Recent';
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  // Service badge class helper
-  const getStatusBadgeClass = (status) => {
-    const s = status?.toLowerCase() || '';
-    if (s === 'approved' || s === 'completed') return 'badge-success';
-    if (s === 'rejected') return 'badge-danger';
-    if (s === 'query') return 'badge-warning';
-    return 'badge-info';
   };
 
   if (loading) {
@@ -229,8 +216,8 @@ export default function CitizenDashboard() {
                     ? 'permission'
                     : 'correction';
 
-                const isApproved =
-                  app.status?.toLowerCase() === 'approved' || app.status?.toLowerCase() === 'completed';
+                const statusInfo = checkStatusCategory(app.status);
+                const isApproved = statusInfo.isApproved;
 
                 return (
                   <div
@@ -250,8 +237,8 @@ export default function CitizenDashboard() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className={`badge ${getStatusBadgeClass(app.status)}`}>
-                        {app.status || 'Submitted'}
+                      <span className={`badge ${statusInfo.badgeClass}`}>
+                        {statusInfo.badgeLabel}
                       </span>
                       {isApproved && (
                         <span

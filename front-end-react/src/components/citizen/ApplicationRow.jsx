@@ -1,36 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { checkStatusCategory } from '../common/StatusBadge';
 
 export default function ApplicationRow({ app, onWithdraw }) {
   if (!app) return null;
 
   // Normalized status and badge styling
-  const rawStatus = (app.status || '').toLowerCase().replace(/_/g, '-');
-  const isApproved = ['approved', 'completed', 'certificate-generated'].includes(rawStatus);
-  const isRejected = rawStatus === 'rejected';
-  const isQuery = ['query', 'query-raised'].includes(rawStatus);
-  const isEscalated = rawStatus === 'escalated';
-  const isDraft = rawStatus === 'draft';
+  const statusInfo = checkStatusCategory(app.status);
+  const isApproved = statusInfo.isApproved;
+  const isRejected = statusInfo.isRejected;
+  const isQuery = statusInfo.isQuery;
+  const isEscalated = statusInfo.isEscalated;
+  const isDraft = statusInfo.isDraft;
 
-  let statusClass = 'badge-info';
-  let statusLabel = 'Under Review';
-
-  if (isApproved) {
-    statusClass = 'badge-success';
-    statusLabel = 'Approved';
-  } else if (isRejected) {
-    statusClass = 'badge-danger';
-    statusLabel = 'Rejected';
-  } else if (isQuery) {
-    statusClass = 'badge-warning';
-    statusLabel = 'Query Raised';
-  } else if (isEscalated) {
-    statusClass = 'badge-purple';
-    statusLabel = 'Escalated';
-  } else if (isDraft) {
-    statusClass = 'badge-neutral';
-    statusLabel = 'Draft';
-  }
+  const statusClass = statusInfo.badgeClass;
+  const statusLabel = statusInfo.badgeLabel;
 
   // Service type styling tag
   const rawType = (app.serviceType || app.category || 'certificate').toLowerCase();

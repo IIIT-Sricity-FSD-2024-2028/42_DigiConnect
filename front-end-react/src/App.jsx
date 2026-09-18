@@ -1,19 +1,26 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './components/layout/DashboardLayout';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
-
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 
 function App() {
   return (
     <Routes>
-      {/* ── Citizen Portal Routes ── */}
-      <Route path="/citizen" element={<DashboardLayout />}>
+      {/* ── Citizen Portal Routes (Protected) ── */}
+      <Route
+        path="/citizen"
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Navigate to="/citizen/dashboard" replace />} />
         <Route path="dashboard" element={<CitizenDashboard />} />
         <Route path="apply" element={<ApplyServicePage />} />

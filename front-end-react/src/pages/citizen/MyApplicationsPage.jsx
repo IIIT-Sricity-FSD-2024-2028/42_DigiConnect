@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGetMyApplications } from '../../api/citizenApi';
 import ApplicationRow from '../../components/citizen/ApplicationRow';
+import { checkStatusCategory } from '../../components/common/StatusBadge';
+import Modal from '../../components/common/Modal';
+import SearchBar from '../../components/common/SearchBar';
 
 export default function MyApplicationsPage() {
   const [applications, setApplications] = useState([]);
@@ -35,25 +38,6 @@ export default function MyApplicationsPage() {
   useEffect(() => {
     loadApplications();
   }, []);
-
-  // Helper function to check status categories
-  const checkStatusCategory = (statusStr) => {
-    const s = (statusStr || '').toLowerCase().replace(/_/g, '-');
-    const isApproved = ['approved', 'completed', 'certificate-generated'].includes(s);
-    const isQuery = ['query', 'query-raised'].includes(s);
-    const isUnderReview = [
-      'submitted',
-      'under-review',
-      'officer-approved',
-      'supervisor-review',
-      'pending_external_verification',
-      'pending',
-      'pending-officer-review',
-    ].includes(s);
-    const isRejected = s === 'rejected';
-    const isEscalated = s === 'escalated';
-    return { isApproved, isQuery, isUnderReview, isRejected, isEscalated, s };
-  };
 
   // Compute summary strip counts
   const totalCount = applications.length;
@@ -438,19 +422,11 @@ export default function MyApplicationsPage() {
 
       {/* ── Search / Service Filter / Sort / View Toggle ── */}
       <div className="search-filter-row">
-        <div className="search-box">
-          <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          <input
-            type="text"
-            className="search-box-input"
-            placeholder="Search by Application ID, service name, or dept…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <SearchBar
+          value={searchTerm}
+          onChange={(val) => setSearchTerm(val)}
+          placeholder="Search by Application ID, service name, or dept…"
+        />
 
         <select
           className="form-select"
@@ -631,32 +607,25 @@ export default function MyApplicationsPage() {
       )}
 
       {/* ── Withdraw Modal ── */}
-      {withdrawApp && (
-        <div
-          className="modal-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(10, 22, 40, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-          onClick={() => setWithdrawApp(null)}
-        >
-          <div
-            className="modal"
-            style={{
-              background: '#fff',
-              borderRadius: 'var(--radius-lg)',
-              maxWidth: '420px',
-              width: '90%',
-              padding: 'var(--space-xl)',
-              textAlign: 'center',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* ── Withdraw Confirmation Modal ── */}
+      <Modal
+        isOpen={Boolean(withdrawApp)}
+        onClose={() => setWithdrawApp(null)}
+        title="Withdraw Application"
+        maxWidth="440px"
+        footer={
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', width: '100%' }}>
+            <button type="button" className="btn btn-outline" onClick={() => setWithdrawApp(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger" onClick={handleConfirmWithdraw}>
+              Yes, Withdraw
+            </button>
+          </div>
+        }
+      >
+        {withdrawApp && (
+          <div style={{ textAlign: 'center', padding: 'var(--space-md) 0' }}>
             <div
               style={{
                 width: '56px',
@@ -675,23 +644,15 @@ export default function MyApplicationsPage() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <h3 style={{ fontSize: '1.0625rem', fontWeight: 800, color: 'var(--navy-900)', marginBottom: 'var(--space-sm)' }}>
-              Withdraw Application?
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 'var(--space-xl)' }}>
-              This will permanently withdraw application <strong>{withdrawApp.id}</strong>. This action cannot be undone.
+            <p style={{ fontSize: '0.9375rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
+              Are you sure you want to withdraw application <strong>{withdrawApp.id}</strong>?
             </p>
-            <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center' }}>
-              <button type="button" className="btn btn-outline" onClick={() => setWithdrawApp(null)}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-danger" onClick={handleConfirmWithdraw}>
-                Yes, Withdraw
-              </button>
-            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+              This action cannot be undone once confirmed.
+            </p>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
