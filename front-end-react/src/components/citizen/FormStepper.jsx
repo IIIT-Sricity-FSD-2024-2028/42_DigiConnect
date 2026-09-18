@@ -12,7 +12,19 @@ import React from 'react';
  */
 export default function FormStepper({ steps = [], currentStep = 1 }) {
   return (
-    <div className="form-stepper" id="formStepper" style={{ marginBottom: 'var(--space-xl)' }}>
+    <div
+      className="form-stepper"
+      id="formStepper"
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 0,
+        width: '100%',
+        marginBottom: 'var(--space-xl)',
+      }}
+    >
       {steps.map((label, index) => {
         const stepNum = index + 1;
         const isActive = stepNum === currentStep;
@@ -22,6 +34,13 @@ export default function FormStepper({ steps = [], currentStep = 1 }) {
           <div
             key={label}
             className={`form-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`.trim()}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              flex: 1,
+              position: 'relative',
+            }}
           >
             <div className="form-step-circle">
               {isCompleted ? (
@@ -39,3 +58,4 @@ export default function FormStepper({ steps = [], currentStep = 1 }) {
     </div>
   );
 }
+

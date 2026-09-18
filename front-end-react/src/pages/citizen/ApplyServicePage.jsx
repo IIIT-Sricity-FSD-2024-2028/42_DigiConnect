@@ -1023,51 +1023,113 @@ export default function ApplyServicePage() {
           STEP 4: Payment & Final Submission
       ───────────────────────────────────────────────────────────── */}
       {currentStep === 4 && (
-        <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-xl)', alignItems: 'start' }}>
-            {/* Left: Payment Method Selection */}
-            <div className="form-section">
+        <div id="formStep4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 'var(--space-xl)', alignItems: 'start' }}>
+
+            {/* Left: Payment Form Section */}
+            <div className="form-section" style={{ margin: 0 }}>
               <div className="form-section-header">
                 <div className="form-section-number">
-                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
                 </div>
                 <div>
                   <div className="form-section-title">Payment Method</div>
-                  <div className="form-section-subtitle">Choose your payment mode for processing charges.</div>
+                  <div className="form-section-subtitle">Choose how you'd like to pay the application fee.</div>
                 </div>
               </div>
+
               <div className="form-section-body">
-                {/* Method Options */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
-                  {[
-                    { id: 'upi', label: 'UPI' },
-                    { id: 'card', label: 'Card' },
-                    { id: 'netbanking', label: 'Net Banking' },
-                    { id: 'free', label: 'Free' },
-                  ].map((m) => (
-                    <div
-                      key={m.id}
-                      className={`payment-method-card ${paymentMethod === m.id ? 'active' : ''}`.trim()}
-                      onClick={() => setPaymentMethod(m.id)}
-                    >
-                      <span style={{ fontWeight: 600 }}>{m.label}</span>
-                    </div>
-                  ))}
+                {/* 4 Payment Method Selector Tabs */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 'var(--space-sm)',
+                    marginBottom: 'var(--space-xl)',
+                  }}
+                >
+                  {/* 1. UPI */}
+                  <div
+                    className={`payment-method-card ${paymentMethod === 'upi' ? 'active' : ''}`.trim()}
+                    id="pm_upi"
+                    onClick={() => setPaymentMethod('upi')}
+                  >
+                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>UPI</span>
+                  </div>
+
+                  {/* 2. Card */}
+                  <div
+                    className={`payment-method-card ${paymentMethod === 'card' ? 'active' : ''}`.trim()}
+                    id="pm_card"
+                    onClick={() => setPaymentMethod('card')}
+                  >
+                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    <span>Card</span>
+                  </div>
+
+                  {/* 3. Net Banking */}
+                  <div
+                    className={`payment-method-card ${paymentMethod === 'netbanking' ? 'active' : ''}`.trim()}
+                    id="pm_netbanking"
+                    onClick={() => setPaymentMethod('netbanking')}
+                  >
+                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                    </svg>
+                    <span>Net Banking</span>
+                  </div>
+
+                  {/* 4. Free / Waived */}
+                  <div
+                    className={`payment-method-card ${paymentMethod === 'free' ? 'active' : ''}`.trim()}
+                    id="pm_free"
+                    onClick={() => setPaymentMethod('free')}
+                  >
+                    <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Free / Waived</span>
+                  </div>
                 </div>
 
+                {/* Sub-form: UPI */}
                 {paymentMethod === 'upi' && (
-                  <div>
+                  <div id="upiForm">
                     <div className="form-group">
-                      <label className="form-label">Virtual Payment Address (VPA) / UPI ID</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="yourname@upi"
-                        value={upiId}
-                        onChange={(e) => setUpiId(e.target.value)}
-                      />
+                      <label className="form-label">UPI ID <span className="required">*</span></label>
+                      <div className="input-wrapper" style={{ position: 'relative' }}>
+                        <svg
+                          className="input-icon"
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                          style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                          />
+                        </svg>
+                        <input
+                          type="text"
+                          className="form-input has-icon"
+                          placeholder="yourname@upi"
+                          style={{ paddingLeft: '38px' }}
+                          value={upiId}
+                          onChange={(e) => setUpiId(e.target.value)}
+                        />
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: 'var(--space-md)' }}>
                       {['@phonepe', '@gpay', '@paytm'].map((handle) => (
@@ -1077,81 +1139,154 @@ export default function ApplyServicePage() {
                           className="btn btn-outline btn-sm"
                           onClick={() => setUpiId((prev) => (prev ? prev.split('@')[0] + handle : 'citizen' + handle))}
                         >
-                          {handle}
+                          {handle === '@phonepe' ? 'PhonePe' : handle === '@gpay' ? 'Google Pay' : 'Paytm'}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
+                {/* Sub-form: Card */}
                 {paymentMethod === 'card' && (
-                  <div className="form-grid">
-                    <div className="form-group col-span-full">
-                      <label className="form-label">Card Number</label>
-                      <input type="text" className="form-input" placeholder="1234 5678 9012 3456" maxLength="19" />
-                    </div>
+                  <div id="cardForm">
                     <div className="form-group">
-                      <label className="form-label">Expiry (MM/YY)</label>
-                      <input type="text" className="form-input" placeholder="MM/YY" maxLength="5" />
+                      <label className="form-label">Card Number <span className="required">*</span></label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="1234 5678 9012 3456"
+                        maxLength="19"
+                        defaultValue="4111 2222 3333 4444"
+                      />
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">CVV</label>
-                      <input type="password" className="form-input" placeholder="•••" maxLength="3" />
+                    <div className="form-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
+                      <div className="form-group">
+                        <label className="form-label">Expiry (MM/YY) <span className="required">*</span></label>
+                        <input type="text" className="form-input" placeholder="MM/YY" maxLength="5" defaultValue="12/28" />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">CVV <span className="required">*</span></label>
+                        <input type="password" className="form-input" placeholder="•••" maxLength="3" defaultValue="123" />
+                      </div>
+                      <div className="form-group col-span-full">
+                        <label className="form-label">Name on Card <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="As printed on card"
+                          defaultValue={`${applicantInfo.firstName} ${applicantInfo.lastName}`.trim() || 'Citizen Applicant'}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
 
+                {/* Sub-form: Net Banking */}
                 {paymentMethod === 'netbanking' && (
-                  <div className="form-group">
-                    <label className="form-label">Select Bank</label>
-                    <select className="form-input">
-                      <option>State Bank of India</option>
-                      <option>HDFC Bank</option>
-                      <option>ICICI Bank</option>
-                      <option>Punjab National Bank</option>
-                    </select>
+                  <div id="netbankingForm">
+                    <div className="form-group">
+                      <label className="form-label">Select Bank <span className="required">*</span></label>
+                      <select className="form-input" defaultValue="State Bank of India">
+                        <option value="">-- Select your bank --</option>
+                        <option>State Bank of India</option>
+                        <option>HDFC Bank</option>
+                        <option>ICICI Bank</option>
+                        <option>Axis Bank</option>
+                        <option>Bank of Baroda</option>
+                        <option>Punjab National Bank</option>
+                        <option>Canara Bank</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
                   </div>
                 )}
 
+                {/* Sub-form: Free */}
                 {paymentMethod === 'free' && (
-                  <div className="alert alert-success">
-                    Fee concession applied under national citizen welfare guidelines.
+                  <div id="freeForm">
+                    <div className="alert alert-success">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      This service is free of charge for eligible citizen categories. No payment required.
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Right: Payment Summary Card */}
-            <div className="payment-summary">
-              <div className="payment-summary-title">Payment Summary</div>
-              <div className="payment-summary-row">
-                <span>Application Statutory Fee</span>
-                <span>₹{serviceFee.toFixed(2)}</span>
-              </div>
-              <div className="payment-summary-row">
-                <span>Platform Processing Charge</span>
-                <span>₹{processingCharge.toFixed(2)}</span>
-              </div>
-              <div className="payment-summary-row">
-                <span>GST (18%)</span>
-                <span>₹{gstAmount.toFixed(2)}</span>
-              </div>
-              <div className="payment-summary-divider"></div>
-              <div className="payment-summary-total">
-                <span>Total Payable</span>
-                <span>{totalPayable === 0 ? 'Free' : `₹${totalPayable.toFixed(2)}`}</span>
-              </div>
+            <div>
+              <div className="payment-summary">
+                <div className="payment-summary-title">Payment Summary</div>
 
-              <div style={{ marginTop: 'var(--space-md)', display: 'flex', gap: '6px', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                <svg width="14" height="14" fill="none" stroke="var(--green-500)" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Secured by 256-bit SSL encryption
+                <div className="payment-summary-row">
+                  <span>Application Fee</span>
+                  <span>{paymentMethod === 'free' || serviceFee === 0 ? '₹0.00' : `₹${serviceFee.toFixed(2)}`}</span>
+                </div>
+
+                <div className="payment-summary-row">
+                  <span>Processing Charge</span>
+                  <span>{paymentMethod === 'free' || serviceFee === 0 ? '₹0.00' : `₹${processingCharge.toFixed(2)}`}</span>
+                </div>
+
+                <div className="payment-summary-row">
+                  <span>GST (18%)</span>
+                  <span>{paymentMethod === 'free' || serviceFee === 0 ? '₹0.00' : `₹${gstAmount.toFixed(2)}`}</span>
+                </div>
+
+                <div className="payment-summary-divider"></div>
+
+                <div className="payment-summary-total">
+                  <span>Total Payable</span>
+                  <span style={{ color: paymentMethod === 'free' || totalPayable === 0 ? 'var(--green-600)' : 'var(--navy-900)' }}>
+                    {paymentMethod === 'free' || totalPayable === 0 ? 'Free' : `₹${totalPayable.toFixed(2)}`}
+                  </span>
+                </div>
+
+                {/* Application Reference Preview Box */}
+                <div
+                  style={{
+                    marginTop: 'var(--space-lg)',
+                    padding: 'var(--space-md)',
+                    background: 'var(--navy-50)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--navy-100)',
+                  }}
+                >
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--navy-600)', marginBottom: '4px' }}>
+                    Application Reference
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--navy-900)' }}>
+                    APP-2025-XXXX
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                    Save this reference for tracking
+                  </div>
+                </div>
+
+                {/* Security Badge */}
+                <div
+                  style={{
+                    marginTop: 'var(--space-md)',
+                    display: 'flex',
+                    gap: '6px',
+                    alignItems: 'center',
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                  }}
+                >
+                  <svg width="14" height="14" fill="none" stroke="var(--green-500)" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Secured by 256-bit SSL encryption
+                </div>
               </div>
             </div>
+
           </div>
 
-          {/* Submission Buttons */}
+          {/* Navigation & Submit Buttons */}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--space-xl)' }}>
             <button type="button" className="btn btn-outline" onClick={() => setCurrentStep(3)} disabled={submitting}>
               ← Back
@@ -1161,9 +1296,12 @@ export default function ApplyServicePage() {
               className="btn btn-primary"
               onClick={handleSubmitApplication}
               disabled={submitting}
-              style={{ minWidth: '220px' }}
+              style={{ minWidth: '220px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              {submitting ? 'Submitting to Department…' : 'Pay & Submit Application'}
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {submitting ? 'Submitting Application…' : 'Pay & Submit Application'}
             </button>
           </div>
         </div>
