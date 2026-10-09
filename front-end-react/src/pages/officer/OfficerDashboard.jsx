@@ -15,10 +15,12 @@
 //  [Prop Drilling] — Passes onSelect & onQuickAction callbacks down to OfficerQueueTable → OfficerQueueRow
 //  [Callbacks]     — handleSelectApplication, handleQuickAction, handleSendReminder, handleExportReport
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import OfficerQueueTable from '../../components/officer/OfficerQueueTable';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 import {
   apiGetOfficerQueue,
   apiGetOfficerQueries,
@@ -41,12 +43,30 @@ export default function OfficerDashboard() {
   const [queue, setQueue] = useState([]);
   const [queries, setQueries] = useState([]);
   const [slaRisks, setSlaRisks] = useState([]);
-  const [weekChart, setWeekChart] = useState({ days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], vals: [12, 19, 8, 15, 22] });
+  const [weekChart, setWeekChart] = useState(null); // null until API responds
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ── [State] Toast / Action Feedback State ──
-  const [toast, setToast] = useState(null);
+  // ── [Hooks] Toast notification via shared useToast hook ──
+  const { toast, showToast, hideToast } = useToast();
+
+  // ── [State] Track approvals done this session on this page ──
+  const [approvedTodayExtra, setApprovedTodayExtra] = useState(0);
+
+  // ── [Router + Hooks] Read ?approved=N when navigating back from ReviewApplicationPage ──
+  // Use a ref guard to ensure React StrictMode double-invocations in dev do not double-increment
+  const [searchParams, setSearchParams] = useSearchParams();
+  const hasProcessedApprovedParam = useRef(false);
+
+  useEffect(() => {
+    const approved = parseInt(searchParams.get('approved') || '0', 10);
+    if (approved > 0 && !hasProcessedApprovedParam.current) {
+      hasProcessedApprovedParam.current = true;
+      setApprovedTodayExtra(prev => prev + approved);
+      // Clear the param from the URL so refreshing doesn't double-count
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // ── [Hooks + API calls] Fetch Officer Data on Mount ──
   useEffect(() => {
@@ -85,9 +105,20 @@ export default function OfficerDashboard() {
           setSlaRisks(slaRes.value.data);
         }
 
-        // Populate weekly chart
-        if (chartRes.status === 'fulfilled' && chartRes.value?.data) {
-          setWeekChart(chartRes.value.data);
+        // Populate weekly chart — normalize API shape
+        // Backend returns: [{ day: 'Mon', approved: 8, rejected: 1, query: 2 }, ...]
+        // We need: { days: ['Mon',...], vals: [8,...] }
+        if (chartRes.status === 'fulfilled') {
+          const raw = chartRes.value?.data || chartRes.value;
+          if (Array.isArray(raw) && raw.length > 0) {
+            setWeekChart({
+              days: raw.map(d => d.day),
+              vals: raw.map(d => d.approved || 0),
+            });
+          } else if (raw?.days && raw?.vals) {
+            // Already in the right shape
+            setWeekChart(raw);
+          }
         }
       } catch (err) {
         if (isMounted) {
@@ -107,13 +138,17 @@ export default function OfficerDashboard() {
     };
   }, []);
 
-  // ── [Hooks] Computed Stats Derived from Queue and State ──
+  // ── [Hooks] Computed Stats Derived from Queue, Chart, and Session Actions ──
   const stats = useMemo(() => {
     const pendingCount = queue.length;
     const breachedItems = queue.filter((item) => (typeof item.slaLeft === 'number' && item.slaLeft < 0));
     const breachCount = breachedItems.length;
     const queriesCount = queries.length;
-    const approvedToday = 14; // Derived from daily processed activity or chart
+
+    // Read today's approved count from the chart's last bar (today = last day in chart)
+    // Add any approvals done in this session via approvedTodayExtra
+    const todayChartVal = weekChart ? (weekChart.vals?.[weekChart.vals.length - 1] || 0) : 0;
+    const approvedToday = todayChartVal + approvedTodayExtra;
 
     return {
       pendingCount,
@@ -122,15 +157,9 @@ export default function OfficerDashboard() {
       queriesCount,
       approvedToday,
     };
-  }, [queue, queries]);
+  }, [queue, queries, weekChart, approvedTodayExtra]);
 
-  // ── Helper: Show temporary toast message ──
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
+  // showToast and hideToast are provided by the useToast hook above
 
   // ── [Callbacks + Router] Drillable handler for selecting an application ──
   const handleSelectApplication = (applicationId) => {
@@ -171,8 +200,19 @@ export default function OfficerDashboard() {
     }, 1000);
   };
 
-  // Calculate max value for chart rendering
-  const maxChartVal = Math.max(...(weekChart.vals || [1]), 1);
+  // Calculate chart bar values including session approvals for today's bar
+  const displayChartVals = useMemo(() => {
+    if (!weekChart?.vals) return [];
+    return weekChart.vals.map((v, idx) => {
+      if (idx === weekChart.vals.length - 1) {
+        return v + approvedTodayExtra;
+      }
+      return v;
+    });
+  }, [weekChart, approvedTodayExtra]);
+
+  // Calculate max value for chart rendering (weekChart may be null while loading)
+  const maxChartVal = displayChartVals.length > 0 ? Math.max(...displayChartVals, 1) : 1;
 
   // Tab definitions list
   const TABS = [
@@ -183,36 +223,8 @@ export default function OfficerDashboard() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      {/* ── Toast Notification Banner ── */}
-      {toast && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 9999,
-            backgroundColor: toast.type === 'error' ? 'var(--red-600)' : 'var(--green-600)',
-            color: '#ffffff',
-            padding: '12px 20px',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-lg)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-          }}
-        >
-          <span>{toast.message}</span>
-          <button
-            type="button"
-            onClick={() => setToast(null)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      {/* ── Toast Notification — [Component + Props + Callbacks] ── */}
+      <Toast toast={toast} onClose={hideToast} />
 
       {/* ── Breach Alert Banner ── */}
       {stats.breachCount > 0 && (
@@ -627,7 +639,7 @@ export default function OfficerDashboard() {
               <span className="card-title">This Week's Approvals</span>
             </div>
             <div className="card-body">
-              {/* [Lists] Render chart bars */}
+                          {/* [Lists] Render chart bars */}
               <div
                 style={{
                   display: 'flex',
@@ -637,36 +649,49 @@ export default function OfficerDashboard() {
                   marginBottom: '8px',
                 }}
               >
-                {(weekChart.vals || []).map((val, idx) => {
-                  const heightPercent = Math.max(8, (val / maxChartVal) * 72);
-                  const isLatest = idx === (weekChart.vals.length - 1);
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'center',
-                        height: '100%',
-                      }}
-                      title={`${val} approved on ${weekChart.days?.[idx] || ''}`}
-                    >
-                      <div
-                        style={{
-                          width: '100%',
-                          height: `${heightPercent}px`,
-                          backgroundColor: isLatest ? 'var(--navy-600)' : 'var(--navy-200)',
-                          borderRadius: '3px 3px 0 0',
-                          transition: 'height 0.3s ease',
-                        }}
-                      />
+                {weekChart === null ? (
+                  // Loading skeleton bars
+                  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => (
+                    <div key={d} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', height: '100%' }}>
+                      <div style={{ width: '100%', height: '20px', backgroundColor: 'var(--slate-100)', borderRadius: '3px 3px 0 0' }} />
                     </div>
-                  );
-                })}
+                  ))
+                ) : displayChartVals.every(v => v === 0) ? (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--slate-400)', fontSize: '0.8rem' }}>
+                    No approvals recorded this week
+                  </div>
+                ) : (
+                  displayChartVals.map((val, idx) => {
+                    const heightPercent = Math.max(8, (val / maxChartVal) * 72);
+                    const isLatest = idx === (displayChartVals.length - 1);
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          justifyContent: 'center',
+                          height: '100%',
+                        }}
+                        title={`${val} approved on ${weekChart.days?.[idx] || ''}`}
+                      >
+                        <div
+                          style={{
+                            width: '100%',
+                            height: `${heightPercent}px`,
+                            backgroundColor: isLatest ? 'var(--navy-600)' : 'var(--navy-200)',
+                            borderRadius: '3px 3px 0 0',
+                            transition: 'height 0.3s ease',
+                          }}
+                        />
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
-              {/* [Lists] Render day labels */}
+                            {/* [Lists] Render day labels */}
               <div
                 style={{
                   display: 'flex',
@@ -675,7 +700,7 @@ export default function OfficerDashboard() {
                   color: 'var(--color-text-muted)',
                 }}
               >
-                {(weekChart.days || []).map((day, idx) => (
+                {(weekChart?.days || []).map((day, idx) => (
                   <span key={idx} style={{ flex: 1, textAlign: 'center' }}>
                     {day}
                   </span>

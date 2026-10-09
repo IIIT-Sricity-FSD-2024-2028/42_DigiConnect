@@ -9,6 +9,7 @@ import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
+import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 
 function App() {
   return (
@@ -45,6 +46,8 @@ function App() {
       >
         <Route index element={<Navigate to="/officer/dashboard" replace />} />
         <Route path="dashboard" element={<OfficerDashboard />} />
+        <Route path="review" element={<ReviewApplicationPage />} />
+        <Route path="review/:id" element={<ReviewApplicationPage />} />
       </Route>
 
       {/* Public Routes */}
