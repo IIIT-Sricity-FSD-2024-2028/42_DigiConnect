@@ -2,13 +2,32 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-export default function Topbar({ title = 'Dashboard', breadcrumbs = [{ label: 'Citizen Portal' }, { label: 'Dashboard' }] }) {
+export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const userName = user?.name || user?.email || 'Citizen';
+  const roleNameMap = {
+    officer: 'Department Officer',
+    department_head: 'Department Head',
+    supervisor: 'Supervisor',
+    state_admin: 'State Admin',
+    central_admin: 'Central Admin',
+    super_user: 'Super User',
+    grievance: 'Grievance Officer',
+    grievance_officer: 'Grievance Officer',
+    citizen: 'Citizen',
+  };
+
+  const roleDisplay =
+    user?.designation ||
+    user?.roleLabel ||
+    roleNameMap[user?.role?.toLowerCase()] ||
+    user?.role ||
+    'Citizen';
+
+  const userName = user?.name || user?.email || roleDisplay;
   const initials = userName
     .split(' ')
     .map((n) => n[0])
@@ -108,7 +127,7 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [{ label: 'C
                 {userName}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                Citizen
+                {roleDisplay}
               </div>
             </div>
           </div>
