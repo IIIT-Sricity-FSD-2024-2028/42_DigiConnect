@@ -8,6 +8,7 @@ import LoginPage from './pages/public/LoginPage.jsx';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
+import OfficerDashboard from './pages/officer/OfficerDashboard';
 
 function App() {
   return (
@@ -31,6 +32,19 @@ function App() {
             <Route path="raise-grievance" element={<RaiseGrievancePage />} />
             <Route path="my-grievances" element={<MyGrievancesPage />} />
         */}
+      </Route>
+
+      {/* ── Department Officer Routes (Protected) ── */}
+      <Route
+        path="/officer"
+        element={
+          <ProtectedRoute allowedRoles={['officer', 'department_head', 'super_user']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/officer/dashboard" replace />} />
+        <Route path="dashboard" element={<OfficerDashboard />} />
       </Route>
 
       {/* Public Routes */}

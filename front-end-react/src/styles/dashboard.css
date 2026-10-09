@@ -775,3 +775,68 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Application Queue Rows & Action Chips (Officer Module) ── */
+.app-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--slate-100);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.app-row:hover {
+    background: var(--slate-50);
+}
+
+.priority-bar {
+    width: 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+
+.action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+}
+
+.chip-approve {
+    background: var(--green-100);
+    color: var(--green-700);
+}
+
+.chip-approve:hover {
+    background: var(--green-500);
+    color: #fff;
+}
+
+.chip-query {
+    background: var(--amber-100);
+    color: var(--amber-700);
+}
+
+.chip-query:hover {
+    background: var(--amber-500);
+    color: #fff;
+}
+
+.chip-reject {
+    background: var(--red-100);
+    color: var(--red-600);
+}
+
+.chip-reject:hover {
+    background: var(--red-500);
+    color: #fff;
+}
