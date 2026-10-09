@@ -123,3 +123,10 @@ Thumbs.db
 dist/
 uploads/
 back-end/uploads/
+
+# Generated API Documentation
+swagger.json
+**/swagger.json
+back-end/docs/
+docs/swagger.json
+
