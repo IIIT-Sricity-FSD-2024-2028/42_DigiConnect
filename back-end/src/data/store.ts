@@ -1691,9 +1691,18 @@ const OFFICER_WEEK_CHART = [
   { day: 'Wed', approved: 15, rejected: 1, query: 4 },
   { day: 'Thu', approved: 10, rejected: 3, query: 1 },
   { day: 'Fri', approved: 14, rejected: 0, query: 2 },
-  { day: 'Sat', approved: 6, rejected: 1, query: 0 },
+  { day: 'Sat', approved: 0, rejected: 0, query: 0 },
   { day: 'Sun', approved: 0, rejected: 0, query: 0 },
 ];
+
+// Ensure today starts at 0 approvals until applications are approved
+const _initDayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+const _todayEntry = OFFICER_WEEK_CHART.find(c => c.day === _initDayName);
+if (_todayEntry) {
+  _todayEntry.approved = 0;
+  _todayEntry.rejected = 0;
+  _todayEntry.query = 0;
+}
 
 const SUPER_OFFICER_APPROVED = [
   {

@@ -50,23 +50,13 @@ export default function OfficerDashboard() {
   // ── [Hooks] Toast notification via shared useToast hook ──
   const { toast, showToast, hideToast } = useToast();
 
-  // ── [State] Track approvals done this session on this page ──
-  const [approvedTodayExtra, setApprovedTodayExtra] = useState(0);
-
-  // ── [Router + Hooks] Read ?approved=N when navigating back from ReviewApplicationPage ──
-  // Use a ref guard to ensure React StrictMode double-invocations in dev do not double-increment
-  const [searchParams, setSearchParams] = useSearchParams();
-  const hasProcessedApprovedParam = useRef(false);
-
+  // Clear any legacy localStorage keys to ensure fresh, accurate server data
   useEffect(() => {
-    const approved = parseInt(searchParams.get('approved') || '0', 10);
-    if (approved > 0 && !hasProcessedApprovedParam.current) {
-      hasProcessedApprovedParam.current = true;
-      setApprovedTodayExtra(prev => prev + approved);
-      // Clear the param from the URL so refreshing doesn't double-count
-      setSearchParams({}, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
+    try {
+      const storageKey = `officer_approved_today_${user?.id || user?.userId || 'officer'}`;
+      localStorage.removeItem(storageKey);
+    } catch (e) {}
+  }, [user]);
 
   // ── [Hooks + API calls] Fetch Officer Data on Mount ──
   useEffect(() => {
@@ -145,10 +135,11 @@ export default function OfficerDashboard() {
     const breachCount = breachedItems.length;
     const queriesCount = queries.length;
 
-    // Read today's approved count from the chart's last bar (today = last day in chart)
-    // Add any approvals done in this session via approvedTodayExtra
-    const todayChartVal = weekChart ? (weekChart.vals?.[weekChart.vals.length - 1] || 0) : 0;
-    const approvedToday = todayChartVal + approvedTodayExtra;
+    // Read today's approved count from the chart's today bar (matching current day of the week)
+    const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const currentDayName = DAYS_OF_WEEK[new Date().getDay()];
+    const todayIdx = weekChart?.days ? weekChart.days.indexOf(currentDayName) : -1;
+    const approvedToday = todayIdx !== -1 ? (weekChart.vals?.[todayIdx] || 0) : 0;
 
     return {
       pendingCount,
@@ -157,7 +148,7 @@ export default function OfficerDashboard() {
       queriesCount,
       approvedToday,
     };
-  }, [queue, queries, weekChart, approvedTodayExtra]);
+  }, [queue, queries, weekChart]);
 
   // showToast and hideToast are provided by the useToast hook above
 
@@ -200,16 +191,10 @@ export default function OfficerDashboard() {
     }, 1000);
   };
 
-  // Calculate chart bar values including session approvals for today's bar
+  // Chart bar values directly from the API response
   const displayChartVals = useMemo(() => {
-    if (!weekChart?.vals) return [];
-    return weekChart.vals.map((v, idx) => {
-      if (idx === weekChart.vals.length - 1) {
-        return v + approvedTodayExtra;
-      }
-      return v;
-    });
-  }, [weekChart, approvedTodayExtra]);
+    return weekChart?.vals || [];
+  }, [weekChart]);
 
   // Calculate max value for chart rendering (weekChart may be null while loading)
   const maxChartVal = displayChartVals.length > 0 ? Math.max(...displayChartVals, 1) : 1;
@@ -663,7 +648,9 @@ export default function OfficerDashboard() {
                 ) : (
                   displayChartVals.map((val, idx) => {
                     const heightPercent = Math.max(8, (val / maxChartVal) * 72);
-                    const isLatest = idx === (displayChartVals.length - 1);
+                    const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const currentDayName = DAYS_OF_WEEK[new Date().getDay()];
+                    const isToday = weekChart?.days?.[idx] === currentDayName;
                     return (
                       <div
                         key={idx}
@@ -680,7 +667,7 @@ export default function OfficerDashboard() {
                           style={{
                             width: '100%',
                             height: `${heightPercent}px`,
-                            backgroundColor: isLatest ? 'var(--navy-600)' : 'var(--navy-200)',
+                            backgroundColor: isToday ? 'var(--navy-600)' : 'var(--navy-200)',
                             borderRadius: '3px 3px 0 0',
                             transition: 'height 0.3s ease',
                           }}

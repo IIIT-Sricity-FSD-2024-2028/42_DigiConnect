@@ -493,6 +493,14 @@ export class ApplicationsService {
       );
     }
 
+    // Update officer weekly performance chart for today
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const currentDayName = daysOfWeek[new Date().getDay()];
+    const chartItem = db.officerWeekChart.find(c => c.day === currentDayName);
+    if (chartItem) {
+      chartItem.approved = (chartItem.approved || 0) + 1;
+    }
+
     return { application: app, certificate: certData };
   }
 
@@ -535,6 +543,14 @@ export class ApplicationsService {
       'REJECTED',
       `Your application was rejected by ${actorName}. Reason: ${reason}`,
     );
+
+    // Update officer weekly performance chart for today
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const currentDayName = daysOfWeek[new Date().getDay()];
+    const rejectChartItem = db.officerWeekChart.find(c => c.day === currentDayName);
+    if (rejectChartItem) {
+      rejectChartItem.rejected = (rejectChartItem.rejected || 0) + 1;
+    }
 
     return app;
   }
@@ -582,6 +598,14 @@ export class ApplicationsService {
       'QUERY_RAISED',
       `Officer ${actorName} raised a query: "${queryText}". Please submit a response to resume review.`,
     );
+
+    // Update officer weekly performance chart for today
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const currentDayName = daysOfWeek[new Date().getDay()];
+    const queryChartItem = db.officerWeekChart.find(c => c.day === currentDayName);
+    if (queryChartItem) {
+      queryChartItem.query = (queryChartItem.query || 0) + 1;
+    }
 
     return app;
   }
@@ -807,6 +831,23 @@ export class ApplicationsService {
   }
 
   getOfficerWeekChart(officerId?: string) {
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const currentDayName = daysOfWeek[new Date().getDay()];
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Calculate real applications approved today
+    const appsApprovedToday = (db.applications || []).filter(a => {
+      return a.timeline?.some(t =>
+        t.action.toLowerCase().includes('approv') &&
+        (t.date || '').slice(0, 10) === todayStr
+      );
+    }).length;
+
+    const chartItem = db.officerWeekChart.find(c => c.day === currentDayName);
+    if (chartItem) {
+      chartItem.approved = Math.max(chartItem.approved || 0, appsApprovedToday);
+    }
+
     return db.officerWeekChart;
   }
 

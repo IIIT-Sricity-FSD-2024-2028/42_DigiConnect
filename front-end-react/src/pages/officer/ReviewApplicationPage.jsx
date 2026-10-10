@@ -24,9 +24,9 @@ import DecisionModal from '../../components/officer/DecisionModal';
 import {
   apiGetOfficerQueue,
   apiGetApplicationById,
-  apiOfficerApprove,
-  apiOfficerReject,
-  apiOfficerRaiseQuery,
+  apiApproveApplication,
+  apiRejectApplication,
+  apiRaiseQueryApplication,
 } from '../../api/officerApi';
 
 // Rejection reason options
@@ -69,6 +69,17 @@ export default function ReviewApplicationPage() {
     let isMounted = true;
 
     async function loadQueueData() {
+      // If queue is already present in state and contains routeAppId, just sync selection index
+      if (queue.length > 0 && routeAppId) {
+        const inMemoryIdx = queue.findIndex(
+          (a) => String(a.id).toLowerCase() === String(routeAppId).toLowerCase()
+        );
+        if (inMemoryIdx !== -1) {
+          setCurrentIdx(inMemoryIdx);
+          return;
+        }
+      }
+
       setLoading(true);
       setError(null);
       try {
@@ -206,35 +217,49 @@ export default function ReviewApplicationPage() {
       const wasApproval = currentDecision === 'approve';
       const updatedApprovals = wasApproval ? sessionApprovals + 1 : sessionApprovals;
 
+      // [API calls] Wire decision triggers to apiApproveApplication, apiRejectApplication, apiRaiseQueryApplication
       if (wasApproval) {
-        await apiOfficerApprove(
+        await apiApproveApplication(
           currentApp.id,
           officerRemarks || 'Verified and approved by field officer.'
         );
         setSessionApprovals(updatedApprovals);
+        // [Feedback alert/toast]
         showToast(`Application ${currentApp.id} approved successfully!`, 'success');
       } else if (currentDecision === 'reject') {
-        await apiOfficerReject(currentApp.id, rejectReason);
+        await apiRejectApplication(currentApp.id, rejectReason);
+        // [Feedback alert/toast]
         showToast(`Application ${currentApp.id} rejected. Citizen notified.`, 'warning');
       } else if (currentDecision === 'query') {
-        await apiOfficerRaiseQuery(currentApp.id, queryText);
-        showToast(`Query sent to ${currentApp.citizen || 'citizen'} successfully.`, 'info');
+        await apiRaiseQueryApplication(currentApp.id, queryText);
+        // [Feedback alert/toast]
+        showToast(`Query sent to ${currentApp.citizen || currentApp.citizenName || 'citizen'} successfully.`, 'info');
       }
 
-      // Remove processed application from local queue
+      // [Synchronize State] Remove processed application from local queue
       const updatedQueue = queue.filter((_, idx) => idx !== currentIdx);
       setQueue(updatedQueue);
 
-      // If queue is now empty, redirect to dashboard after brief delay
+      // Reset decision form state
+      setCurrentDecision('approve');
+      setRejectReason('');
+      setQueryText('');
+      setOfficerRemarks('');
+
+      // [Update queue counts and redirect or load next application in queue]
       if (updatedQueue.length === 0) {
+        // Queue is finished: redirect to /officer/dashboard after brief toast display
         setTimeout(() => {
-          // Pass ?approved=N so the dashboard stat card increments
-          navigate(updatedApprovals > 0 ? `/officer/dashboard?approved=${updatedApprovals}` : '/officer/dashboard');
-        }, 1500);
+          navigate('/officer/dashboard');
+        }, 1200);
       } else {
-        // Otherwise navigate to next available application
+        // Queue has remaining items: load the next application in queue
         const nextIdx = Math.min(currentIdx, updatedQueue.length - 1);
-        handleNavigateApp(nextIdx);
+        setCurrentIdx(nextIdx);
+        const nextApp = updatedQueue[nextIdx];
+        if (nextApp) {
+          navigate(`/officer/review/${nextApp.id}`, { replace: true });
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to submit decision. Please retry.', 'error');
@@ -319,7 +344,7 @@ export default function ReviewApplicationPage() {
             Your assigned verification queue is currently empty or all applications have been reviewed.
           </p>
           <Link
-            to={sessionApprovals > 0 ? `/officer/dashboard?approved=${sessionApprovals}` : '/officer/dashboard'}
+            to="/officer/dashboard"
             className="btn btn-primary"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
@@ -338,7 +363,7 @@ export default function ReviewApplicationPage() {
       {/* ── Back Navigation Bar ── */}
       <div style={{ marginBottom: 'var(--space-md)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link
-          to={sessionApprovals > 0 ? `/officer/dashboard?approved=${sessionApprovals}` : '/officer/dashboard'}
+          to="/officer/dashboard"
           className="btn btn-outline btn-sm"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
         >
