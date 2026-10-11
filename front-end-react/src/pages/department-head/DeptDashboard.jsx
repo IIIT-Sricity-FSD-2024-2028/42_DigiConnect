@@ -164,17 +164,23 @@ export default function DeptDashboard() {
           icon={<span>📋</span>}
           iconColor="purple"
         />
-        <StatCard
-          title="Revenue Realized"
-          value={`₹${(stats.totalRevenue || 0).toLocaleString()}`}
-          subtitle="Statutory fees collected"
-          variant="accent"
-          icon={<span>💰</span>}
-          iconColor="purple"
-        />
+        <div
+          onClick={() => navigate('/department-head/revenue')}
+          style={{ cursor: 'pointer' }}
+          title="Click to view department financial ledger"
+        >
+          <StatCard
+            title="Revenue Realized"
+            value={`₹${(stats.totalRevenue || 0).toLocaleString()}`}
+            subtitle="Statutory fees collected"
+            variant="accent"
+            icon={<span>💰</span>}
+            iconColor="purple"
+          />
+        </div>
       </div>
 
-      {/* ── Department Functional Pillars ── */}
+      {/* ── Department Functional Pillars (4 Clickable Cards matching dashboard.html) ── */}
       <div
         style={{
           display: 'grid',
@@ -183,26 +189,26 @@ export default function DeptDashboard() {
           marginBottom: 'var(--space-xl)',
         }}
       >
-        {/* Pillar 1: Services Catalog */}
+        {/* Pillar 1: Designations Management */}
         <div
           className="card"
           style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
-          onClick={() => navigate('/department-head/services')}
+          onClick={() => navigate('/department-head/designations')}
         >
           <div className="card-header">
-            <span className="card-title">📜 Department Services Catalog</span>
+            <span className="card-title">👔 Designations Management</span>
           </div>
           <div className="card-body">
             <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', lineHeight: '1.6', marginBottom: 'var(--space-md)' }}>
-              Browse all configured department services, verify fee breakdowns, view active resolution SLAs, and inspect dynamic form schemas.
+              Manage department designations (VRO, MRO, Tahsildar, Revenue Inspector). Designations represent operational job roles, avoiding numeric officer levels.
             </p>
             <button type="button" className="btn btn-outline btn-sm">
-              View Catalog →
+              Configure Designations →
             </button>
           </div>
         </div>
 
-        {/* Pillar 2: Dynamic Service Builder */}
+        {/* Pillar 2: Dynamic Service & Workflow Builder */}
         <div
           className="card"
           style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
@@ -213,7 +219,7 @@ export default function DeptDashboard() {
           </div>
           <div className="card-body">
             <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', lineHeight: '1.6', marginBottom: 'var(--space-md)' }}>
-              Configure custom citizen form fields (TEXT, NUMBER, SELECT), document proofs, statutory fees, and multi-stage officer routing workflows.
+              Configure custom form fields (TEXT, NUMBER, DATE, SELECT), document proofs, fees (Service + Platform), Terms &amp; Conditions, and multi-step officer sequences.
             </p>
             <button type="button" className="btn btn-outline btn-sm">
               Launch Service Builder →
@@ -221,7 +227,7 @@ export default function DeptDashboard() {
           </div>
         </div>
 
-        {/* Pillar 3: Officer Onboarding */}
+        {/* Pillar 3: Officer Onboarding & Node Scoping */}
         <div
           className="card"
           style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
@@ -232,10 +238,29 @@ export default function DeptDashboard() {
           </div>
           <div className="card-body">
             <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', lineHeight: '1.6', marginBottom: 'var(--space-md)' }}>
-              Onboard department field officers by assigning their exact designation and binding them directly to a jurisdiction node (Village, Mandal, or District).
+              Onboard field officers by assigning their exact designation and binding them directly to a jurisdiction node (Village, Mandal, or District).
             </p>
             <button type="button" className="btn btn-outline btn-sm">
               Onboard Officers →
+            </button>
+          </div>
+        </div>
+
+        {/* Pillar 4: Financials & Revenue */}
+        <div
+          className="card"
+          style={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s' }}
+          onClick={() => navigate('/department-head/revenue')}
+        >
+          <div className="card-header">
+            <span className="card-title">💰 Financials &amp; Revenue</span>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', lineHeight: '1.6', marginBottom: 'var(--space-md)' }}>
+              Inspect departmental revenue receipts, statutory service fees, e-Governance platform fee shares, and individual citizen payment transaction ledgers.
+            </p>
+            <button type="button" className="btn btn-outline btn-sm">
+              View Revenue Collections →
             </button>
           </div>
         </div>

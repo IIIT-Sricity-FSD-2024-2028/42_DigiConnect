@@ -16,6 +16,8 @@ import DeptDashboard from './pages/department-head/DeptDashboard';
 import ServicesCatalogPage from './pages/department-head/ServicesCatalogPage';
 import ServiceBuilderPage from './pages/department-head/ServiceBuilderPage';
 import OfficersManagementPage from './pages/department-head/OfficersManagementPage';
+import DesignationsPage from './pages/department-head/DesignationsPage';
+import RevenuePage from './pages/department-head/RevenuePage';
 
 function App() {
   return (
@@ -70,6 +72,8 @@ function App() {
         <Route path="services" element={<ServicesCatalogPage />} />
         <Route path="service-builder" element={<ServiceBuilderPage />} />
         <Route path="officers" element={<OfficersManagementPage />} />
+        <Route path="designations" element={<DesignationsPage />} />
+        <Route path="revenue" element={<RevenuePage />} />
       </Route>
 
       {/* Public Routes */}
