@@ -47,26 +47,32 @@ export class NotificationsService {
    * Auto-push a notification when an application status changes.
    * Called internally by ApplicationsService.
    */
-  pushApplicationNotification(citizenId: string, appId: string, newStatus: string, officerRemark: string) {
+  pushApplicationNotification(citizenId: string, appId: string, newStatus: string, officerRemark?: string) {
     let config: { title: string; type: Notification['type'] } | undefined;
-    switch (newStatus) {
+    const statusKey = (newStatus || '').toLowerCase().replace(/_/g, '-');
+    switch (statusKey) {
       case 'approved':
-        config = { title: '✅ Application Approved!', type: 'success' };
+        config = { title: '🎉 Application Approved!', type: 'success' };
         break;
       case 'rejected':
         config = { title: '❌ Application Rejected', type: 'danger' };
         break;
       case 'query':
+      case 'query-raised':
         config = { title: '❓ Query Raised on Application', type: 'warning' };
         break;
       case 'escalated':
-        config = { title: '⚠️ Application Escalated', type: 'warning' };
+        config = { title: '⚡ Application Escalated', type: 'warning' };
         break;
       case 'completed':
-        config = { title: '🎉 Service Completed', type: 'success' };
+        config = { title: '📜 Service Completed', type: 'success' };
         break;
       case 'under-review':
-        config = { title: 'ℹ️ Application Under Review', type: 'info' };
+        config = { title: '🔍 Application Under Review', type: 'info' };
+        break;
+      case 'reopened':
+      case 'pending-reverification':
+        config = { title: '🔄 Application Reopened for Re-verification', type: 'info' };
         break;
       default:
         return; // Don't push for unknown statuses
@@ -91,24 +97,26 @@ export class NotificationsService {
    */
   pushGrievanceNotification(citizenId: string, grievanceId: string, newStatus: string) {
     let config: { title: string; type: Notification['type'] } | undefined;
-    switch (newStatus) {
-      case 'resolved':
-        config = { title: '✅ Grievance Resolved', type: 'success' };
-        break;
-      case 'rejected':
-        config = { title: '❌ Grievance Rejected', type: 'danger' };
-        break;
-      case 'escalated':
-        config = { title: '⚠️ Grievance Escalated to Supervisor', type: 'warning' };
-        break;
-      case 'escalated-resolved':
-        config = { title: '✅ Grievance Closed by Supervisor', type: 'success' };
-        break;
-      case 'investigating':
-        config = { title: 'ℹ️ Grievance Under Investigation', type: 'info' };
-        break;
-      default:
-        return; // Don't push for unknown statuses
+    const statusKey = (newStatus || '').toLowerCase().replace(/_/g, '-');
+    if (statusKey.startsWith('resolved')) {
+      config = { title: '✅ Grievance Resolved', type: 'success' };
+    } else {
+      switch (statusKey) {
+        case 'rejected':
+          config = { title: '❌ Grievance Rejected', type: 'danger' };
+          break;
+        case 'escalated':
+          config = { title: '⚡ Grievance Escalated to Supervisor', type: 'warning' };
+          break;
+        case 'escalated-resolved':
+          config = { title: '✅ Grievance Closed by Supervisor', type: 'success' };
+          break;
+        case 'investigating':
+          config = { title: '🔍 Grievance Under Investigation', type: 'info' };
+          break;
+        default:
+          return; // Don't push for unknown statuses
+      }
     }
 
     const notification: Notification = {
