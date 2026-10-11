@@ -279,15 +279,17 @@ export default function ApplyServicePage() {
     .filter((s) => s.status === 'Active' || s.status === 'ACTIVE' || !s.status)
     .filter((s) => {
       if (selectedCategory === 'all') return true;
-      return (s.cat || '').toLowerCase() === selectedCategory.toLowerCase();
+      const cat = (s.cat || s.category || '').toLowerCase();
+      return cat === selectedCategory.toLowerCase();
     })
     .filter((s) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
         (s.name || '').toLowerCase().includes(q) ||
-        (s.desc || '').toLowerCase().includes(q) ||
-        (s.dept || '').toLowerCase().includes(q)
+        (s.code || '').toLowerCase().includes(q) ||
+        (s.desc || s.description || '').toLowerCase().includes(q) ||
+        (s.dept || s.departmentName || s.departmentId || '').toLowerCase().includes(q)
       );
     });
 
@@ -297,16 +299,19 @@ export default function ApplyServicePage() {
       ? selectedService.fields
       : DEFAULT_SERVICE_SCHEMAS[selectedService?.name] || DEFAULT_SERVICE_SCHEMAS['default'];
 
-  // Required docs resolution
+  // Required docs resolution (handle both string array and object array with { name })
   const requiredDocs =
     selectedService?.docs && selectedService.docs.length > 0
-      ? selectedService.docs
+      ? selectedService.docs.map((d) => (typeof d === 'string' ? d : d.name))
       : ['Identity Proof (Aadhaar Card)', 'Address Proof (Ration Card / Voter ID)'];
 
   // Fee breakdown calculations
-  const serviceFee = Number(selectedService?.fee ?? selectedService?.totalFee ?? 0);
-  const processingCharge = serviceFee > 0 ? 15 : 0;
-  const gstAmount = serviceFee > 0 ? Math.round((serviceFee + processingCharge) * 0.18) : 0;
+  const srvFee = Number(selectedService?.serviceFee ?? selectedService?.fee ?? 0);
+  const platFee = Number(selectedService?.platformFee ?? 15);
+  const totalServiceFee = Number(selectedService?.totalFee ?? (srvFee + platFee));
+  const serviceFee = srvFee > 0 ? srvFee : (totalServiceFee > platFee ? totalServiceFee - platFee : totalServiceFee);
+  const processingCharge = platFee;
+  const gstAmount = Math.round((serviceFee + processingCharge) * 0.18);
   const totalPayable = serviceFee + processingCharge + gstAmount;
 
   // ─────────────────────────────────────────────────────────────
@@ -516,11 +521,16 @@ export default function ApplyServicePage() {
           <div>
             <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--navy-900)' }}>
               {selectedService.name}
+              {selectedService.code && (
+                <span className="badge badge-purple" style={{ marginLeft: '8px', fontSize: '0.75rem' }}>
+                  {selectedService.code}
+                </span>
+              )}
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              <span>{selectedService.dept}</span>
-              &nbsp;·&nbsp; SLA: <strong>{selectedService.sla || 7} days</strong>
-              &nbsp;·&nbsp; Fee: <strong>{selectedService.fee === 0 ? 'Free' : `₹${selectedService.fee || 0}`}</strong>
+              <span>{selectedService.dept || selectedService.departmentName || 'Revenue Department'}</span>
+              &nbsp;·&nbsp; SLA: <strong>{selectedService.sla || selectedService.slaDays || 7} days</strong>
+              &nbsp;·&nbsp; Fee: <strong>{totalServiceFee === 0 ? 'Free' : `₹${totalServiceFee}`}</strong>
             </div>
           </div>
         </div>
