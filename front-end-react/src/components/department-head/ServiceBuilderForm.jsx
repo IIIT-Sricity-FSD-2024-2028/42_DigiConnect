@@ -351,9 +351,10 @@ export default function ServiceBuilderForm({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-md)' }}>
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>Service Name *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvName">Service Name *</label>
             <input
               type="text"
+              id="srvName"
               name="name"
               className="form-input"
               placeholder="e.g. Integrated Caste & Income Certificate"
@@ -363,9 +364,10 @@ export default function ServiceBuilderForm({
             />
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>Service Code *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvCode">Service Code *</label>
             <input
               type="text"
+              id="srvCode"
               name="code"
               className="form-input"
               placeholder="e.g. SRV_CIC"
@@ -376,8 +378,9 @@ export default function ServiceBuilderForm({
             />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>Service Description</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvDesc">Service Description</label>
             <textarea
+              id="srvDesc"
               name="description"
               className="form-input"
               rows="2"
@@ -389,7 +392,7 @@ export default function ServiceBuilderForm({
         </div>
       </div>
 
-      {/* ── CARD 2: Configurable Form Fields (Dynamic Array State) ── */}
+      {/* ── CARD 2: Configurable Form Fields (Dynamic Array State - Day 3 Focus) ── */}
       <div className="card" style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-xl)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)', flexWrap: 'wrap', gap: '10px' }}>
           <div>
@@ -397,7 +400,7 @@ export default function ServiceBuilderForm({
               2. Configurable Form Fields (Dynamic Citizen Inputs)
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', marginTop: '2px' }}>
-              Dynamic schema items required from citizens during application submission.
+              Dynamic inputs required from citizens during application submission.
             </p>
           </div>
           <button

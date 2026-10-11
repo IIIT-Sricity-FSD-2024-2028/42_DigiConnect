@@ -98,6 +98,25 @@ export default function ServiceBuilderPage() {
 
   return (
     <div className="dept-service-builder-page">
+      {/* ── Breadcrumbs ── */}
+      <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', marginBottom: 'var(--space-sm)' }}>
+        <button
+          type="button"
+          onClick={() => navigate('/department-head/dashboard')}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-600)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Department Head
+        </button>
+        {' '}/ <button
+          type="button"
+          onClick={() => navigate('/department-head/services')}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-600)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Services
+        </button>
+        {' '}/ <span style={{ color: 'var(--slate-400)' }}>{editId ? 'Edit Configuration' : 'Service Builder'}</span>
+      </div>
+
       {/* ── Page Header ── */}
       <div
         className="page-header"
