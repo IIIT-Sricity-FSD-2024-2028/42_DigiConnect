@@ -12,6 +12,10 @@ import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
 import GrievanceDetailPage from './pages/grievance/GrievanceDetailPage';
+import DeptDashboard from './pages/department-head/DeptDashboard';
+import ServicesCatalogPage from './pages/department-head/ServicesCatalogPage';
+import ServiceBuilderPage from './pages/department-head/ServiceBuilderPage';
+import OfficersManagementPage from './pages/department-head/OfficersManagementPage';
 
 function App() {
   return (
@@ -50,6 +54,22 @@ function App() {
         <Route path="dashboard" element={<OfficerDashboard />} />
         <Route path="review" element={<ReviewApplicationPage />} />
         <Route path="review/:id" element={<ReviewApplicationPage />} />
+      </Route>
+
+      {/* ── Department Head Routes (Protected) ── */}
+      <Route
+        path="/department-head"
+        element={
+          <ProtectedRoute allowedRoles={['department_head', 'supervisor']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/department-head/dashboard" replace />} />
+        <Route path="dashboard" element={<DeptDashboard />} />
+        <Route path="services" element={<ServicesCatalogPage />} />
+        <Route path="service-builder" element={<ServiceBuilderPage />} />
+        <Route path="officers" element={<OfficersManagementPage />} />
       </Route>
 
       {/* Public Routes */}
