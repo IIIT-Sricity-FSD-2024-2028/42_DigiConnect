@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 const ROUTE_CONFIGS = {
-  // ── Citizen Routes ──
+  // Citizen Routes
   '/citizen/dashboard': {
     title: 'Citizen Dashboard',
     breadcrumbs: [{ label: 'Citizen Portal', to: '/citizen/dashboard' }, { label: 'Dashboard' }],
@@ -30,7 +30,7 @@ const ROUTE_CONFIGS = {
     breadcrumbs: [{ label: 'Citizen Portal', to: '/citizen/dashboard' }, { label: 'My Grievances' }],
   },
 
-  // ── Department Field Officer Routes ──
+  // Department Field Officer Routes
   '/officer/dashboard': {
     title: 'Field Officer Dashboard',
     breadcrumbs: [{ label: 'Officer Portal', to: '/officer/dashboard' }, { label: 'Dashboard' }],
@@ -56,7 +56,7 @@ const ROUTE_CONFIGS = {
     breadcrumbs: [{ label: 'Officer Portal', to: '/officer/dashboard' }, { label: 'Analytics' }],
   },
 
-  // ── Department Head Routes ──
+  // Department Head Routes
   '/department-head/dashboard': {
     title: 'Department Dashboard',
     breadcrumbs: [{ label: 'Department Head Portal', to: '/department-head/dashboard' }, { label: 'Dashboard' }],
@@ -82,7 +82,7 @@ const ROUTE_CONFIGS = {
     breadcrumbs: [{ label: 'Department Head Portal', to: '/department-head/dashboard' }, { label: 'Revenue' }],
   },
 
-  // ── State Administrator Routes ──
+  // State Administrator Routes
   '/state-admin/dashboard': {
     title: 'State Government Dashboard',
     breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Dashboard' }],
@@ -96,15 +96,25 @@ const ROUTE_CONFIGS = {
     breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Departments' }],
   },
 
-  // ── Grievance Redressal Routes ──
+  // Grievance Redressal Routes
   '/grievance/dashboard': {
     title: 'Grievance Redressal Portal',
     breadcrumbs: [{ label: 'Grievance Portal', to: '/grievance/dashboard' }, { label: 'Dashboard' }],
   },
 };
 
-// Dynamic fallback resolution based on URL prefix
-function resolveRouteConfig(pathname) {
+// Dynamic fallback resolution based on URL prefix and hash
+function resolveRouteConfig(pathname, hash = '') {
+  if (pathname === '/grievance/dashboard' && (hash === '#queue' || hash === '#grievance-queue')) {
+    return {
+      title: 'Grievance Redressal Queue',
+      breadcrumbs: [
+        { label: 'Grievance Portal', to: '/grievance/dashboard' },
+        { label: 'Grievance Queue' },
+      ],
+    };
+  }
+
   if (ROUTE_CONFIGS[pathname]) {
     return ROUTE_CONFIGS[pathname];
   }
@@ -171,7 +181,7 @@ export default function DashboardLayout() {
   const location = useLocation();
 
   // Find matching route config or dynamic fallback
-  const currentConfig = resolveRouteConfig(location.pathname);
+  const currentConfig = resolveRouteConfig(location.pathname, location.hash);
 
   return (
     <div className="app-layout">

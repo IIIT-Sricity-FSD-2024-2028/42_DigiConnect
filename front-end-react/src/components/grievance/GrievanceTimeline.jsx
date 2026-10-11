@@ -52,12 +52,21 @@ function getDotClass(eventOrAction) {
   }
 
   // 2. Action keyword conventions
-  // Rejected / Escalated / Breach / Uphold Rejection
-  if (act.includes('reject') || act.includes('breach') || act.includes('uphold') || act.includes('escalat')) {
-    return 'danger';
+  // Overruled / Issued / Completed / Approved should always be success (checked before rejection!)
+  if (
+    act.includes('overrule') ||
+    act.includes('cert') ||
+    act.includes('resolv') ||
+    act.includes('complet') ||
+    act.includes('approv') ||
+    act.includes('filed') ||
+    act.includes('submit') ||
+    act.includes('assign')
+  ) {
+    return 'success';
   }
 
-  // Current active / in-progress events retain an orange marker (e.g. Investigation Initiated)
+  // Current active / in-progress / re-verification events retain an orange marker
   if (
     act.includes('investigat') ||
     act.includes('re-verif') ||
@@ -68,23 +77,14 @@ function getDotClass(eventOrAction) {
     return 'pending';
   }
 
+  // Rejected / Escalated / Breach / Uphold Rejection
+  if (act.includes('reject') || act.includes('breach') || act.includes('uphold') || act.includes('escalat')) {
+    return 'danger';
+  }
+
   // Pending events use neutral muted color
   if (act.includes('pending') || act.includes('awaiting') || act.includes('queued') || act.includes('scheduled')) {
     return 'neutral';
-  }
-
-  // Completed historical events receive green markers (e.g. Grievance Filed, Assigned to Cell, Resolved)
-  if (
-    act.includes('filed') ||
-    act.includes('assign') ||
-    act.includes('submit') ||
-    act.includes('resolv') ||
-    act.includes('overrule') ||
-    act.includes('cert') ||
-    act.includes('approv') ||
-    act.includes('complet')
-  ) {
-    return 'success';
   }
 
   return 'neutral';

@@ -20,6 +20,7 @@ export default function TimelineTracker({
   const isApproved = ['approved', 'completed', 'certificate-generated'].includes(normStatus);
   const isRejected = normStatus === 'rejected';
   const isEscalated = normStatus === 'escalated';
+  const isReverification = ['pending-reverification', 'reopened'].includes(normStatus);
 
   const formatEventDate = (dateStr) => {
     if (!dateStr) return '';
@@ -37,7 +38,7 @@ export default function TimelineTracker({
 
   return (
     <div>
-      {/* ── Horizontal Stage Bar ── */}
+      {/* Horizontal Stage Bar */}
       {showStageBar && (
         <div className="stage-bar">
           {stages.map((s, idx) => {
@@ -46,6 +47,10 @@ export default function TimelineTracker({
 
             if (isApproved) {
               stStatus = 'done';
+            } else if (isReverification) {
+              if (stepNum < 3) stStatus = 'done';
+              else if (stepNum === 3) stStatus = 'active';
+              else stStatus = '';
             } else if (isRejected) {
               if (stepNum < currentStep) stStatus = 'done';
               else if (stepNum === currentStep) stStatus = 'breach';
@@ -84,7 +89,7 @@ export default function TimelineTracker({
         </div>
       )}
 
-      {/* ── Vertical Event Timeline ── */}
+      {/* Vertical Event Timeline */}
       {showEvents && (
         <div className="timeline">
           {events.length === 0 ? (
@@ -98,14 +103,22 @@ export default function TimelineTracker({
               const isLast = i === events.length - 1;
 
               let dot = 'neutral';
-              if (actLower.includes('escalat') || actLower.includes('reject') || actLower.includes('breach')) {
-                dot = 'danger';
+              // Check overrule / certificate / completed first so it is never marked danger
+              if (
+                actLower.includes('overrule') ||
+                actLower.includes('cert') ||
+                actLower.includes('approv') ||
+                actLower.includes('complet')
+              ) {
+                dot = 'success';
+              } else if (actLower.includes('reopen') || actLower.includes('re-verif')) {
+                dot = 'warning';
               } else if (actLower.includes('query')) {
                 dot = 'warning';
-              } else if (actLower.includes('approv') || actLower.includes('complet') || actLower.includes('submit')) {
-                dot = 'success';
+              } else if (actLower.includes('escalat') || actLower.includes('reject') || actLower.includes('breach')) {
+                dot = 'danger';
               } else if (isLast) {
-                dot = isApproved ? 'success' : isRejected ? 'danger' : 'active';
+                dot = isApproved ? 'success' : isRejected ? 'danger' : isReverification ? 'warning' : 'active';
               }
 
               const tDate = t.date || t.completedDate || t.createdAt;
@@ -119,37 +132,44 @@ export default function TimelineTracker({
                       <svg width="12" height="12" fill="none" stroke="#fff" strokeWidth="3" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
+                    ) : dot === 'danger' ? (
+                      <svg width="12" height="12" fill="none" stroke="#fff" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     ) : (
-                      <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg width="12" height="12" fill="none" stroke="#fff" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     )}
                   </div>
                   <div className="timeline-content">
-                    <div className="timeline-label">
-                      {actName}
+                    <div className="timeline-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--navy-900)' }}>{actName}</span>
                       {tActor && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)', marginLeft: '6px', fontWeight: 500 }}>
-                          — {tActor}
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '1px 8px',
+                            borderRadius: 'var(--radius-full)',
+                            background: 'var(--slate-100)',
+                            color: 'var(--slate-700)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {tActor}
                         </span>
                       )}
                     </div>
                     {tNote && (
-                      <div
-                        style={{
-                          fontSize: '0.8125rem',
-                          color: 'var(--slate-600)',
-                          background: 'var(--slate-50)',
-                          border: '1px solid var(--color-border)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '6px 10px',
-                          marginTop: '4px',
-                        }}
-                      >
+                      <div className="timeline-note" style={{ fontSize: '0.85rem', color: 'var(--slate-700)', margin: '4px 0', lineHeight: 1.5 }}>
                         {tNote}
                       </div>
                     )}
-                    <div className="timeline-time">{formatEventDate(tDate)}</div>
+                    {tDate && (
+                      <div className="timeline-date" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {formatEventDate(tDate)}
+                      </div>
+                    )}
                   </div>
                 </div>
               );

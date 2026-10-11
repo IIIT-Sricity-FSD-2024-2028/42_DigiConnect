@@ -86,7 +86,7 @@ export class NotificationsService {
       type: config.type,
       read: false,
       date: new Date().toISOString(),
-      link: `citizen/track-application.html?id=${appId}`
+      link: `/citizen/track?id=${appId}`
     };
 
     db.notifications.unshift(notification);
@@ -127,7 +127,7 @@ export class NotificationsService {
       type: config.type,
       read: false,
       date: new Date().toISOString(),
-      link: `citizen/my-grievances.html?id=${grievanceId}`
+      link: `/grievance/detail/${grievanceId}`
     };
 
     db.notifications.unshift(notification);
