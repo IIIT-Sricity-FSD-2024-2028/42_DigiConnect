@@ -95,6 +95,12 @@ const ROUTE_CONFIGS = {
     title: 'Departments & Heads',
     breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Departments' }],
   },
+
+  // ── Grievance Redressal Routes ──
+  '/grievance/dashboard': {
+    title: 'Grievance Redressal Portal',
+    breadcrumbs: [{ label: 'Grievance Portal', to: '/grievance/dashboard' }, { label: 'Dashboard' }],
+  },
 };
 
 // Dynamic fallback resolution based on URL prefix
@@ -133,6 +139,25 @@ function resolveRouteConfig(pathname) {
     return {
       title: 'State Admin Portal',
       breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Overview' }],
+    };
+  }
+
+  // Handle dynamic /grievance/detail/:id
+  if (pathname.startsWith('/grievance/detail/')) {
+    return {
+      title: 'Grievance Detail & Resolution',
+      breadcrumbs: [
+        { label: 'Grievance Portal', to: '/grievance/dashboard' },
+        { label: 'Grievance Queue', to: '/grievance/dashboard#queue' },
+        { label: 'Detail & Resolution' },
+      ],
+    };
+  }
+
+  if (pathname.startsWith('/grievance')) {
+    return {
+      title: 'Grievance Redressal Portal',
+      breadcrumbs: [{ label: 'Grievance Portal', to: '/grievance/dashboard' }, { label: 'Overview' }],
     };
   }
 

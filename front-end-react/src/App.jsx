@@ -10,6 +10,8 @@ import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
+import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
+import GrievanceDetailPage from './pages/grievance/GrievanceDetailPage';
 
 function App() {
   return (
@@ -51,6 +53,19 @@ function App() {
       </Route>
 
       {/* Public Routes */}
+      {/* -- Grievance Cell Routes (Protected) -- */}
+      <Route
+        path="/grievance"
+        element={
+          <ProtectedRoute allowedRoles={['grievance', 'grievance_officer']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/grievance/dashboard" replace />} />
+        <Route path="dashboard" element={<GrievanceDashboard />} />
+        <Route path="detail/:id" element={<GrievanceDetailPage />} />
+      </Route>
       <Route path="/" element={<LandingPage />} />
 
       {/* Placeholder stubs — replace with real pages as team builds them */}
