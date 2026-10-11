@@ -5,6 +5,7 @@
 // Lists (map), Context (useAuth), API calls (apiGetDeptOfficers, apiOnboardOfficer, apiUpdateOfficerStatus, apiGetDesignations)
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   apiGetDeptOfficers,
@@ -15,6 +16,7 @@ import {
 import Modal from '../../components/common/Modal';
 
 export default function OfficersManagementPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const departmentId = user?.departmentId || 'dept_rev_ap';
   const departmentName = user?.dept || 'Revenue Department';
@@ -86,9 +88,10 @@ export default function OfficersManagementPage() {
         ...newOfficer,
         departmentId,
       };
-      const res = await apiOnboardOfficer(payload);
+      await apiOnboardOfficer(payload);
       alert(`Officer "${newOfficer.name}" onboarded successfully!`);
       setOnboardModalOpen(false);
+      // Refetch upon successful mutation
       fetchOfficers();
     } catch (err) {
       alert(`Error onboarding officer: ${err.message}`);
@@ -97,21 +100,26 @@ export default function OfficersManagementPage() {
     }
   };
 
+  // Optimistic UI Update: Flip status immediately in state, revert if API fails
   const handleToggleStatus = async (officer) => {
     const isAct = officer.status === 'Active' || officer.status === 'ACTIVE';
     const nextStatus = isAct ? 'Suspended' : 'Active';
+    const previousStatus = officer.status;
 
-    if (!window.confirm(`Are you sure you want to mark ${officer.name} as ${nextStatus}?`)) {
-      return;
-    }
+    // 1. Optimistic update (Immediate UI feedback)
+    setOfficers((prev) =>
+      prev.map((o) => (o.id === officer.id ? { ...o, status: nextStatus } : o))
+    );
 
+    // 2. Perform backend mutation
     try {
       await apiUpdateOfficerStatus(officer.id, nextStatus);
-      setOfficers((prev) =>
-        prev.map((o) => (o.id === officer.id ? { ...o, status: nextStatus } : o))
-      );
     } catch (err) {
-      alert(`Failed to update officer status: ${err.message}`);
+      // 3. Rollback on failure
+      setOfficers((prev) =>
+        prev.map((o) => (o.id === officer.id ? { ...o, status: previousStatus } : o))
+      );
+      alert(`Failed to update status for ${officer.name}: ${err.message}`);
     }
   };
 
@@ -128,6 +136,18 @@ export default function OfficersManagementPage() {
 
   return (
     <div className="dept-officers-page">
+      {/* ── Breadcrumbs ── */}
+      <div style={{ fontSize: '0.8125rem', color: 'var(--slate-500)', marginBottom: 'var(--space-sm)' }}>
+        <button
+          type="button"
+          onClick={() => navigate('/department-head/dashboard')}
+          style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-600)', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Department Head
+        </button>
+        {' '}/ <span style={{ color: 'var(--slate-400)' }}>Field Officer Onboarding</span>
+      </div>
+
       {/* ── Page Header ── */}
       <div
         className="page-header"
@@ -142,12 +162,13 @@ export default function OfficersManagementPage() {
       >
         <div>
           <h1 className="page-title">Officer Onboarding &amp; Jurisdiction Scoping</h1>
-          <p className="page-subtitle">
+          <p className="page-subtitle" id="deptSubtitle">
             {departmentName} · Bind Officers to Exact Jurisdiction Nodes (Village, Mandal, District)
           </p>
         </div>
         <button
           type="button"
+          id="openOnboardModalBtn"
           className="btn btn-primary btn-sm"
           onClick={handleOpenOnboardModal}
         >
@@ -172,7 +193,7 @@ export default function OfficersManagementPage() {
           Hierarchical Officer Scoping Rule:
         </div>
         <div style={{ fontSize: '0.8125rem', color: '#1e3a8a', marginTop: '2px' }}>
-          Every officer is assigned to an exact <code>assignedNodeId</code> in the tree. An officer assigned to a Mandal automatically covers all child villages; a District officer covers all descendant nodes.
+          Every officer is assigned to an exact <code>assignedNodeId</code> in the tree. An officer assigned to a Mandal automatically covers all child villages; a District officer covers all descendant nodes. Applications are routed using <code>isNodeWithinScope(leafNodeId, assignedNodeId)</code>.
         </div>
       </div>
 
@@ -189,7 +210,7 @@ export default function OfficersManagementPage() {
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <span className="card-title">Onboarded Department Field Officers</span>
-          <span className="badge badge-info">
+          <span className="badge badge-info" id="officersCountBadge">
             {loading ? 'Loading...' : `${officers.length} Officers`}
           </span>
         </div>
@@ -207,7 +228,7 @@ export default function OfficersManagementPage() {
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="officersTableBody">
                 {loading ? (
                   <tr>
                     <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
@@ -282,40 +303,45 @@ export default function OfficersManagementPage() {
       >
         <form onSubmit={handleOnboardSubmit}>
           <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>Officer Full Name *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offName">Officer Full Name *</label>
             <input
               type="text"
+              id="offName"
               className="form-input"
-              placeholder="e.g. Suresh Reddy"
+              placeholder="e.g. GOKUL RAO"
               value={newOfficer.name}
               onChange={(e) => setNewOfficer({ ...newOfficer, name: e.target.value })}
               required
             />
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>Official Email Address *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offEmail">Official Email Address *</label>
             <input
               type="email"
+              id="offEmail"
               className="form-input"
-              placeholder="e.g. suresh.vro@ap.gov.in"
+              placeholder="e.g. gokul.vro@digiconnect.gov.in"
               value={newOfficer.email}
               onChange={(e) => setNewOfficer({ ...newOfficer, email: e.target.value })}
               required
             />
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>Contact Phone Number</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offPhone">Contact Phone Number</label>
             <input
               type="tel"
+              id="offPhone"
               className="form-input"
-              placeholder="e.g. 9876543201"
+              placeholder="e.g. 9876543210"
+              pattern="[0-9]{10}"
               value={newOfficer.phone}
               onChange={(e) => setNewOfficer({ ...newOfficer, phone: e.target.value })}
             />
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>Assigned Role Designation *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offDesig">Assigned Role Designation *</label>
             <select
+              id="offDesig"
               className="form-input"
               value={newOfficer.designationId}
               onChange={(e) => setNewOfficer({ ...newOfficer, designationId: e.target.value })}
@@ -337,10 +363,11 @@ export default function OfficersManagementPage() {
             </select>
           </div>
           <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label className="form-label" style={{ fontWeight: 700 }}>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offNode">
               Assigned Jurisdiction Node (Coverage Anchor) *
             </label>
             <select
+              id="offNode"
               className="form-input"
               value={newOfficer.assignedNodeId}
               onChange={(e) => setNewOfficer({ ...newOfficer, assignedNodeId: e.target.value })}
@@ -364,7 +391,12 @@ export default function OfficersManagementPage() {
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={submitting}>
+            <button
+              type="submit"
+              id="saveOfficerBtn"
+              className="btn btn-primary"
+              disabled={submitting}
+            >
               {submitting ? 'Onboarding...' : 'Onboard Officer'}
             </button>
           </div>
