@@ -339,7 +339,13 @@ export default function DeptDashboard() {
                           </span>
                         </td>
                         <td>
-                          <StatusBadge status={s.status || 'Active'} />
+                          {s.status === 'Suspended' || s.status === 'SUSPENDED' ? (
+                            <span className="badge badge-danger">● Suspended</span>
+                          ) : s.status === 'Disabled' || s.status === 'DISABLED' || s.status === 'Inactive' ? (
+                            <span className="badge badge-neutral">● Inactive</span>
+                          ) : (
+                            <span className="badge badge-success">● Active</span>
+                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>

@@ -17,17 +17,20 @@ export default function ServiceCard({ service, onSelect }) {
     Permission: 'permission',
     Correction: 'correction',
   };
-  const typeClass = iconMap[service.cat] || 'cert';
+  const category = service.cat || service.category || 'Certificate';
+  const typeClass = iconMap[category] || 'cert';
 
-  const feeAmount = Number(service.fee ?? service.totalFee ?? 0);
+  const feeAmount = Number(service.totalFee ?? service.fee ?? service.serviceFee ?? 0);
   const feeText = service.feeLabel || (feeAmount === 0 ? 'Free' : `₹${feeAmount}`);
+  const deptText = service.dept || service.departmentName || 'Revenue Department';
+  const descText = service.desc || service.description || '';
 
   return (
     <div
       className="service-card"
       data-testid={`service-card-${service.id}`}
       data-service-id={service.id}
-      data-cat={service.cat}
+      data-cat={category}
       onClick={() => onSelect(service)}
       style={{
         cursor: 'pointer',
@@ -50,14 +53,21 @@ export default function ServiceCard({ service, onSelect }) {
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--navy-900)' }}>{service.name}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{service.dept}</div>
+            <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--navy-900)' }}>
+              {service.name}
+              {service.code && (
+                <span className="badge badge-purple" style={{ marginLeft: '8px', fontSize: '0.7rem' }}>
+                  {service.code}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{deptText}</div>
           </div>
         </div>
 
         {/* Description */}
         <div style={{ fontSize: '0.8rem', color: 'var(--slate-600)', marginBottom: 'var(--space-md)', lineHeight: 1.5 }}>
-          {service.desc}
+          {descText}
         </div>
       </div>
 

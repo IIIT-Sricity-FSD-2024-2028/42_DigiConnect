@@ -12,6 +12,12 @@ import React from 'react';
 export function checkStatusCategory(statusStr) {
   const s = (statusStr || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
 
+  const isActive = ['active', 'enabled', 'live', 'operational'].includes(s);
+
+  const isSuspended = ['suspended'].includes(s);
+
+  const isInactive = ['inactive', 'disabled'].includes(s);
+
   const isApproved = [
     'approved',
     'completed',
@@ -46,12 +52,21 @@ export function checkStatusCategory(statusStr) {
       'pending-officer-review',
       'pending-external-verification',
       'verification',
-    ].includes(s) || (!isApproved && !isQuery && !isRejected && !isEscalated && !isDraft);
+    ].includes(s) || (!isApproved && !isQuery && !isRejected && !isEscalated && !isDraft && !isActive && !isSuspended && !isInactive);
 
   let badgeClass = 'badge-info';
   let badgeLabel = 'Under Review';
 
-  if (isApproved) {
+  if (isActive) {
+    badgeClass = 'badge-success';
+    badgeLabel = '● Active';
+  } else if (isSuspended) {
+    badgeClass = 'badge-danger';
+    badgeLabel = '● Suspended';
+  } else if (isInactive) {
+    badgeClass = 'badge-neutral';
+    badgeLabel = '● Inactive';
+  } else if (isApproved) {
     badgeClass = 'badge-success';
     badgeLabel = 'Approved';
   } else if (isRejected) {
@@ -69,6 +84,9 @@ export function checkStatusCategory(statusStr) {
   }
 
   return {
+    isActive,
+    isSuspended,
+    isInactive,
     isApproved,
     isQuery,
     isUnderReview,

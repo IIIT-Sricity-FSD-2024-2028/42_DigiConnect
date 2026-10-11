@@ -15,9 +15,14 @@ export default function DynamicField({ field, value = '', onChange }) {
   const fieldKey = field.key || field.id;
   const fieldType = (field.type || 'text').toLowerCase();
   const isRequired = !!field.required;
+  const options = field.options || field.constraints?.options || [];
 
   const handleChange = (e) => {
     onChange(fieldKey, e.target.value);
+  };
+
+  const handleCheckboxChange = (e) => {
+    onChange(fieldKey, e.target.checked);
   };
 
   const isColSpanFull = field.colSpan === 'full' || fieldType === 'textarea';
@@ -28,7 +33,7 @@ export default function DynamicField({ field, value = '', onChange }) {
         {field.label} {isRequired && <span className="required">*</span>}
       </label>
 
-      {fieldType === 'select' ? (
+      {fieldType === 'select' || fieldType === 'dropdown' ? (
         <select
           className="form-input"
           value={value}
@@ -36,12 +41,25 @@ export default function DynamicField({ field, value = '', onChange }) {
           required={isRequired}
         >
           <option value="">{`-- Select ${field.label} --`}</option>
-          {(field.options || []).map((opt) => (
+          {options.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
             </option>
           ))}
         </select>
+      ) : fieldType === 'checkbox' ? (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '6px' }}>
+          <input
+            type="checkbox"
+            checked={!!value}
+            onChange={handleCheckboxChange}
+            required={isRequired}
+            style={{ accentColor: 'var(--navy-600)', width: '16px', height: '16px' }}
+          />
+          <span style={{ fontSize: '0.875rem', color: 'var(--slate-700)' }}>
+            {field.placeholder || `Confirm ${field.label}`}
+          </span>
+        </label>
       ) : fieldType === 'textarea' ? (
         <textarea
           className="form-input"

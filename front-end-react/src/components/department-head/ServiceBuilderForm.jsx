@@ -334,6 +334,7 @@ export default function ServiceBuilderForm({
       termsAndConditions: formData.termsAndConditions,
       fields,
       documentRequirements: docs,
+      docs,
       workflowSteps,
     };
 
