@@ -10,7 +10,7 @@
 //  [Events]    — onClick for sign-out and profile handlers
 
 import React from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 // ── SVG Icon Registry (mirrors svgIcons from front-end/js/role-manager.js) ──
@@ -200,8 +200,8 @@ const ROLE_NAV_CONFIGS = {
       {
         title: 'Grievances',
         items: [
-          { label: 'Grievance Detail & Resolution', to: '/grievance/detail', icon: ICONS.fileText },
-          { label: 'Grievance History', to: '/grievance/history', icon: ICONS.fileText },
+          { label: 'Grievance Queue', to: '/grievance/dashboard#queue', icon: ICONS.fileText },
+          
         ],
       },
     ],
@@ -242,6 +242,18 @@ export default function Sidebar() {
   // [Context] Extract logged in user and logout callback
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isItemActive = (item, defaultIsActive) => {
+    if (item.to.includes('#')) {
+      const [itemPath, itemHash] = item.to.split('#');
+      return location.pathname === itemPath && location.hash === '#' + itemHash;
+    }
+    if (item.to === '/grievance/dashboard') {
+      return location.pathname === '/grievance/dashboard' && (!location.hash || location.hash !== '#queue');
+    }
+    return defaultIsActive;
+  };
 
   // Normalize role key (default to citizen)
   const rawRole = (user?.role || 'citizen').toLowerCase();
@@ -301,8 +313,16 @@ export default function Sidebar() {
               <NavLink
                 key={item.to + item.label}
                 to={item.to}
-                end={item.to.endsWith('/dashboard')}
-                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`.trim()}
+                end={item.to.endsWith('/dashboard') && !item.to.includes('#')}
+                onClick={() => {
+                  if (item.to.includes('#queue')) {
+                    const el = document.getElementById('queue') || document.getElementById('grievance-queue');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  } else if (item.to === '/grievance/dashboard') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className={({ isActive }) => `nav-item ${isItemActive(item, isActive) ? 'active' : ''}`.trim()}
                 data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 {item.icon}
