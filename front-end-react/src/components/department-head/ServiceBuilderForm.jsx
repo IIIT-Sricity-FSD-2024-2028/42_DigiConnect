@@ -532,13 +532,14 @@ export default function ServiceBuilderForm({
       {/* ── CARD 4: Payment & Statutory Terms Configuration ── */}
       <div className="card" style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-xl)' }}>
         <div style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--navy-900)', marginBottom: 'var(--space-md)' }}>
-          4. Payment & Statutory Terms Configuration
+          4. Payment &amp; Terms Configuration
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-md)' }}>
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>Service Fee (₹) *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvFee">Service Fee (₹) *</label>
             <input
               type="number"
+              id="srvFee"
               name="serviceFee"
               className="form-input"
               value={formData.serviceFee}
@@ -547,9 +548,10 @@ export default function ServiceBuilderForm({
             />
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>Platform Fee (₹) *</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="platformFee">Platform Fee (₹) *</label>
             <input
               type="number"
+              id="platformFee"
               name="platformFee"
               className="form-input"
               value={formData.platformFee}
@@ -558,9 +560,10 @@ export default function ServiceBuilderForm({
             />
           </div>
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>Total Citizen Price</label>
+            <label className="form-label" style={{ fontWeight: 700 }} htmlFor="totalFeeDisplay">Total Amount Paid by Citizen</label>
             <input
               type="text"
+              id="totalFeeDisplay"
               className="form-input"
               value={`₹${totalFee}`}
               readOnly
@@ -569,8 +572,9 @@ export default function ServiceBuilderForm({
           </div>
         </div>
         <div className="form-group" style={{ marginTop: 'var(--space-md)' }}>
-          <label className="form-label" style={{ fontWeight: 700 }}>Statutory Terms & Conditions Checkbox Text</label>
+          <label className="form-label" style={{ fontWeight: 700 }} htmlFor="termsText">Statutory Terms &amp; Conditions Checkbox Text</label>
           <textarea
+            id="termsText"
             name="termsAndConditions"
             className="form-input"
             rows="2"
@@ -811,9 +815,10 @@ export default function ServiceBuilderForm({
         }
       >
         <div className="form-group" style={{ marginBottom: '14px' }}>
-          <label className="form-label" style={{ fontWeight: 700 }}>Document Name *</label>
+          <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newDocName">Document Name *</label>
           <input
             type="text"
+            id="newDocName"
             className="form-input"
             placeholder="e.g. Aadhaar Card, Electricity Bill"
             value={newDocName}
@@ -821,9 +826,10 @@ export default function ServiceBuilderForm({
           />
         </div>
         <div className="form-group" style={{ marginBottom: '14px' }}>
-          <label className="form-label" style={{ fontWeight: 700 }}>Allowed Extensions (Comma-separated)</label>
+          <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newDocExts">Allowed Extensions (Comma-separated)</label>
           <input
             type="text"
+            id="newDocExts"
             className="form-input"
             value={newDocExts}
             onChange={(e) => setNewDocExts(e.target.value)}
@@ -833,6 +839,7 @@ export default function ServiceBuilderForm({
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
             <input
               type="checkbox"
+              id="newDocRequired"
               checked={newDocRequired}
               onChange={(e) => setNewDocRequired(e.target.checked)}
             />
@@ -858,9 +865,10 @@ export default function ServiceBuilderForm({
         }
       >
         <div className="form-group" style={{ marginBottom: '14px' }}>
-          <label className="form-label" style={{ fontWeight: 700 }}>Stage Name / Title *</label>
+          <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newStepName">Stage Name / Title *</label>
           <input
             type="text"
+            id="newStepName"
             className="form-input"
             placeholder="e.g. Mandal Revenue Officer Scrutiny"
             value={newStepName}
@@ -868,8 +876,9 @@ export default function ServiceBuilderForm({
           />
         </div>
         <div className="form-group" style={{ marginBottom: '14px' }}>
-          <label className="form-label" style={{ fontWeight: 700 }}>Required Officer Designation *</label>
+          <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newStepDesignation">Required Officer Designation *</label>
           <select
+            id="newStepDesignation"
             className="form-input"
             value={newStepDesignation}
             onChange={(e) => setNewStepDesignation(e.target.value)}
@@ -905,6 +914,7 @@ export default function ServiceBuilderForm({
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem' }}>
               <input
                 type="checkbox"
+                id="newStepCanApprove"
                 checked={newStepCanApprove}
                 onChange={(e) => setNewStepCanApprove(e.target.checked)}
               />
@@ -913,6 +923,7 @@ export default function ServiceBuilderForm({
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem' }}>
               <input
                 type="checkbox"
+                id="newStepCanReject"
                 checked={newStepCanReject}
                 onChange={(e) => setNewStepCanReject(e.target.checked)}
               />
@@ -921,6 +932,7 @@ export default function ServiceBuilderForm({
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem' }}>
               <input
                 type="checkbox"
+                id="newStepCanQuery"
                 checked={newStepCanQuery}
                 onChange={(e) => setNewStepCanQuery(e.target.checked)}
               />
@@ -932,10 +944,11 @@ export default function ServiceBuilderForm({
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, color: '#166534' }}>
             <input
               type="checkbox"
+              id="newStepIsFinal"
               checked={newStepIsFinal}
               onChange={(e) => setNewStepIsFinal(e.target.checked)}
             />
-            Mark as Final Approval Step (Triggers DSC & Certificate Generation)
+            Mark as Final Approval Step (Triggers DSC &amp; Certificate Generation)
           </label>
         </div>
       </Modal>
