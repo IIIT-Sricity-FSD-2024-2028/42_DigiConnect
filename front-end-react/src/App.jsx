@@ -19,6 +19,10 @@ import ServiceBuilderPage from './pages/department-head/ServiceBuilderPage';
 import OfficersManagementPage from './pages/department-head/OfficersManagementPage';
 import DesignationsPage from './pages/department-head/DesignationsPage';
 import RevenuePage from './pages/department-head/RevenuePage';
+import StateDashboard from './pages/state-admin/StateDashboard';
+import JurisdictionsPage from './pages/state-admin/JurisdictionsPage';
+import DepartmentsManagementPage from './pages/state-admin/DepartmentsManagementPage';
+import DepartmentGrievanceCellsPage from './pages/state-admin/DepartmentGrievanceCellsPage';
 
 function App() {
   return (
@@ -75,6 +79,22 @@ function App() {
         <Route path="officers" element={<OfficersManagementPage />} />
         <Route path="designations" element={<DesignationsPage />} />
         <Route path="revenue" element={<RevenuePage />} />
+      </Route>
+
+      {/* ── State Administrator Routes (Protected) ── */}
+      <Route
+        path="/state-admin"
+        element={
+          <ProtectedRoute allowedRoles={['state_admin', 'super_user']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/state-admin/dashboard" replace />} />
+        <Route path="dashboard" element={<StateDashboard />} />
+        <Route path="jurisdictions" element={<JurisdictionsPage />} />
+        <Route path="departments" element={<DepartmentsManagementPage />} />
+        <Route path="grievance-cells" element={<DepartmentGrievanceCellsPage />} />
       </Route>
 
       {/* Public Routes */}

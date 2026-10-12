@@ -95,6 +95,10 @@ const ROUTE_CONFIGS = {
     title: 'Departments & Heads',
     breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Departments' }],
   },
+  '/state-admin/grievance-cells': {
+    title: 'Department Grievance Cells',
+    breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Grievance Cells' }],
+  },
 
   // Grievance Redressal Routes
   '/grievance/dashboard': {
