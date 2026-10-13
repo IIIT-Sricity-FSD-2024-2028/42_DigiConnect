@@ -5,6 +5,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
+import RegisterPage from './pages/public/RegisterPage';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
@@ -113,7 +114,7 @@ function App() {
 
       {/* Placeholder stubs — replace with real pages as team builds them */}
       <Route path="/login" element={<LoginPage />} />
-      {/* <Route path="/register" element={<RegisterPage />} /> */}
+      <Route path="/register" element={<RegisterPage />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
