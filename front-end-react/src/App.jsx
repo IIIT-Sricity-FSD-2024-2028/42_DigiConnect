@@ -9,6 +9,7 @@ import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import MyGrievancesPage from './pages/citizen/MyGrievancesPage';
+import RaiseGrievancePage from './pages/citizen/RaiseGrievancePage';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
@@ -42,10 +43,7 @@ function App() {
         <Route path="applications" element={<MyApplicationsPage />} />
         <Route path="track" element={<TrackApplicationPage />} />
         <Route path="my-grievances" element={<MyGrievancesPage />} />
-
-        {/* Teammate Extension Placeholders:
-            <Route path="raise-grievance" element={<RaiseGrievancePage />} />
-        */}
+        <Route path="raise-grievance" element={<RaiseGrievancePage />} />
       </Route>
 
       {/* ── Department Officer Routes (Protected) ── */}
