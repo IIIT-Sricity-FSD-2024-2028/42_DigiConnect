@@ -11,6 +11,7 @@ import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import MyGrievancesPage from './pages/citizen/MyGrievancesPage';
 import RaiseGrievancePage from './pages/citizen/RaiseGrievancePage';
+import ProfilePage from './pages/common/ProfilePage';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
@@ -45,6 +46,7 @@ function App() {
         <Route path="track" element={<TrackApplicationPage />} />
         <Route path="my-grievances" element={<MyGrievancesPage />} />
         <Route path="raise-grievance" element={<RaiseGrievancePage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       {/* ── Department Officer Routes (Protected) ── */}
@@ -110,6 +112,18 @@ function App() {
         <Route path="dashboard" element={<GrievanceDashboard />} />
         <Route path="detail/:id" element={<GrievanceDetailPage />} />
       </Route>
+      {/* ── Global Profile Route (Protected for any logged-in user) ── */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ProfilePage />} />
+      </Route>
+
       <Route path="/" element={<LandingPage />} />
 
       {/* Placeholder stubs — replace with real pages as team builds them */}

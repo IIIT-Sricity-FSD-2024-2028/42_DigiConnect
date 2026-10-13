@@ -26,3 +26,9 @@ export const apiUpdateProfile = (id, data) =>
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+
+export const apiChangePassword = (id, currentPassword, newPassword) =>
+  apiFetch(`/users/${id}/password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
