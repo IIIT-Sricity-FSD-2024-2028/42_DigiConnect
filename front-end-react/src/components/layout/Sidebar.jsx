@@ -182,6 +182,13 @@ const ROLE_NAV_CONFIGS = {
           { label: 'State Governments', to: '/central-admin/manage-states', icon: ICONS.users },
         ],
       },
+      {
+        title: 'National Analytics',
+        items: [
+          { label: 'Application Velocity', to: '/central-admin/analytics/applications', icon: ICONS.fileText },
+          { label: 'Revenue Analysis', to: '/central-admin/analytics/revenue', icon: ICONS.workflow },
+        ],
+      },
     ],
   },
 
@@ -255,16 +262,21 @@ export default function Sidebar() {
     return defaultIsActive;
   };
 
-  // Normalize role key (default to citizen)
-  const rawRole = (user?.role || 'citizen').toLowerCase();
+  // Normalize role key (default to citizen with storage fallback)
+  const activeRoleStorage = typeof window !== 'undefined' ? localStorage.getItem('active_role') : null;
+  const rawRole = (user?.role || user?.roleKey || user?.actualRole || user?.backendRole || activeRoleStorage || 'citizen').toLowerCase();
   const roleKey =
-    rawRole === 'super_user' || rawRole === 'central_admin'
+    rawRole === 'super_user' || rawRole === 'central_admin' || rawRole === 'central-admin' || rawRole === 'admin'
       ? 'central_admin'
-      : rawRole === 'supervisor'
+      : rawRole === 'supervisor' || rawRole === 'department_head'
       ? 'department_head'
-      : rawRole === 'grievance_officer'
+      : rawRole === 'grievance_officer' || rawRole === 'grievance'
       ? 'grievance'
-      : rawRole;
+      : rawRole === 'state_admin' || rawRole === 'state-admin'
+      ? 'state_admin'
+      : rawRole === 'officer'
+      ? 'officer'
+      : 'citizen';
 
   const config = ROLE_NAV_CONFIGS[roleKey] || ROLE_NAV_CONFIGS.citizen;
 

@@ -60,9 +60,9 @@ export default function Modal({
       aria-modal="true"
       aria-labelledby="modal-title"
     >
-      <div className="modal" style={{ maxWidth }}>
+      <div className="modal" style={{ maxWidth, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         {/* Modal Header */}
-        <div className="modal-header">
+        <div className="modal-header" style={{ flexShrink: 0 }}>
           <h3 id="modal-title" className="modal-title" style={{ margin: 0, color: 'var(--navy-900)' }}>
             {title}
           </h3>
@@ -91,7 +91,7 @@ export default function Modal({
         </div>
 
         {/* Modal Body */}
-        <div className="modal-body" style={{ color: 'var(--color-text)' }}>
+        <div className="modal-body" style={{ color: 'var(--color-text)', overflowY: 'auto', flex: 1 }}>
           {children}
         </div>
 
