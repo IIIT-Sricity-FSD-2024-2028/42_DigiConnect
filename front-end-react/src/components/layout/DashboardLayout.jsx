@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import { useAuth } from '../../context/AuthContext';
 
 const ROUTE_CONFIGS = {
   // Citizen Routes
@@ -105,10 +106,69 @@ const ROUTE_CONFIGS = {
     title: 'Grievance Redressal Portal',
     breadcrumbs: [{ label: 'Grievance Portal', to: '/grievance/dashboard' }, { label: 'Dashboard' }],
   },
+
+  // Central Administrator Routes
+  '/central-admin/dashboard': {
+    title: 'National Dashboard',
+    breadcrumbs: [{ label: 'Central Government', to: '/central-admin/dashboard' }, { label: 'National Dashboard' }],
+  },
+  '/central-admin/manage-states': {
+    title: 'State Governments',
+    breadcrumbs: [{ label: 'Central Government', to: '/central-admin/dashboard' }, { label: 'State Governments' }],
+  },
+  '/central-admin/analytics/applications': {
+    title: 'National Application Analytics',
+    breadcrumbs: [{ label: 'Central Government', to: '/central-admin/dashboard' }, { label: 'Application Analytics' }],
+  },
+  '/central-admin/analytics/revenue': {
+    title: 'National Revenue Analysis',
+    breadcrumbs: [{ label: 'Central Government', to: '/central-admin/dashboard' }, { label: 'Revenue Analysis' }],
+  },
 };
 
-// Dynamic fallback resolution based on URL prefix and hash
-function resolveRouteConfig(pathname, hash = '') {
+function getResolvedRole(user) {
+  const activeRoleStorage = typeof window !== 'undefined' ? localStorage.getItem('active_role') : null;
+  const raw = (user?.role || user?.roleKey || user?.actualRole || user?.backendRole || activeRoleStorage || 'citizen').toLowerCase();
+  if (raw === 'super_user' || raw === 'central_admin' || raw === 'central-admin' || raw === 'admin') {
+    return 'central_admin';
+  }
+  if (raw === 'supervisor' || raw === 'department_head') {
+    return 'department_head';
+  }
+  if (raw === 'grievance_officer' || raw === 'grievance') {
+    return 'grievance';
+  }
+  if (raw === 'state_admin' || raw === 'state-admin') {
+    return 'state_admin';
+  }
+  if (raw === 'officer') {
+    return 'officer';
+  }
+  return 'citizen';
+}
+
+// Dynamic fallback resolution based on URL prefix, hash, and user role
+function resolveRouteConfig(pathname, hash = '', user = null) {
+  const roleKey = getResolvedRole(user);
+
+  const portalMap = {
+    central_admin: { label: 'Central Government', to: '/central-admin/dashboard' },
+    state_admin: { label: 'State Admin Portal', to: '/state-admin/dashboard' },
+    department_head: { label: 'Department Head Portal', to: '/department-head/dashboard' },
+    officer: { label: 'Officer Portal', to: '/officer/dashboard' },
+    grievance: { label: 'Grievance Portal', to: '/grievance/dashboard' },
+    citizen: { label: 'Citizen Portal', to: '/citizen/dashboard' },
+  };
+
+  // Handle Global Profile page for any authenticated role
+  if (pathname === '/profile' || pathname.startsWith('/profile') || pathname.endsWith('/profile')) {
+    const portal = portalMap[roleKey] || portalMap.citizen;
+    return {
+      title: 'My Profile',
+      breadcrumbs: [{ label: portal.label, to: portal.to }, { label: 'My Profile' }],
+    };
+  }
+
   if (pathname === '/grievance/dashboard' && (hash === '#queue' || hash === '#grievance-queue')) {
     return {
       title: 'Grievance Redressal Queue',
@@ -121,6 +181,25 @@ function resolveRouteConfig(pathname, hash = '') {
 
   if (ROUTE_CONFIGS[pathname]) {
     return ROUTE_CONFIGS[pathname];
+  }
+
+  // Handle dynamic /central-admin/states/:id
+  if (pathname.startsWith('/central-admin/states/')) {
+    return {
+      title: 'State Government Details',
+      breadcrumbs: [
+        { label: 'Central Government', to: '/central-admin/dashboard' },
+        { label: 'State Governments', to: '/central-admin/manage-states' },
+        { label: 'State Details' },
+      ],
+    };
+  }
+
+  if (pathname.startsWith('/central-admin')) {
+    return {
+      title: 'Central Government Portal',
+      breadcrumbs: [{ label: 'Central Government', to: '/central-admin/dashboard' }, { label: 'Overview' }],
+    };
   }
 
   // Handle dynamic /officer/review/:id
@@ -175,17 +254,19 @@ function resolveRouteConfig(pathname, hash = '') {
     };
   }
 
+  const portal = portalMap[roleKey] || portalMap.citizen;
   return {
-    title: 'Citizen Portal',
-    breadcrumbs: [{ label: 'Citizen Portal', to: '/citizen/dashboard' }, { label: 'Overview' }],
+    title: portal.label,
+    breadcrumbs: [{ label: portal.label, to: portal.to }, { label: 'Overview' }],
   };
 }
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const { user } = useAuth();
 
   // Find matching route config or dynamic fallback
-  const currentConfig = resolveRouteConfig(location.pathname, location.hash);
+  const currentConfig = resolveRouteConfig(location.pathname, location.hash, user);
 
   return (
     <div className="app-layout">

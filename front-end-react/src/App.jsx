@@ -26,6 +26,11 @@ import StateDashboard from './pages/state-admin/StateDashboard';
 import JurisdictionsPage from './pages/state-admin/JurisdictionsPage';
 import DepartmentsManagementPage from './pages/state-admin/DepartmentsManagementPage';
 import DepartmentGrievanceCellsPage from './pages/state-admin/DepartmentGrievanceCellsPage';
+import CentralDashboard from './pages/central-admin/CentralDashboard';
+import ManageStatesPage from './pages/central-admin/ManageStatesPage';
+import StateDetailPage from './pages/central-admin/StateDetailPage';
+import ApplicationAnalyticsPage from './pages/central-admin/ApplicationAnalyticsPage';
+import RevenueAnalysisPage from './pages/central-admin/RevenueAnalysisPage';
 
 function App() {
   return (
@@ -96,6 +101,24 @@ function App() {
         <Route path="jurisdictions" element={<JurisdictionsPage />} />
         <Route path="departments" element={<DepartmentsManagementPage />} />
         <Route path="grievance-cells" element={<DepartmentGrievanceCellsPage />} />
+      </Route>
+
+      {/* ── Central Government Portal Routes (Protected) ── */}
+      <Route
+        path="/central-admin"
+        element={
+          <ProtectedRoute allowedRoles={['central_admin', 'super_user']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/central-admin/dashboard" replace />} />
+        <Route path="dashboard" element={<CentralDashboard />} />
+        <Route path="manage-states" element={<ManageStatesPage />} />
+        <Route path="states/:id" element={<StateDetailPage />} />
+        <Route path="analytics/applications" element={<ApplicationAnalyticsPage />} />
+        <Route path="analytics/revenue" element={<RevenueAnalysisPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       {/* Public Routes */}
