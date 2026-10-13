@@ -13,6 +13,12 @@ export const apiRegister = (userData) =>
     body: JSON.stringify(userData),
   });
 
+export const apiRequestOtp = (phone, aadhaar) =>
+  apiFetch('/users/request-otp', {
+    method: 'POST',
+    body: JSON.stringify({ phone, aadhaar }),
+  });
+
 export const apiGetUsers = () => apiFetch('/users');
 export const apiGetUserById = (id) => apiFetch(`/users/${id}`);
 export const apiUpdateProfile = (id, data) =>
