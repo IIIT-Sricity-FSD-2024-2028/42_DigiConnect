@@ -1,7 +1,15 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 const ROUTE_CONFIGS = {
   // Citizen Routes
@@ -99,22 +107,64 @@ const ROUTE_CONFIGS = {
     title: 'Department Grievance Cells',
     breadcrumbs: [{ label: 'State Admin Portal', to: '/state-admin/dashboard' }, { label: 'Grievance Cells' }],
   },
-
-  // Grievance Redressal Routes
-  '/grievance/dashboard': {
-    title: 'Grievance Redressal Portal',
-    breadcrumbs: [{ label: 'Grievance Portal', to: '/grievance/dashboard' }, { label: 'Dashboard' }],
-  },
 };
 
-// Dynamic fallback resolution based on URL prefix and hash
-function resolveRouteConfig(pathname, hash = '') {
-  if (pathname === '/grievance/dashboard' && (hash === '#queue' || hash === '#grievance-queue')) {
+// Dynamic fallback resolution based on URL prefix, hash, and user context
+function resolveRouteConfig(pathname, hash = '', user = null) {
+  // Grievance Portal Routes (matching HTML exact titles and breadcrumbs)
+  if (pathname === '/grievance/dashboard') {
+    const rawName = user?.name || user?.email || 'Officer';
+    const tokens = rawName.trim().split(/\s+/);
+    const displayName = (tokens[0].length <= 2 && tokens.length > 1) ? rawName.trim() : tokens[0];
     return {
-      title: 'Grievance Redressal Queue',
+      title: `${getGreeting()}, ${displayName}!`,
       breadcrumbs: [
         { label: 'Grievance Portal', to: '/grievance/dashboard' },
-        { label: 'Grievance Queue' },
+        { label: 'Dashboard' },
+      ],
+    };
+  }
+
+  if (pathname === '/grievance/history') {
+    return {
+      title: 'Grievance History',
+      breadcrumbs: [
+        { label: 'Grievance Portal', to: '/grievance/dashboard' },
+        { label: 'Grievance History' },
+      ],
+    };
+  }
+
+  if (pathname === '/grievance/detail' || pathname.startsWith('/grievance/detail/')) {
+    return {
+      title: 'Grievance Detail',
+      breadcrumbs: [
+        { label: 'Grievance Portal', to: '/grievance/dashboard' },
+        { label: 'Grievance Detail' },
+      ],
+    };
+  }
+
+  if (pathname === '/profile') {
+    const rawRole = (user?.role || '').toLowerCase();
+    const isGrievance = rawRole.includes('grievance');
+    const dashboardTo = isGrievance
+      ? '/grievance/dashboard'
+      : rawRole.includes('officer')
+      ? '/officer/dashboard'
+      : rawRole.includes('dept') || rawRole.includes('supervisor')
+      ? '/department-head/dashboard'
+      : rawRole.includes('state')
+      ? '/state-admin/dashboard'
+      : rawRole.includes('central') || rawRole.includes('admin')
+      ? '/central-admin/dashboard'
+      : '/citizen/dashboard';
+
+    return {
+      title: 'My Profile',
+      breadcrumbs: [
+        { label: 'Dashboard', to: dashboardTo },
+        { label: 'Profile' },
       ],
     };
   }
@@ -156,18 +206,6 @@ function resolveRouteConfig(pathname, hash = '') {
     };
   }
 
-  // Handle dynamic /grievance/detail/:id
-  if (pathname.startsWith('/grievance/detail/')) {
-    return {
-      title: 'Grievance Detail & Resolution',
-      breadcrumbs: [
-        { label: 'Grievance Portal', to: '/grievance/dashboard' },
-        { label: 'Grievance Queue', to: '/grievance/dashboard#queue' },
-        { label: 'Detail & Resolution' },
-      ],
-    };
-  }
-
   if (pathname.startsWith('/grievance')) {
     return {
       title: 'Grievance Redressal Portal',
@@ -183,9 +221,10 @@ function resolveRouteConfig(pathname, hash = '') {
 
 export default function DashboardLayout() {
   const location = useLocation();
+  const { user } = useAuth();
 
   // Find matching route config or dynamic fallback
-  const currentConfig = resolveRouteConfig(location.pathname, location.hash);
+  const currentConfig = resolveRouteConfig(location.pathname, location.hash, user);
 
   return (
     <div className="app-layout">

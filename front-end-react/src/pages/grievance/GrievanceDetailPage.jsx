@@ -6,8 +6,9 @@
 // Inspects a grievance ticket, compares appeal with original application, and executes 3-way resolution.
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
+  apiGetGrievances,
   apiGetGrievanceById,
   apiGetLinkedApplication,
   apiResolveGrievance,
@@ -138,13 +139,26 @@ export default function GrievanceDetailPage() {
 
   // [Callback] Fetch grievance and optional linked application
   const loadGrievanceData = async () => {
-    if (!id) return;
     try {
       setLoading(true);
       setError(null);
 
+      let targetId = id;
+      if (!targetId) {
+        const queueRes = await apiGetGrievances(1, 50);
+        const list = Array.isArray(queueRes?.data) ? queueRes.data : Array.isArray(queueRes) ? queueRes : [];
+        const active = list.find((g) => !['resolved', 'rejected', 'escalated-resolved', 'escalated'].includes((g.status || '').toLowerCase()));
+        const chosen = active || list[0];
+        if (chosen?.id) {
+          navigate(`/grievance/detail/${chosen.id}`, { replace: true });
+          return;
+        } else {
+          throw new Error('No grievances currently found in the queue.');
+        }
+      }
+
       // 1. Fetch grievance details
-      const res = await apiGetGrievanceById(id);
+      const res = await apiGetGrievanceById(targetId);
       const grvData = res?.data || res;
 
       if (!grvData || !grvData.id) {
@@ -265,7 +279,7 @@ export default function GrievanceDetailPage() {
           <button
             type="button"
             className="btn btn-outline btn-sm"
-            onClick={() => navigate('/grievance/dashboard')}
+            onClick={() => navigate('/grievance/dashboard#queue')}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -279,6 +293,19 @@ export default function GrievanceDetailPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => window.print()}
+            title="Print record"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h12v8H6z" />
+            </svg>
+            <span>Print</span>
+          </button>
           <button
             type="button"
             className="btn btn-outline btn-sm"

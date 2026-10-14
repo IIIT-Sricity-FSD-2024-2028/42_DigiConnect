@@ -90,13 +90,48 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
     user?.role ||
     'Citizen';
 
-  const userName = user?.name || user?.email || roleDisplay;
-  const initials = userName
+  // Resolve complete officer name from existing user/profile data (combining name fields if necessary)
+  const getCompleteName = (u) => {
+    if (!u) return '';
+    if (u.fullName && typeof u.fullName === 'string' && u.fullName.trim()) {
+      return u.fullName.trim();
+    }
+    if (u.name && typeof u.name === 'string' && u.name.trim()) {
+      return u.name.trim();
+    }
+    if (u.firstName || u.lastName) {
+      const combined = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+      if (combined) return combined;
+    }
+    return u.email || '';
+  };
+
+  const completeOfficerName = getCompleteName(user) || roleDisplay;
+  const userName = completeOfficerName;
+  const initials = completeOfficerName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
+
+  // Ensure complete officer name is displayed in dashboard topbar title instead of truncated/initial "C."
+  const displayTitle = React.useMemo(() => {
+    if (!title || typeof title !== 'string') return title;
+    if (title.includes(', C.!')) {
+      return title.replace(', C.!', `, ${completeOfficerName}!`);
+    }
+    const greetingMatch = title.match(/^(Good\s+(?:morning|afternoon|evening)),\s*([^!]+)!/i);
+    if (greetingMatch && completeOfficerName) {
+      const currentGreeting = greetingMatch[1];
+      const nameInGreeting = greetingMatch[2].trim();
+      if (nameInGreeting === 'C.' || nameInGreeting.length <= 2 || nameInGreeting === 'Officer') {
+        return `${currentGreeting}, ${completeOfficerName}!`;
+      }
+    }
+    return title;
+  }, [title, completeOfficerName]);
 
   // Fetch unread count initially and periodically
   const fetchUnreadCount = async () => {
@@ -221,8 +256,8 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
           </svg>
         </button>
         <div>
-          <div className="topbar-title">{title}</div>
-          <div className="topbar-breadcrumb">
+          <div className="topbar-title" data-testid="topbar-title">{displayTitle}</div>
+          <div className="topbar-breadcrumb" data-testid="topbar-breadcrumb">
             {breadcrumbs.map((crumb, idx) => (
               <React.Fragment key={crumb.label || idx}>
                 {crumb.to ? (
@@ -232,7 +267,7 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
                 ) : (
                   <span>{crumb.label}</span>
                 )}
-                {idx < breadcrumbs.length - 1 && <span className="separator">/</span>}
+                {idx < breadcrumbs.length - 1 && <span className="separator">›</span>}
               </React.Fragment>
             ))}
           </div>
@@ -246,9 +281,10 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
           <button
             type="button"
             className="notif-btn"
+            id="topbarNotifBtn"
+            data-testid="notif-btn"
             onClick={() => setNotifOpen((prev) => !prev)}
             aria-label={`Notifications (${unreadCount} unread)`}
-            style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
           >
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path
@@ -357,8 +393,10 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
         </div>
 
         {/* User Dropdown */}
-        <div className="dropdown" style={{ position: 'relative' }} ref={userRef}>
+        <div className="dropdown" ref={userRef}>
           <div
+            id="userDropdownTrigger"
+            data-testid="user-dropdown-trigger"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -366,12 +404,19 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
               cursor: 'pointer',
               padding: '6px 10px',
               borderRadius: 'var(--radius-md)',
+              transition: 'background 0.2s',
             }}
-            onClick={() => setDropdownOpen((prev) => !prev)}
+            onClick={() => {
+              setNotifOpen(false);
+              setDropdownOpen((prev) => !prev);
+            }}
           >
-            <div className="avatar">{initials}</div>
+            <div className="avatar" data-testid="topbar-avatar">{initials}</div>
             <div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--navy-900)' }}>
+              <div
+                style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--navy-900)' }}
+                data-testid="topbar-user-name"
+              >
                 {userName}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
@@ -380,22 +425,42 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
             </div>
           </div>
 
-          {dropdownOpen && (
-            <div className="dropdown-menu" style={{ display: 'block', right: 0 }}>
-              <div className="dropdown-header">My Account</div>
-              <div className="dropdown-divider"></div>
-              <div
-                className="dropdown-item danger"
-                onClick={handleLogout}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-              >
-                <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Sign Out
-              </div>
+          <div
+            className={`dropdown-menu ${dropdownOpen ? 'open' : ''}`}
+            data-testid="user-dropdown-menu"
+          >
+            <div className="dropdown-header">My Account</div>
+            <div
+              className="dropdown-item"
+              data-testid="dropdown-profile"
+              onClick={() => {
+                setDropdownOpen(false);
+                navigate('/profile');
+              }}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              My Profile
             </div>
-          )}
+            <div className="dropdown-divider"></div>
+            <div
+              className="dropdown-item danger"
+              id="topbarLogoutBtn"
+              data-testid="dropdown-sign-out"
+              onClick={() => {
+                setDropdownOpen(false);
+                handleLogout();
+              }}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign Out
+            </div>
+          </div>
         </div>
       </div>
     </header>

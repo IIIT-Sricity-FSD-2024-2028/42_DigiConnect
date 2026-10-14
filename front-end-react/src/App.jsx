@@ -13,6 +13,8 @@ import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
 import GrievanceDetailPage from './pages/grievance/GrievanceDetailPage';
+import GrievanceHistoryPage from './pages/grievance/GrievanceHistoryPage';
+import ProfilePage from './pages/profile/ProfilePage';
 import DeptDashboard from './pages/department-head/DeptDashboard';
 import ServicesCatalogPage from './pages/department-head/ServicesCatalogPage';
 import ServiceBuilderPage from './pages/department-head/ServiceBuilderPage';
@@ -109,7 +111,21 @@ function App() {
       >
         <Route index element={<Navigate to="/grievance/dashboard" replace />} />
         <Route path="dashboard" element={<GrievanceDashboard />} />
+        <Route path="detail" element={<GrievanceDetailPage />} />
         <Route path="detail/:id" element={<GrievanceDetailPage />} />
+        <Route path="history" element={<GrievanceHistoryPage />} />
+      </Route>
+
+      {/* -- Unified Profile Route (Protected for all authenticated users) -- */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ProfilePage />} />
       </Route>
       <Route path="/" element={<LandingPage />} />
 

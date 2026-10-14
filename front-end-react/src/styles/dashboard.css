@@ -279,7 +279,8 @@
 }
 
 /* ── Notification Bell ── */
-.notif-btn {
+.notif-btn,
+button.notif-btn {
     position: relative;
     width: 38px;
     height: 38px;
@@ -292,9 +293,12 @@
     color: var(--slate-600);
     cursor: pointer;
     transition: all var(--transition-fast);
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.notif-btn:hover {
+.notif-btn:hover,
+button.notif-btn:hover {
     background: var(--slate-200);
     color: var(--slate-800);
 }
