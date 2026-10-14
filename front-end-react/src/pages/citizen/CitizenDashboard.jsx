@@ -1,16 +1,87 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetMyApplications, apiGetMyGrievances } from '../../api/citizenApi';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
 
+// Sub-component for individual application item in the list
+// Demonstrates: Components, Props, Prop Drilling, Events, and Callbacks
+function RecentApplicationItem({ app, onTrack, formatDate }) {
+  const typeClass =
+    app.serviceType === 'certificate'
+      ? 'cert'
+      : app.serviceType === 'welfare'
+      ? 'welfare'
+      : app.serviceType === 'permission'
+      ? 'permission'
+      : 'correction';
+
+  const statusInfo = checkStatusCategory(app.status);
+  const isApproved = statusInfo.isApproved;
+
+  const handleClick = () => {
+    onTrack(app.id);
+  };
+
+  return (
+    <div
+      className="application-item"
+      style={{ cursor: 'pointer' }}
+      onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleClick();
+        }
+      }}
+    >
+      <div className={`app-type-icon ${typeClass}`}>
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      </div>
+      <div className="app-info">
+        <div className="app-title">{app.serviceName || 'Government Service'}</div>
+        <div className="app-meta">
+          {app.id} · Submitted {formatDate(app.submittedDate || app.createdAt)}
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span className={`badge ${statusInfo.badgeClass}`}>
+          {statusInfo.badgeLabel}
+        </span>
+        {isApproved && (
+          <span
+            className="btn btn-outline btn-sm"
+            title="Approved Application"
+            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CitizenDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [grievances, setGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Callback function to navigate to track application page with the application ID
+  const handleTrackApplication = (applicationId) => {
+    if (applicationId) {
+      navigate(`/citizen/track?id=${encodeURIComponent(applicationId)}`);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -206,55 +277,14 @@ export default function CitizenDashboard() {
                 No applications yet. <Link to="/citizen/apply">Apply now</Link>
               </div>
             ) : (
-              applications.slice(0, 4).map((app) => {
-                const typeClass =
-                  app.serviceType === 'certificate'
-                    ? 'cert'
-                    : app.serviceType === 'welfare'
-                    ? 'welfare'
-                    : app.serviceType === 'permission'
-                    ? 'permission'
-                    : 'correction';
-
-                const statusInfo = checkStatusCategory(app.status);
-                const isApproved = statusInfo.isApproved;
-
-                return (
-                  <div
-                    key={app.id}
-                    className="application-item"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className={`app-type-icon ${typeClass}`}>
-                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="app-info">
-                      <div className="app-title">{app.serviceName || 'Government Service'}</div>
-                      <div className="app-meta">
-                        {app.id} · Submitted {formatDate(app.submittedDate || app.createdAt)}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className={`badge ${statusInfo.badgeClass}`}>
-                        {statusInfo.badgeLabel}
-                      </span>
-                      {isApproved && (
-                        <span
-                          className="btn btn-outline btn-sm"
-                          title="Approved Application"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem' }}
-                        >
-                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
+              applications.slice(0, 4).map((app) => (
+                <RecentApplicationItem
+                  key={app.id}
+                  app={app}
+                  onTrack={handleTrackApplication}
+                  formatDate={formatDate}
+                />
+              ))
             )}
           </div>
         </div>

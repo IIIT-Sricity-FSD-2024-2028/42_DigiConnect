@@ -52,6 +52,7 @@ export default function TrackApplicationPage() {
   useEffect(() => {
     const urlId = searchParams.get('id');
     if (urlId) {
+      setSearchId(urlId);
       loadApplication(urlId);
     } else {
       // Auto-load first citizen application if no query param is passed
