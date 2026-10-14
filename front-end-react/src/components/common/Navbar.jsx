@@ -18,9 +18,16 @@ export default function Navbar() {
 
   return (
     <nav
-      className="landing-nav"
+      className={`landing-nav ${scrolled ? 'scrolled' : ''}`}
       id="mainNav"
-      style={scrolled ? { boxShadow: '0 4px 24px rgba(10,22,40,0.13)' } : {}}
+      style={{
+        backgroundColor: scrolled ? 'rgba(5, 13, 26, 0.96)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(16px)' : 'none',
+        WebkitBackdropFilter: scrolled ? 'blur(16px)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
+        boxShadow: scrolled ? '0 4px 24px rgba(10,22,40,0.3)' : 'none',
+        transition: 'all 0.25s ease',
+      }}
     >
       {/* Brand Logo — navigates to home */}
       <Link to="/" className="nav-brand">

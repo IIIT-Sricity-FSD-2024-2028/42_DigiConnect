@@ -5,10 +5,13 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
+import RegisterPage from './pages/public/RegisterPage';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import MyGrievancesPage from './pages/citizen/MyGrievancesPage';
+import RaiseGrievancePage from './pages/citizen/RaiseGrievancePage';
+import ProfilePage from './pages/common/ProfilePage';
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
@@ -25,6 +28,11 @@ import StateDashboard from './pages/state-admin/StateDashboard';
 import JurisdictionsPage from './pages/state-admin/JurisdictionsPage';
 import DepartmentsManagementPage from './pages/state-admin/DepartmentsManagementPage';
 import DepartmentGrievanceCellsPage from './pages/state-admin/DepartmentGrievanceCellsPage';
+import CentralDashboard from './pages/central-admin/CentralDashboard';
+import ManageStatesPage from './pages/central-admin/ManageStatesPage';
+import StateDetailPage from './pages/central-admin/StateDetailPage';
+import ApplicationAnalyticsPage from './pages/central-admin/ApplicationAnalyticsPage';
+import RevenueAnalysisPage from './pages/central-admin/RevenueAnalysisPage';
 
 function App() {
   return (
@@ -44,17 +52,15 @@ function App() {
         <Route path="applications" element={<MyApplicationsPage />} />
         <Route path="track" element={<TrackApplicationPage />} />
         <Route path="my-grievances" element={<MyGrievancesPage />} />
-
-        {/* Teammate Extension Placeholders:
-            <Route path="raise-grievance" element={<RaiseGrievancePage />} />
-        */}
+        <Route path="raise-grievance" element={<RaiseGrievancePage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       {/* ── Department Officer Routes (Protected) ── */}
       <Route
         path="/officer"
         element={
-          <ProtectedRoute allowedRoles={['officer', 'department_head', 'super_user']}>
+          <ProtectedRoute allowedRoles={['officer']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -87,7 +93,7 @@ function App() {
       <Route
         path="/state-admin"
         element={
-          <ProtectedRoute allowedRoles={['state_admin', 'super_user']}>
+          <ProtectedRoute allowedRoles={['state_admin']}>
             <DashboardLayout />
           </ProtectedRoute>
         }
@@ -97,6 +103,24 @@ function App() {
         <Route path="jurisdictions" element={<JurisdictionsPage />} />
         <Route path="departments" element={<DepartmentsManagementPage />} />
         <Route path="grievance-cells" element={<DepartmentGrievanceCellsPage />} />
+      </Route>
+
+      {/* ── Central Government Portal Routes (Protected) ── */}
+      <Route
+        path="/central-admin"
+        element={
+          <ProtectedRoute allowedRoles={['central_admin', 'super_user']}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/central-admin/dashboard" replace />} />
+        <Route path="dashboard" element={<CentralDashboard />} />
+        <Route path="manage-states" element={<ManageStatesPage />} />
+        <Route path="states/:id" element={<StateDetailPage />} />
+        <Route path="analytics/applications" element={<ApplicationAnalyticsPage />} />
+        <Route path="analytics/revenue" element={<RevenueAnalysisPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       {/* Public Routes */}
@@ -127,11 +151,23 @@ function App() {
       >
         <Route index element={<ProfilePage />} />
       </Route>
+      {/* ── Global Profile Route (Protected for any logged-in user) ── */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<ProfilePage />} />
+      </Route>
+
       <Route path="/" element={<LandingPage />} />
 
       {/* Placeholder stubs — replace with real pages as team builds them */}
       <Route path="/login" element={<LoginPage />} />
-      {/* <Route path="/register" element={<RegisterPage />} /> */}
+      <Route path="/register" element={<RegisterPage />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
