@@ -8,64 +8,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiLogin, apiGetUsers, apiUpdateProfile } from '../../api/authApi';
 
-// ── Role configuration list (used to render the role-selector grid via .map) ──
-const ROLES = [
-  {
-    value: 'citizen',
-    label: 'Citizen',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-      </svg>
-    ),
-  },
-  {
-    value: 'officer',
-    label: 'Officer',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-    ),
-  },
-  {
-    value: 'department_head',
-    label: 'Dept Head',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    ),
-  },
-  {
-    value: 'state_admin',
-    label: 'State Admin',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-    ),
-  },
-  {
-    value: 'central_admin',
-    label: 'Central Admin',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-      </svg>
-    ),
-  },
-  {
-    value: 'grievance',
-    label: 'Grievance',
-    icon: (
-      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-      </svg>
-    ),
-  },
-];
-
 // ── Demo credentials list (rendered via .map for the quick-fill box) ──
 const DEMO_CREDENTIALS = [
   { role: 'citizen', email: 'ravi.ap@gmail.com', label: 'Citizen', color: '#0284c7' },
@@ -75,16 +17,6 @@ const DEMO_CREDENTIALS = [
   { role: 'central_admin', email: 'superuser@gov.in', label: 'Central Admin', color: '#dc2626' },
   { role: 'grievance', email: 'hemalatha.grv@ap.gov.in', label: 'Grievance', color: '#0891b2' },
 ];
-
-// ── Dynamic login-ID label map (changes when a role is selected) ──
-const LOGIN_ID_LABELS = {
-  citizen: 'Phone / Aadhaar / Email',
-  officer: 'Officer Email / Employee ID',
-  department_head: 'Dept Head Email / Username',
-  state_admin: 'State Admin Email / Username',
-  central_admin: 'Central Admin Username / Email',
-  grievance: 'Grievance Officer ID / Email',
-};
 
 // ── Role → dashboard redirect map (used after successful login) ──
 const ROLE_REDIRECT_MAP = {
@@ -98,25 +30,10 @@ const ROLE_REDIRECT_MAP = {
   super_user: '/central-admin/dashboard',
 };
 
-// ── Role mapping: form-value → backend role string ──
-const ROLE_MAP = {
-  citizen: 'citizen',
-  officer: 'officer',
-  department_head: 'department_head',
-  supervisor: 'department_head',
-  state_admin: 'state_admin',
-  central_admin: 'super_user',
-  super_user: 'super_user',
-  admin: 'super_user',
-  super_admin: 'super_user',
-  grievance: 'grievance',
-};
-
 export default function LoginPage() {
   // ── State ──
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState('citizen');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -146,14 +63,8 @@ export default function LoginPage() {
     }
   }, [isLoggedIn, role, navigate]);
 
-  // ── Callback: select a role (click handler passed to each role card) ──
-  const handleSelectRole = (roleValue) => {
-    setSelectedRole(roleValue);
-  };
-
   // ── Callback: fill demo credentials (click handler on demo buttons) ──
-  const handleFillDemo = (demoRole, demoEmail) => {
-    setSelectedRole(demoRole);
+  const handleFillDemo = (demoEmail) => {
     setEmail(demoEmail);
     setPassword('password123');
   };
@@ -173,22 +84,6 @@ export default function LoginPage() {
       // [API call] POST /users/login
       const res = await apiLogin(email, password);
       const user = res.data;
-
-      // Role matching (same logic as original auth.js)
-      const mappedRole = ROLE_MAP[selectedRole] || selectedRole;
-      const userRoleLower = (user.role || '').toLowerCase();
-
-      const isRoleMatch =
-        userRoleLower === mappedRole.toLowerCase() ||
-        (mappedRole === 'super_user' && (userRoleLower === 'central_admin' || userRoleLower === 'super_admin')) ||
-        (mappedRole === 'department_head' && userRoleLower === 'supervisor') ||
-        (mappedRole === 'grievance' && userRoleLower === 'grievance_officer');
-
-      if (!isRoleMatch) {
-        setError(`This account is not registered as ${selectedRole.replace(/_/g, ' ')}. Please select the correct role.`);
-        setLoading(false);
-        return;
-      }
 
       // Build session object (matches original auth.js structure)
       const session = {
@@ -371,37 +266,13 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* ── Role Selector (renders from ROLES list via .map) ── */}
-          <div style={{ marginBottom: 'var(--space-xl)' }}>
-            <div className="form-label" style={{ marginBottom: 'var(--space-sm)' }}>Sign in as</div>
-            <div className="role-selector" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
-              {ROLES.map((r) => (
-                <label
-                  key={r.value}
-                  className={`role-option${selectedRole === r.value ? ' selected' : ''}`}
-                  onClick={() => handleSelectRole(r.value)}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value={r.value}
-                    checked={selectedRole === r.value}
-                    onChange={() => handleSelectRole(r.value)}
-                  />
-                  <div className="role-option-icon">{r.icon}</div>
-                  <span className="role-option-label">{r.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
           {/* ── Login Form (controlled inputs) ── */}
           <form onSubmit={handleSubmit}>
 
             {/* Email / ID field */}
             <div className="form-group">
               <label className="form-label" htmlFor="loginId">
-                <span>{LOGIN_ID_LABELS[selectedRole] || 'Username'}</span>
+                <span>Phone / Aadhaar / Email</span>
               </label>
               <div className="input-wrapper">
                 <svg className="input-icon" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -523,7 +394,7 @@ export default function LoginPage() {
                       textAlign: 'left', justifyContent: 'flex-start', padding: '5px 8px',
                       border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: '0.72rem',
                     }}
-                    onClick={() => handleFillDemo(demo.role, demo.email)}
+                    onClick={() => handleFillDemo(demo.email)}
                   >
                     <span style={{ fontWeight: 700, color: demo.color, marginRight: '4px' }}>
                       {demo.label}:
