@@ -2,74 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
-const ACTOR_PORTALS = [
-  {
-    emoji: '🏛️',
-    label: 'Central Government (Main Admin)',
-    color: '#1e40af',
-    bg: '#eff6ff',
-    border: '#bfdbfe',
-    btnColor: '#2563eb',
-    desc: 'Creates and manages State Governments (strictly 1 State Admin per State). Analyzes national state-wise revenue.',
-    btnLabel: 'Open Central Admin Portal →',
-    to: '/central-admin/dashboard',
-  },
-  {
-    emoji: '🏢',
-    label: 'State Government (State Admin)',
-    color: '#166534',
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
-    btnColor: '#16a34a',
-    desc: 'Manages Dynamic Jurisdiction Tree (Rural & Urban Adjacency List), creates State Departments, appoints Department Heads, and configures Grievance Cells.',
-    btnLabel: 'Open State Admin Portal →',
-    to: '/state-admin/dashboard',
-  },
-  {
-    emoji: '👔',
-    label: 'Department Head',
-    color: '#6b21a8',
-    bg: '#faf5ff',
-    border: '#e9d5ff',
-    btnColor: '#9333ea',
-    desc: 'Defines role designations (not officer levels), builds dynamic services (custom fields, proofs, fees), sets workflow routing, and onboards field officers.',
-    btnLabel: 'Open Department Head Portal →',
-    to: '/department-head/dashboard',
-  },
-  {
-    emoji: '👮',
-    label: 'Department Field Officers',
-    color: '#c2410c',
-    bg: '#fff7ed',
-    border: '#fed7aa',
-    btnColor: '#ea580c',
-    desc: 'Bound to exact jurisdiction nodes. Reviews citizen applications and executes the exact 3 actions: Approve, Reject, or Raise Query.',
-    btnLabel: 'Open Officer Review Queue →',
-    to: '/officer/dashboard',
-  },
-  {
-    emoji: '👥',
-    label: 'Citizen Services Portal',
-    color: '#0369a1',
-    bg: '#f0f9ff',
-    border: '#bae6fd',
-    btnColor: '#0284c7',
-    desc: '5-step dynamic application wizard, dynamic Rural/Urban jurisdiction selector, document uploads, mock payment, tracking, and one-click rejection appeals.',
-    btnLabel: 'Open Citizen Dashboard →',
-    to: '/citizen/dashboard',
-  },
-  {
-    emoji: '⚖️',
-    label: 'Department Grievance Cell',
-    color: '#b91c1c',
-    bg: '#fef2f2',
-    border: '#fecaca',
-    btnColor: '#dc2626',
-    desc: 'Inspects original application context, and resolves appeals using: Uphold Rejection, Direct Re-verification, or Overrule & Issue Certificate.',
-    btnLabel: 'Open Grievance Cell →',
-    to: '/grievance/dashboard',
-  },
-];
+
 
 // Feature cards (from index.html lines 307-382)
 const FEATURES = [
@@ -251,46 +184,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── 6 Actor Portals Section ── */}
-      <section style={{ background: '#f8fafc', padding: 'var(--space-3xl) 0', borderBottom: '1px solid var(--slate-200)' }}>
-        <div className="features-container">
-          <p className="section-eyebrow" style={{ color: 'var(--navy-600)' }}>Master Prompt Architecture</p>
-          <h2 className="section-heading">Federated Government Portals (The 6 Actors)</h2>
-          <p className="section-desc">Access role-specific governance environments with dynamic tree jurisdiction hierarchies and configurable service workflows.</p>
 
-          {/* [Lists] 6 actor cards rendered with map() */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-lg)', marginTop: 'var(--space-2xl)' }}>
-            {ACTOR_PORTALS.map((portal) => (
-              <div
-                key={portal.label}
-                className="card"
-                style={{ border: `1px solid ${portal.border}`, transition: 'transform 0.2s' }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'none'}
-              >
-                <div className="card-header" style={{ background: portal.bg }}>
-                  <span style={{ fontWeight: 800, color: portal.color, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {portal.emoji} {portal.label}
-                  </span>
-                </div>
-                <div className="card-body">
-                  <p style={{ fontSize: '0.875rem', color: 'var(--slate-600)', lineHeight: 1.6, marginBottom: 'var(--space-md)' }}>
-                    {portal.desc}
-                  </p>
-                  {/* [Events] Navigate to portal dashboard on click */}
-                  <Link
-                    to={portal.to}
-                    className="btn btn-sm"
-                    style={{ background: portal.btnColor, color: '#fff', fontWeight: 700 }}
-                  >
-                    {portal.btnLabel}
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── Features Section ── */}
       <section className="features" id="features">
