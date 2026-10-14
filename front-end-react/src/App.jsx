@@ -1,33 +1,42 @@
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
 import DashboardLayout from './components/layout/DashboardLayout';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+
 import CitizenDashboard from './pages/citizen/CitizenDashboard';
-import LandingPage from './pages/public/LandingPage';
-import LoginPage from './pages/public/LoginPage.jsx';
-import RegisterPage from './pages/public/RegisterPage';
 import ApplyServicePage from './pages/citizen/ApplyServicePage';
 import MyApplicationsPage from './pages/citizen/MyApplicationsPage';
 import TrackApplicationPage from './pages/citizen/TrackApplicationPage';
 import MyGrievancesPage from './pages/citizen/MyGrievancesPage';
 import RaiseGrievancePage from './pages/citizen/RaiseGrievancePage';
+
+import LandingPage from './pages/public/LandingPage';
+import LoginPage from './pages/public/LoginPage.jsx';
+import RegisterPage from './pages/public/RegisterPage';
+
 import ProfilePage from './pages/common/ProfilePage';
+
 import OfficerDashboard from './pages/officer/OfficerDashboard';
 import ReviewApplicationPage from './pages/officer/ReviewApplicationPage';
+
 import GrievanceDashboard from './pages/grievance/GrievanceDashboard';
 import GrievanceDetailPage from './pages/grievance/GrievanceDetailPage';
 import GrievanceHistoryPage from './pages/grievance/GrievanceHistoryPage';
-import ProfilePage from './pages/profile/ProfilePage';
+
 import DeptDashboard from './pages/department-head/DeptDashboard';
 import ServicesCatalogPage from './pages/department-head/ServicesCatalogPage';
 import ServiceBuilderPage from './pages/department-head/ServiceBuilderPage';
 import OfficersManagementPage from './pages/department-head/OfficersManagementPage';
 import DesignationsPage from './pages/department-head/DesignationsPage';
 import RevenuePage from './pages/department-head/RevenuePage';
+
 import StateDashboard from './pages/state-admin/StateDashboard';
 import JurisdictionsPage from './pages/state-admin/JurisdictionsPage';
 import DepartmentsManagementPage from './pages/state-admin/DepartmentsManagementPage';
 import DepartmentGrievanceCellsPage from './pages/state-admin/DepartmentGrievanceCellsPage';
+
 import CentralDashboard from './pages/central-admin/CentralDashboard';
 import ManageStatesPage from './pages/central-admin/ManageStatesPage';
 import StateDetailPage from './pages/central-admin/StateDetailPage';
@@ -37,7 +46,7 @@ import RevenueAnalysisPage from './pages/central-admin/RevenueAnalysisPage';
 function App() {
   return (
     <Routes>
-      {/* ── Citizen Portal Routes (Protected) ── */}
+      {/* Citizen Portal Routes */}
       <Route
         path="/citizen"
         element={
@@ -56,7 +65,7 @@ function App() {
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 
-      {/* ── Department Officer Routes (Protected) ── */}
+      {/* Department Field Officer Routes */}
       <Route
         path="/officer"
         element={
@@ -71,7 +80,7 @@ function App() {
         <Route path="review/:id" element={<ReviewApplicationPage />} />
       </Route>
 
-      {/* ── Department Head Routes (Protected) ── */}
+      {/* Department Head Routes */}
       <Route
         path="/department-head"
         element={
@@ -89,7 +98,7 @@ function App() {
         <Route path="revenue" element={<RevenuePage />} />
       </Route>
 
-      {/* ── State Administrator Routes (Protected) ── */}
+      {/* State Administrator Routes */}
       <Route
         path="/state-admin"
         element={
@@ -105,7 +114,7 @@ function App() {
         <Route path="grievance-cells" element={<DepartmentGrievanceCellsPage />} />
       </Route>
 
-      {/* ── Central Government Portal Routes (Protected) ── */}
+      {/* Central Government Portal Routes */}
       <Route
         path="/central-admin"
         element={
@@ -123,8 +132,7 @@ function App() {
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 
-      {/* Public Routes */}
-      {/* -- Grievance Cell Routes (Protected) -- */}
+      {/* Grievance Cell Routes */}
       <Route
         path="/grievance"
         element={
@@ -140,18 +148,7 @@ function App() {
         <Route path="history" element={<GrievanceHistoryPage />} />
       </Route>
 
-      {/* -- Unified Profile Route (Protected for all authenticated users) -- */}
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<ProfilePage />} />
-      </Route>
-      {/* ── Global Profile Route (Protected for any logged-in user) ── */}
+      {/* Global Profile Route for authenticated users */}
       <Route
         path="/profile"
         element={
@@ -163,18 +160,13 @@ function App() {
         <Route index element={<ProfilePage />} />
       </Route>
 
+      {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
-
-      {/* Placeholder stubs — replace with real pages as team builds them */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
-
-      {/* Default redirect to Citizen Dashboard */}
-      {/* <Route path="/" element={<Navigate to="/citizen/dashboard" replace />} 
-      <Route path="*" element={<Navigate to="/citizen/dashboard" replace />} /> */}
     </Routes>
   );
 }
