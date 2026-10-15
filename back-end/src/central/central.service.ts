@@ -11,145 +11,19 @@ import { User } from '../models/user.model';
 import { Role } from '../models/enums';
 import { CreateStateDto } from './dto/create-state.dto';
 
-const SEED_STATE_METRICS: Record<string, {
-  apps: number;
-  revenue: number;
-  completed: number;
-  pending: number;
-  inProgress: number;
-  rejected: number;
-  queryRaised: number;
-  grievances: number;
-  departments: number;
-  services: number;
-  officers: number;
-  citizens: number;
-  districts: number;
-  subDivisions: number;
-  mandals: number;
-  villages: number;
-  municipalities: number;
-  wards: number;
-}> = {
-  AP: {
-    apps: 8420,
-    revenue: 425000,
-    completed: 5900,
-    pending: 1650,
-    inProgress: 1095,
-    rejected: 580,
-    queryRaised: 290,
-    grievances: 1240,
-    departments: 2,
-    services: 6,
-    officers: 420,
-    citizens: 35820,
-    districts: 26,
-    subDivisions: 68,
-    mandals: 679,
-    villages: 14200,
-    municipalities: 124,
-    wards: 3400,
-  },
-  KA: {
-    apps: 7820,
-    revenue: 390000,
-    completed: 5400,
-    pending: 1580,
-    inProgress: 980,
-    rejected: 550,
-    queryRaised: 290,
-    grievances: 1180,
-    departments: 2,
-    services: 6,
-    officers: 390,
-    citizens: 32844,
-    districts: 31,
-    subDivisions: 52,
-    mandals: 240,
-    villages: 29340,
-    municipalities: 281,
-    wards: 4200,
-  },
-  TN: {
-    apps: 5980,
-    revenue: 295000,
-    completed: 4200,
-    pending: 1210,
-    inProgress: 760,
-    rejected: 410,
-    queryRaised: 160,
-    grievances: 890,
-    departments: 2,
-    services: 6,
-    officers: 360,
-    citizens: 28910,
-    districts: 38,
-    subDivisions: 87,
-    mandals: 310,
-    villages: 15979,
-    municipalities: 150,
-    wards: 3800,
-  },
-  KL: {
-    apps: 4210,
-    revenue: 210000,
-    completed: 3100,
-    pending: 820,
-    inProgress: 510,
-    rejected: 290,
-    queryRaised: 110,
-    grievances: 640,
-    departments: 2,
-    services: 6,
-    officers: 310,
-    citizens: 22100,
-    districts: 14,
-    subDivisions: 27,
-    mandals: 78,
-    villages: 1664,
-    municipalities: 87,
-    wards: 2100,
-  },
-};
-
 @Injectable()
 export class CentralService {
   /**
-   * List all states with summary metrics.
-   */
-  /**
-   * List all states with live summary metrics and platform fee breakdown.
+   * List all states with live summary metrics and platform fee breakdown calculated bottom-up.
    */
   listStates() {
     return db.states.map((state) => {
       const code = (state.code || '').toUpperCase();
-      const seed = SEED_STATE_METRICS[code] || {
-        apps: 5000,
-        revenue: 250000,
-        completed: 3500,
-        pending: 900,
-        inProgress: 600,
-        rejected: 300,
-        queryRaised: 150,
-        grievances: 800,
-        departments: 2,
-        services: 6,
-        officers: 350,
-        citizens: 28000,
-        districts: 25,
-        subDivisions: 50,
-        mandals: 200,
-        villages: 10000,
-        municipalities: 100,
-        wards: 3000,
-      };
-
       const depts = db.departments.filter((d) => d.stateId === state.id);
       const nodes = db.jurisdictionNodes.filter((n) => n.stateId === state.id);
       const admin = db.users.find((u) => u.id === state.stateAdminId);
 
-      // Live applications for this state from test executions
+      // Live applications for this state from bottom-up store
       const stateApplications = db.applications.filter((app) => {
         if ((app as any).stateId === state.id || (app as any).state === state.name) return true;
         const leafNode = db.jurisdictionNodes.find((n) => n.id === app.jurisdiction || n.id === (app as any).selectedJurisdictionNodeId);
@@ -161,6 +35,11 @@ export class CentralService {
       let liveRevenue = 0;
       let livePlatformFees = 0;
       let livePaid = 0;
+      let completed = 0;
+      let inProgress = 0;
+      let pending = 0;
+      let rejected = 0;
+      let queryRaised = 0;
 
       stateApplications.forEach((a) => {
         const isPaid = ['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase());
@@ -172,34 +51,45 @@ export class CentralService {
           const pFee = srv && srv.platformFee !== undefined ? Number(srv.platformFee) : (fee > 0 ? Math.round(fee * 0.1) : 0);
           livePlatformFees += pFee;
         }
+        const st = String((a as any).currentStatus || a.status || '').toLowerCase();
+        if (st.includes('completed') || st.includes('approved')) completed++;
+        else if (st.includes('reject')) rejected++;
+        else if (st.includes('query')) queryRaised++;
+        else if (st.includes('progress') || st.includes('review')) inProgress++;
+        else pending++;
       });
 
-      const totalApplications = seed.apps + stateApplications.length;
-      const totalRevenue = seed.revenue + liveRevenue;
-      const platformFees = Math.round(seed.revenue * 0.1) + livePlatformFees;
+      const totalApplications = stateApplications.length;
+      const totalRevenue = liveRevenue;
+      const platformFees = livePlatformFees;
       const serviceFees = Math.max(0, totalRevenue - platformFees);
 
       const stateCitizens = db.users.filter((u) =>
         (u.role === Role.CITIZEN || (u.role as string) === 'citizen' || (u as any).backendRole === Role.CITIZEN) &&
-        (u.state === state.name || (u as any).stateId === state.id)
+        (u.state === state.name || (u as any).stateId === state.id || (u as any).jurisdictionNodeId?.toLowerCase().includes(code.toLowerCase()))
       );
 
-      const citizensCount = seed.citizens + stateCitizens.length;
-      const officersCount = seed.officers + db.officers.filter((o) => depts.some(d => d.id === o.departmentId)).length;
-      const servicesCount = Math.max(seed.services, db.services.filter((s) => depts.some(d => d.id === (s as any).departmentId || d.name === (s as any).dept)).length);
-      const grievancesCount = seed.grievances + db.grievances.filter((g) => (g as any).stateId === state.id || depts.some(d => d.id === (g as any).departmentId || d.name === (g as any).dept)).length;
+      const officersCount = db.officers.filter((o) => depts.some(d => d.id === o.departmentId)).length;
+      const servicesCount = db.services.filter((s) => depts.some(d => d.id === (s as any).departmentId || d.name === (s as any).dept)).length;
+      const grievancesCount = db.grievances.filter((g) => (g as any).stateId === state.id || depts.some(d => d.id === (g as any).departmentId || d.name === (g as any).dept)).length;
 
       return {
         ...state,
-        departmentsCount: Math.max(seed.departments, depts.length),
-        jurisdictionNodesCount: Math.max(seed.districts + seed.mandals, nodes.length),
+        departmentsCount: depts.length,
+        jurisdictionNodesCount: nodes.length,
         stateAdmin: admin ? { id: admin.id, name: admin.name, email: admin.email } : null,
-        citizensCount,
+        citizensCount: stateCitizens.length,
         officersCount,
         servicesCount,
         grievancesCount,
         totalApplications,
-        paidApplications: seed.completed + livePaid,
+        paidApplications: livePaid,
+        completed,
+        inProgress,
+        pending,
+        rejected,
+        queryRaised,
+        query: queryRaised,
         totalRevenue,
         platformFees,
         serviceFees,
@@ -462,34 +352,13 @@ export class CentralService {
     });
 
     const code = (state.code || '').toUpperCase();
-    const seed = SEED_STATE_METRICS[code] || {
-      apps: 5000,
-      revenue: 250000,
-      completed: 3500,
-      pending: 900,
-      inProgress: 600,
-      rejected: 300,
-      queryRaised: 150,
-      grievances: 800,
-      departments: 2,
-      services: 6,
-      officers: 350,
-      citizens: 28000,
-      districts: 25,
-      subDivisions: 50,
-      mandals: 200,
-      villages: 10000,
-      municipalities: 100,
-      wards: 3000,
-    };
-
-    const finalRevenue = seed.revenue + totalPaidRevenue;
-    const finalPlatformFees = Math.round(seed.revenue * 0.1) + totalPlatformFees;
+    const finalRevenue = totalPaidRevenue;
+    const finalPlatformFees = totalPlatformFees;
     const totalServiceFees = Math.max(0, finalRevenue - finalPlatformFees);
 
     const stateCitizens = db.users.filter((u) =>
       (u.role === Role.CITIZEN || (u.role as string) === 'citizen' || (u as any).backendRole === Role.CITIZEN) &&
-      (u.state === state.name || (u as any).stateId === state.id)
+      (u.state === state.name || (u as any).stateId === state.id || (u as any).jurisdictionNodeId?.toLowerCase().includes(code.toLowerCase()))
     );
     const stateOfficers = db.officers.filter((o) => {
       const dept = db.departments.find((d) => d.id === o.departmentId);
@@ -503,12 +372,12 @@ export class CentralService {
       return (g as any).stateId === state.id || depts.some((d) => d.id === (g as any).departmentId || d.name === (g as any).dept);
     });
 
-    const finalApps = seed.apps + stateApplications.length;
-    const finalCitizens = seed.citizens + stateCitizens.length;
-    const finalDepts = Math.max(seed.departments, depts.length);
-    const finalServices = Math.max(seed.services, stateServices.length);
-    const finalOfficers = seed.officers + stateOfficers.length;
-    const finalGrievances = seed.grievances + stateGrievances.length;
+    const finalApps = stateApplications.length;
+    const finalCitizens = stateCitizens.length;
+    const finalDepts = depts.length;
+    const finalServices = stateServices.length;
+    const finalOfficers = stateOfficers.length;
+    const finalGrievances = stateGrievances.length;
 
     // Detailed departments overview with exact reconciled sums
     const departmentsDetail = depts.map((d) => {
@@ -528,7 +397,7 @@ export class CentralService {
           const fee = Number(a.fee) || 0;
           deptTotalRev += fee;
           const srv = db.services.find((s) => s.id === a.serviceId);
-          const pFee = srv && srv.platformFee !== undefined ? Number(srv.platformFee) : (fee > 0 ? Math.round(fee * 0.15) : 0);
+          const pFee = srv && srv.platformFee !== undefined ? Number(srv.platformFee) : (fee > 0 ? Math.round(fee * 0.1) : 0);
           deptPlatformFee += pFee;
         }
         const st = String((a as any).currentStatus || a.status || '').toLowerCase();
@@ -562,16 +431,25 @@ export class CentralService {
 
     const recentActivity = db.auditLogs
       .filter((l) => l.details?.includes(state.name) || l.details?.includes(state.code) || l.actor?.includes(state.name))
-      .slice(0, 10);
+      .slice(-10)
+      .reverse();
 
-    const monthlyTrend = [
-      { month: 'Jan', count: Math.max(0, Math.round(finalApps * 0.1)) },
-      { month: 'Feb', count: Math.max(0, Math.round(finalApps * 0.15)) },
-      { month: 'Mar', count: Math.max(0, Math.round(finalApps * 0.2)) },
-      { month: 'Apr', count: Math.max(0, Math.round(finalApps * 0.25)) },
-      { month: 'May', count: Math.max(0, Math.round(finalApps * 0.3)) },
-      { month: 'Jun', count: finalApps },
-    ];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+    const monthlyTrend = monthNames.map((month, idx) => {
+      const count = stateApplications.filter((a) => {
+        const d = new Date(a.createdAt || (a as any).submissionDate);
+        return !isNaN(d.getTime()) && d.getMonth() === idx;
+      }).length;
+      return { month, count };
+    });
+
+    // Officer designations distribution
+    const desigMap: Record<string, number> = {};
+    stateOfficers.forEach((o) => {
+      const title = o.designationTitle || 'Designated Officer';
+      desigMap[title] = (desigMap[title] || 0) + 1;
+    });
+    const designations = Object.entries(desigMap).map(([title, count]) => ({ title, count }));
 
     return {
       state,
@@ -634,21 +512,21 @@ export class CentralService {
           departmentName: d.name,
           count: d.officersCount,
         })),
-        designations: [
-          { title: 'Village Revenue Officer (VRO)', count: stateOfficers.filter(o => o.designationTitle?.includes('VRO') || o.designationId?.includes('vro')).length || 1 },
-          { title: 'Revenue Inspector (RI)', count: stateOfficers.filter(o => o.designationTitle?.includes('RI') || o.designationId?.includes('ri')).length || 1 },
-          { title: 'Tahsildar / MRO', count: stateOfficers.filter(o => o.designationTitle?.includes('Tahsildar') || o.designationTitle?.includes('MRO')).length || 1 },
-          { title: 'Welfare Officer', count: stateOfficers.filter(o => o.designationTitle?.includes('Welfare')).length || 1 },
+        designations: designations.length > 0 ? designations : [
+          { title: 'Village Revenue Officer (VRO)', count: 1 },
+          { title: 'Revenue Inspector (RI)', count: 1 },
+          { title: 'Tahsildar / MRO', count: 1 },
+          { title: 'Welfare Officer', count: 1 },
         ],
       },
       applications: {
         total: finalApps,
         submitted: finalApps,
-        inProgress: seed.inProgress + inProgress,
-        pending: seed.pending + pending,
-        completed: seed.completed + completed,
-        rejected: seed.rejected + rejected,
-        queryRaised: seed.queryRaised + queryRaised,
+        inProgress,
+        pending,
+        completed,
+        rejected,
+        queryRaised,
         monthlyTrend,
       },
       grievances: {
@@ -668,9 +546,7 @@ export class CentralService {
       recentActivity: recentActivity.length > 0 ? recentActivity : [
         { id: `ACT-${state.code}-1`, action: 'SLA_ESCALATED', actor: 'Automated SLA Engine', date: '2026-10-14T03:22:00.000Z', details: `Application APP-${state.code}-3002 auto-escalated (SLA Breached)` },
         { id: `ACT-${state.code}-2`, action: 'SLA_ESCALATED', actor: 'Automated SLA Engine', date: '2026-10-14T03:22:00.000Z', details: `Application APP-${state.code}-2001 auto-escalated (SLA Breached)` },
-        { id: `ACT-${state.code}-3`, action: 'STATE_ACTIVATED', actor: 'Central Admin', date: '2026-01-01T00:00:00.000Z', details: 'Central Admin verified and activated 4 state instances: AP, KA, KL, TN.' },
-        { id: `ACT-${state.code}-4`, action: 'SERVICE_PUBLISHED', actor: `${state.name} Department Head`, date: '2026-01-05T10:00:00.000Z', details: `${state.name} Revenue Principal Secretary published CASTE_CERT_${state.code} with 3-tier workflow.` },
-        { id: `ACT-${state.code}-5`, action: 'CERTIFICATE_ISSUED', actor: 'Tahsildar / MRO', date: '2026-04-15T16:00:00.000Z', details: `Tahsildar approved & digitally signed Certificate for APP-${state.code}-1001.` },
+        { id: `ACT-${state.code}-3`, action: 'STATE_ACTIVATED', actor: 'Central Admin', date: '2026-01-01T00:00:00.000Z', details: `Central Admin verified and activated state instance: ${state.name}.` },
       ],
     };
   }
@@ -752,6 +628,15 @@ export class CentralService {
     const totalCitizens = states.reduce((sum, s) => sum + s.citizensCount, 0);
     const totalOfficers = states.reduce((sum, s) => sum + s.officersCount, 0);
 
+    const completed = db.applications.filter((a) => {
+      const st = String((a as any).currentStatus || a.status || '').toLowerCase();
+      return st.includes('completed') || st.includes('approved');
+    }).length;
+
+    const slaComplianceRate = totalApplications > 0
+      ? Number(((completed / totalApplications) * 100).toFixed(1))
+      : 95.4;
+
     return {
       totalStates: db.states.length,
       activeStates: db.states.filter((s) => s.status === 'ACTIVE').length,
@@ -763,7 +648,208 @@ export class CentralService {
       totalRevenue,
       totalPlatformFees,
       paidApplications,
-      slaComplianceRate: 95.4,
+      slaComplianceRate,
+    };
+  }
+
+  /**
+   * National Historical & Time Trends aggregated directly from bottom-up applications
+   */
+  getNationalTrends() {
+    const apps = db.applications;
+
+    // Daily: Last 7 days / Day-of-week breakdown
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayStats: Record<string, { apps: number; revenue: number }> = {
+      Mon: { apps: 0, revenue: 0 },
+      Tue: { apps: 0, revenue: 0 },
+      Wed: { apps: 0, revenue: 0 },
+      Thu: { apps: 0, revenue: 0 },
+      Fri: { apps: 0, revenue: 0 },
+      Sat: { apps: 0, revenue: 0 },
+      Sun: { apps: 0, revenue: 0 },
+    };
+
+    apps.forEach((a) => {
+      const rawDate = a.createdAt || a.submittedDate || a.appliedDate || (a as any).submissionDate || a.date;
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        const day = dayNames[d.getDay()];
+        if (dayStats[day]) {
+          dayStats[day].apps += 1;
+          if (['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase())) {
+            dayStats[day].revenue += Number(a.fee) || 0;
+          }
+        }
+      }
+    });
+
+    const daily = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => ({
+      label,
+      apps: dayStats[label].apps,
+      revenue: dayStats[label].revenue,
+    }));
+
+    // Weekly: Week 1 to Week 4
+    const weekStats: Record<string, { apps: number; revenue: number }> = {
+      'Week 1': { apps: 0, revenue: 0 },
+      'Week 2': { apps: 0, revenue: 0 },
+      'Week 3': { apps: 0, revenue: 0 },
+      'Week 4': { apps: 0, revenue: 0 },
+    };
+
+    apps.forEach((a) => {
+      const rawDate = a.createdAt || a.submittedDate || a.appliedDate || (a as any).submissionDate || a.date;
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        const dateNum = d.getDate();
+        const wKey = dateNum <= 7 ? 'Week 1' : dateNum <= 14 ? 'Week 2' : dateNum <= 21 ? 'Week 3' : 'Week 4';
+        weekStats[wKey].apps += 1;
+        if (['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase())) {
+          weekStats[wKey].revenue += Number(a.fee) || 0;
+        }
+      }
+    });
+
+    const weekly = ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((label) => ({
+      label,
+      apps: weekStats[label].apps,
+      revenue: weekStats[label].revenue,
+    }));
+
+    // Monthly: Jan - Oct 2026
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+    const monthStats = monthNames.map((m) => ({ label: m, apps: 0, revenue: 0 }));
+
+    apps.forEach((a) => {
+      const rawDate = a.createdAt || a.submittedDate || a.appliedDate || (a as any).submissionDate || a.date;
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        const mIdx = d.getMonth();
+        if (mIdx >= 0 && mIdx < monthStats.length) {
+          monthStats[mIdx].apps += 1;
+          if (['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase())) {
+            monthStats[mIdx].revenue += Number(a.fee) || 0;
+          }
+        }
+      }
+    });
+
+    // Yearly: 2024, 2025, 2026
+    const yearStats: Record<string, { apps: number; revenue: number }> = {
+      '2024': { apps: 0, revenue: 0 },
+      '2025': { apps: 0, revenue: 0 },
+      '2026': { apps: 0, revenue: 0 },
+    };
+
+    apps.forEach((a) => {
+      const rawDate = a.createdAt || a.submittedDate || a.appliedDate || (a as any).submissionDate || a.date;
+      const d = new Date(rawDate);
+      const yr = String(d.getFullYear());
+      if (yearStats[yr]) {
+        yearStats[yr].apps += 1;
+        if (['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase())) {
+          yearStats[yr].revenue += Number(a.fee) || 0;
+        }
+      } else {
+        yearStats['2026'].apps += 1;
+        if (['paid', 'completed', 'success'].includes(String(a.paymentStatus || '').toLowerCase())) {
+          yearStats['2026'].revenue += Number(a.fee) || 0;
+        }
+      }
+    });
+
+    const yearly = ['2024', '2025', '2026'].map((label) => ({
+      label,
+      apps: yearStats[label].apps,
+      revenue: yearStats[label].revenue,
+    }));
+
+    return { daily, weekly, monthly: monthStats, yearly };
+  }
+
+  /**
+   * Complete unified National Analytics Dataset for Central Admin
+   */
+  getNationalAnalyticsFull() {
+    const states = this.listStates();
+    const rev = this.getStateWiseRevenue();
+    const trends = this.getNationalTrends();
+
+    const totalCitizens = db.users.filter(
+      (u) => u.role === Role.CITIZEN || (u as any).backendRole === Role.CITIZEN,
+    ).length;
+    const totalOfficers = db.officers.length;
+    const totalDepartments = db.departments.length;
+    const totalServices = db.services.length;
+
+    let totalCompleted = 0;
+    let totalPending = 0;
+    let totalInProgress = 0;
+    let totalRejected = 0;
+    let totalQuery = 0;
+
+    db.applications.forEach((a) => {
+      const st = String((a as any).currentStatus || a.status || '').toLowerCase();
+      if (st.includes('completed') || st.includes('approved')) totalCompleted++;
+      else if (st.includes('reject')) totalRejected++;
+      else if (st.includes('query')) totalQuery++;
+      else if (st.includes('progress') || st.includes('review')) totalInProgress++;
+      else totalPending++;
+    });
+
+    const totalGrievances = db.grievances.length;
+    const totalGrvPending = db.grievances.filter((g) =>
+      ['pending', 'SUBMITTED', 'PENDING'].includes(String(g.status || '')),
+    ).length;
+    const totalGrvResolved = db.grievances.filter((g) =>
+      ['resolved', 'RESOLVED', 'CLOSED'].includes(String(g.status || '')),
+    ).length;
+
+    const statesWithShare = states
+      .map((s) => ({
+        ...s,
+        revenueShare:
+          rev.nationalTotalRevenue > 0
+            ? ((s.totalRevenue / rev.nationalTotalRevenue) * 100).toFixed(1)
+            : '0.0',
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    const avgRevPerApp =
+      rev.nationalTotalApplications > 0
+        ? Math.round(rev.nationalTotalRevenue / rev.nationalTotalApplications)
+        : 0;
+
+    const slaComplianceRate =
+      rev.nationalTotalApplications > 0
+        ? Number(((totalCompleted / rev.nationalTotalApplications) * 100).toFixed(1))
+        : 95.4;
+
+    return {
+      totalStates: states.length,
+      activeStates: states.filter((s) => s.status === 'ACTIVE').length,
+      inactiveStates: states.filter((s) => s.status === 'INACTIVE').length,
+      totalCitizens,
+      totalOfficers,
+      totalDepartments,
+      totalServices,
+      totalApplications: rev.nationalTotalApplications,
+      totalRevenue: rev.nationalTotalRevenue,
+      totalPlatformFees: rev.nationalPlatformFees,
+      totalServiceFees: rev.nationalServiceFees,
+      avgRevPerApp,
+      completed: totalCompleted,
+      pending: totalPending,
+      inProgress: totalInProgress,
+      rejected: totalRejected,
+      queryRaised: totalQuery,
+      totalGrievances,
+      totalGrvPending,
+      totalGrvResolved,
+      slaComplianceRate,
+      states: statesWithShare,
+      trends,
     };
   }
 }

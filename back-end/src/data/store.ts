@@ -14,6 +14,11 @@ import {
   MASTER_DESIGNATIONS,
   MASTER_OFFICERS,
 } from './jurisdiction.data';
+import {
+  SEED_CITIZENS,
+  generateBottomUpApplications,
+  generateBottomUpGrievances,
+} from './bottom-up-seeder';
 
 export interface SystemSettings {
   [key: string]: any;
@@ -2119,8 +2124,11 @@ const MOCK_WORKFLOW_CONFIG = DYNAMIC_SERVICES.map((s) => ({
 // 6. GLOBAL CENTRALIZED DATA STORE SINGLETON (db)
 // ═══════════════════════════════════════════════════════════════════════════
 
+const BOTTOM_UP_APPS = generateBottomUpApplications();
+const BOTTOM_UP_GRVS = generateBottomUpGrievances(BOTTOM_UP_APPS);
+
 export const db = {
-  users: [...MOCK_USERS],
+  users: [...MOCK_USERS, ...SEED_CITIZENS],
   states: [...MASTER_STATES],
   jurisdictionNodes: [...MASTER_JURISDICTION_NODES],
   departments: [...MASTER_DEPARTMENTS],
@@ -2128,8 +2136,8 @@ export const db = {
   officers: [...MASTER_OFFICERS],
   dynamicServices: [...DYNAMIC_SERVICES],
   services: [...MOCK_SERVICES],
-  applications: [...MOCK_APPLICATIONS],
-  grievances: [...MOCK_GRIEVANCES],
+  applications: [...MOCK_APPLICATIONS, ...BOTTOM_UP_APPS],
+  grievances: [...MOCK_GRIEVANCES, ...BOTTOM_UP_GRVS],
   notifications: [...MOCK_NOTIFICATIONS],
   auditLogs: [...MOCK_AUDIT_LOGS],
   officerWeekChart: [...OFFICER_WEEK_CHART],

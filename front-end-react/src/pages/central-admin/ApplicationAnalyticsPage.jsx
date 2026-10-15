@@ -44,11 +44,11 @@ export default function ApplicationAnalyticsPage() {
   }, []);
 
   const states = nationalData?.states || [];
-  const totalApplications = nationalData?.totalApplications || 26430;
-  const completed = nationalData?.completed || 18600;
-  const pending = nationalData?.pending || 4260;
-  const inProgress = nationalData?.inProgress || 3345;
-  const slaCompliance = nationalData?.slaComplianceRate || 95.4;
+  const totalApplications = nationalData?.totalApplications ?? 0;
+  const completed = nationalData?.completed ?? 0;
+  const pending = nationalData?.pending ?? 0;
+  const inProgress = nationalData?.inProgress ?? 0;
+  const slaCompliance = nationalData?.slaComplianceRate ?? 0;
 
   const completionRate =
     totalApplications > 0 ? ((completed / totalApplications) * 100).toFixed(1) : '0.0';

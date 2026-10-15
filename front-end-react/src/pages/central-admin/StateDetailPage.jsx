@@ -14,7 +14,6 @@ import {
   apiResetCentralStateAdminPassword,
 } from '../../api/centralAdminApi';
 import {
-  NATIONAL_STATES_DATA,
   formatINR,
   formatNum,
   formatCompactNum,
@@ -157,17 +156,8 @@ export default function StateDetailPage() {
   }
 
   const isActive = (stateData.status || '').toUpperCase() === 'ACTIVE';
-  const matchedSeed =
-    NATIONAL_STATES_DATA.find(
-      (s) =>
-        s.id === id ||
-        s.code.toLowerCase() === (id || '').toLowerCase() ||
-        s.name.toLowerCase() === (stateData.name || '').toLowerCase()
-    ) || {};
-
   const summary = detailsData?.summary || {};
   const metrics = {
-    ...matchedSeed,
     ...summary,
     ...(detailsData?.metrics || {}),
   };
@@ -176,12 +166,12 @@ export default function StateDetailPage() {
     ? detailsData.departments
     : defaultDepartments;
 
-  const totalApps = summary.totalApplications ?? metrics.apps ?? metrics.applications ?? stateData.totalApplications ?? 8420;
-  const totalRev = summary.totalRevenue ?? metrics.revenue ?? stateData.totalRevenue ?? 425000;
+  const totalApps = summary.totalApplications ?? stateData.totalApplications ?? 0;
+  const totalRev = summary.totalRevenue ?? stateData.totalRevenue ?? 0;
   const totalDepartments = summary.totalDepartments ?? departmentsList.length;
-  const totalOfficers = summary.totalOfficers ?? detailsData?.officers?.total ?? metrics.officers ?? stateData.officersCount ?? 432;
-  const totalServices = summary.totalServices ?? detailsData?.services?.total ?? metrics.services ?? stateData.servicesCount ?? 6;
-  const totalGrievances = summary.totalGrievances ?? metrics.grievances ?? stateData.grievancesCount ?? 1242;
+  const totalOfficers = summary.totalOfficers ?? detailsData?.officers?.total ?? stateData.officersCount ?? 0;
+  const totalServices = summary.totalServices ?? detailsData?.services?.total ?? stateData.servicesCount ?? 0;
+  const totalGrievances = summary.totalGrievances ?? detailsData?.grievances?.total ?? stateData.grievancesCount ?? 0;
 
   const admin = detailsData?.stateAdmin || stateData.stateAdmin || {
     name: stateData.stateAdminName || `${stateData.name} State Admin IAS`,
@@ -524,31 +514,31 @@ export default function StateDetailPage() {
             <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
               <div style={{ fontSize: '0.75rem', color: '#1e40af', fontWeight: 600 }}>In Progress</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#2563eb', marginTop: '2px' }}>
-                {formatNum(metrics.inProgress || 1095)}
+                {formatNum(detailsData?.applications?.inProgress ?? metrics.inProgress ?? 0)}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#fefce8', borderRadius: '6px', border: '1px solid #fef08a' }}>
               <div style={{ fontSize: '0.75rem', color: '#ca8a04', fontWeight: 600 }}>Pending</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#d97706', marginTop: '2px' }}>
-                {formatNum(metrics.pending || 1650)}
+                {formatNum(detailsData?.applications?.pending ?? metrics.pending ?? 0)}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
               <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>Completed</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
-                {formatNum(metrics.completed || 5900)}
+                {formatNum(detailsData?.applications?.completed ?? metrics.completed ?? 0)}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
               <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>Rejected</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#dc2626', marginTop: '2px' }}>
-                {formatNum(metrics.rejected || 580)}
+                {formatNum(detailsData?.applications?.rejected ?? metrics.rejected ?? 0)}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#f5f3ff', borderRadius: '6px', border: '1px solid #ddd6fe' }}>
               <div style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 600 }}>Query Raised</div>
               <div style={{ fontSize: '1.125rem', fontWeight: 800, color: '#7c3aed', marginTop: '2px' }}>
-                {formatNum(metrics.queryRaised || 290)}
+                {formatNum(detailsData?.applications?.queryRaised ?? metrics.queryRaised ?? 0)}
               </div>
             </div>
           </div>
@@ -634,37 +624,37 @@ export default function StateDetailPage() {
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>DISTRICTS</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {detailsData?.jurisdiction?.districtsCount || metrics.districts || 26}
+              {detailsData?.jurisdiction?.districtsCount ?? 0}
             </div>
           </div>
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>SUB-DIVISIONS</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {detailsData?.jurisdiction?.subDivisionsCount || metrics.subDivisions || 68}
+              {detailsData?.jurisdiction?.subDivisionsCount ?? 0}
             </div>
           </div>
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>MANDALS / TEHSILS</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {detailsData?.jurisdiction?.mandalsCount || metrics.mandals || 679}
+              {detailsData?.jurisdiction?.mandalsCount ?? 0}
             </div>
           </div>
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>VILLAGES</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {formatNum(detailsData?.jurisdiction?.villagesCount || metrics.villages || 14200)}
+              {formatNum(detailsData?.jurisdiction?.villagesCount ?? 0)}
             </div>
           </div>
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>MUNICIPALITIES</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {detailsData?.jurisdiction?.municipalitiesCount || metrics.municipalities || 124}
+              {detailsData?.jurisdiction?.municipalitiesCount ?? 0}
             </div>
           </div>
           <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '6px', border: '1px solid var(--slate-200, #e2e8f0)', textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 700 }}>WARDS</div>
             <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {formatNum(detailsData?.jurisdiction?.wardsCount || metrics.wards || 3400)}
+              {formatNum(detailsData?.jurisdiction?.wardsCount ?? 0)}
             </div>
           </div>
         </div>

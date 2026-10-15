@@ -112,5 +112,23 @@ export class CentralController {
       data: this.centralService.getNationalMetrics(),
     };
   }
+
+  @Get('analytics/national')
+  @ApiOperation({ summary: 'Full unified national analytics dataset' })
+  getNationalAnalytics() {
+    return {
+      success: true,
+      data: this.centralService.getNationalAnalyticsFull(),
+    };
+  }
+
+  @Get('analytics/trends')
+  @ApiOperation({ summary: 'National application and revenue time trends' })
+  getNationalTrends() {
+    return {
+      success: true,
+      data: this.centralService.getNationalTrends(),
+    };
+  }
 }
 

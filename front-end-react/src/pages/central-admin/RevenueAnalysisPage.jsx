@@ -54,11 +54,11 @@ export default function RevenueAnalysisPage() {
   }, []);
 
   const baseData = nationalData || {
-    totalRevenue: 1320000,
-    totalPlatformFees: 132000,
-    totalServiceFees: 1188000,
-    totalApplications: 26430,
-    avgRevPerApp: 50,
+    totalRevenue: 0,
+    totalPlatformFees: 0,
+    totalServiceFees: 0,
+    totalApplications: 0,
+    avgRevPerApp: 0,
     states: [],
     trends: {},
   };
@@ -90,16 +90,16 @@ export default function RevenueAnalysisPage() {
     });
   }, [baseData.states, multiplier, periodMetrics.totalRevenue]);
 
-  const totalRevenue = periodMetrics.totalRevenue;
-  const platformFee = periodMetrics.totalPlatformFees;
-  const serviceFee = periodMetrics.totalServiceFees;
-  const totalApplications = periodMetrics.totalApplications;
-  const avgFee = totalApplications > 0 ? Math.round(totalRevenue / totalApplications) : 50;
+  const totalRevenue = periodMetrics.totalRevenue || 0;
+  const platformFee = periodMetrics.totalPlatformFees || 0;
+  const serviceFee = periodMetrics.totalServiceFees || 0;
+  const totalApplications = periodMetrics.totalApplications || 0;
+  const avgFee = totalApplications > 0 ? Math.round(totalRevenue / totalApplications) : 0;
 
   const highestState = allStates[0] || {
-    name: 'Andhra Pradesh',
-    revenue: Math.round(425000 * multiplier),
-    revenueShare: '32.2',
+    name: 'N/A',
+    revenue: 0,
+    revenueShare: '0.0',
   };
 
   // 1. Bar Chart Data (Top 5, Top 10, Bottom 5, All States)

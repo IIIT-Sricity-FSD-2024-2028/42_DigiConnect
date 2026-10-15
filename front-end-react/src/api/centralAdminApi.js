@@ -129,3 +129,21 @@ export async function apiGetCentralRevenueAnalytics() {
   const res = await apiFetch('/central/analytics/revenue');
   return res?.data || res;
 }
+
+/**
+ * Fetch full unified national analytics dataset directly from backend
+ * @returns {Promise<Object>}
+ */
+export async function apiGetCentralNationalAnalytics() {
+  const res = await apiFetch('/central/analytics/national');
+  return res?.data || res;
+}
+
+/**
+ * Fetch dynamic time trends (daily, weekly, monthly, yearly) from backend
+ * @returns {Promise<Object>}
+ */
+export async function apiGetCentralTrends() {
+  const res = await apiFetch('/central/analytics/trends');
+  return res?.data || res;
+}
