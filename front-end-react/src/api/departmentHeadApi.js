@@ -173,3 +173,11 @@ export const apiGetDeptRevenue = (departmentId) => {
   const query = departmentId ? `?departmentId=${encodeURIComponent(departmentId)}` : '';
   return apiFetch(`/department-head/revenue${query}`);
 };
+
+/**
+ * ── 5. JURISDICTION NODES (For Officer Onboarding Scoping) ─────────────
+ */
+export const apiGetStateJurisdictionNodes = (stateId) => {
+  const query = stateId ? `?stateId=${encodeURIComponent(stateId)}` : '';
+  return apiFetch(`/geography/nodes${query}`);
+};

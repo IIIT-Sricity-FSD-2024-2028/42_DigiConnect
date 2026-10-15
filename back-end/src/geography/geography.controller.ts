@@ -63,6 +63,19 @@ export class GeographyController {
     };
   }
 
+  @Get('nodes')
+  @ApiOperation({ summary: 'List all jurisdiction nodes (optionally filtered by state)' })
+  listNodes(
+    @Query('stateId') stateId?: string,
+    @Headers('x-state-id') headerStateId?: string,
+  ) {
+    const targetState = stateId || headerStateId;
+    return {
+      success: true,
+      data: this.geographyService.listNodes(targetState),
+    };
+  }
+
   @Get('nodes/:id/details')
   @ApiOperation({ summary: 'Get deep jurisdiction node details with dependencies and breadcrumbs' })
   getNodeDetails(@Param('id') id: string) {

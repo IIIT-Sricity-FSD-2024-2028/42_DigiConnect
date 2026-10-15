@@ -15,8 +15,8 @@ export default function ServicesCatalogPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const departmentName = user?.dept || 'Revenue, Registration & Stamps Department';
+  const departmentId = user?.departmentId || '';
+  const departmentName = user?.dept || 'Department';
 
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);

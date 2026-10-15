@@ -15,10 +15,10 @@ export default function DeptDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const departmentName = user?.dept || 'Revenue, Registration & Stamps Department';
-  const officerName = user?.name || 'Dr. B. R. Ambedkar IAS';
-  const officerTitle = user?.title || 'Head of Department (Revenue Services & Land Records)';
+  const departmentId = user?.departmentId || '';
+  const departmentName = user?.dept || 'Department';
+  const officerName = user?.name || 'Department Head';
+  const officerTitle = user?.title || 'Head of Department';
 
   // ── States ──
   const [stats, setStats] = useState({
@@ -148,13 +148,13 @@ export default function DeptDashboard() {
         />
         <StatCard
           title="Role Designations"
-          value={stats.totalDesignations ?? 4}
+          value={stats.totalDesignations ?? 0}
           icon={<span>👔</span>}
           iconColor="green"
         />
         <StatCard
           title="Onboarded Officers"
-          value={stats.totalOfficers ?? 4}
+          value={stats.totalOfficers ?? 0}
           icon={<span>👮</span>}
           iconColor="amber"
         />
@@ -307,9 +307,9 @@ export default function DeptDashboard() {
                   </tr>
                 ) : (
                   services.map((s) => {
-                    const sFee = s.serviceFee ?? s.fee ?? 35;
-                    const pFee = s.platformFee ?? 15;
-                    const totFee = s.totalFee ?? (sFee + pFee);
+                    const sFee = s.serviceFee !== undefined ? s.serviceFee : (s.fee || 0);
+                    const pFee = s.platformFee !== undefined ? s.platformFee : (sFee > 0 ? Math.round(sFee * 0.15) : 0);
+                    const totFee = s.totalFee !== undefined ? s.totalFee : (sFee + pFee);
 
                     let workflowSummary = s.workflowSummary || '';
                     if (!workflowSummary && Array.isArray(s.workflowSteps) && s.workflowSteps.length > 0) {
@@ -317,7 +317,7 @@ export default function DeptDashboard() {
                         .map((step) => step.stepName || step.requiredDesignationId?.replace('desig_', '').toUpperCase())
                         .join(' ➔ ');
                     }
-                    if (!workflowSummary) workflowSummary = 'VRO ➔ MRO ➔ Tahsildar (DSC)';
+                    if (!workflowSummary) workflowSummary = 'Standard Multi-Stage Verification';
 
                     return (
                       <tr key={s.id || s.code}>

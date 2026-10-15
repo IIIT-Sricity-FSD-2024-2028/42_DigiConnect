@@ -75,6 +75,13 @@ export class GeographyService {
   }
 
   /**
+   * List all jurisdiction nodes, optionally filtered by state.
+   */
+  listNodes(stateId?: string): JurisdictionNode[] {
+    return db.jurisdictionNodes.filter((node) => !stateId || node.stateId === stateId);
+  }
+
+  /**
    * Fetch a specific node by ID.
    */
   getNodeById(id: string): JurisdictionNode {

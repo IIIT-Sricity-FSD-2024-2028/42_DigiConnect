@@ -12,17 +12,20 @@ import {
   apiOnboardOfficer,
   apiUpdateOfficerStatus,
   apiGetDesignations,
+  apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 import Modal from '../../components/common/Modal';
 
 export default function OfficersManagementPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const departmentName = user?.dept || 'Revenue Department';
+  const departmentId = user?.departmentId || '';
+  const departmentName = user?.dept || 'Department';
+  const stateId = user?.stateId || '';
 
   const [officers, setOfficers] = useState([]);
   const [designations, setDesignations] = useState([]);
+  const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,7 +36,7 @@ export default function OfficersManagementPage() {
     email: '',
     phone: '',
     designationId: '',
-    assignedNodeId: 'node_cg_vil',
+    assignedNodeId: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -41,16 +44,23 @@ export default function OfficersManagementPage() {
     setLoading(true);
     setError('');
     try {
-      const [offRes, desigRes] = await Promise.all([
+      const [offRes, desigRes, nodesRes] = await Promise.all([
         apiGetDeptOfficers(departmentId).catch(() => ({ data: [] })),
         apiGetDesignations(departmentId).catch(() => ({ data: [] })),
+        apiGetStateJurisdictionNodes(stateId).catch(() => ({ data: [] })),
       ]);
 
       setOfficers(offRes?.data || []);
       const desigs = desigRes?.data || [];
       setDesignations(desigs);
+      const nodes = nodesRes?.data || [];
+      setJurisdictionNodes(nodes);
+
       if (desigs.length > 0 && !newOfficer.designationId) {
         setNewOfficer((prev) => ({ ...prev, designationId: desigs[0].id }));
+      }
+      if (nodes.length > 0 && !newOfficer.assignedNodeId) {
+        setNewOfficer((prev) => ({ ...prev, assignedNodeId: nodes[0].id }));
       }
     } catch (err) {
       console.error('Error fetching officers:', err);
@@ -62,15 +72,15 @@ export default function OfficersManagementPage() {
 
   useEffect(() => {
     fetchOfficers();
-  }, [departmentId]);
+  }, [departmentId, stateId]);
 
   const handleOpenOnboardModal = () => {
     setNewOfficer({
       name: '',
       email: '',
       phone: '',
-      designationId: designations[0]?.id || 'desig_vro',
-      assignedNodeId: 'node_cg_vil',
+      designationId: designations[0]?.id || '',
+      assignedNodeId: jurisdictionNodes[0]?.id || '',
     });
     setOnboardModalOpen(true);
   };
@@ -123,14 +133,24 @@ export default function OfficersManagementPage() {
     }
   };
 
-  // Helper function to derive coverage scope label
+  // Helper function to derive coverage scope label dynamically from node tier
   const getScopeNote = (nodeId) => {
-    if (!nodeId) return 'Specific Node Scope';
-    if (nodeId.includes('vil')) return 'Village Leaf Node Only';
-    if (nodeId.includes('man') || nodeId.includes('mdl')) return 'Covers Mandal & Child Villages';
-    if (nodeId.includes('sub') || nodeId.includes('rsd')) return 'Covers Sub-Division Hierarchy';
-    if (nodeId.includes('tpt') || nodeId.includes('dist')) return 'Covers Entire District Scope';
-    if (nodeId.includes('w14') || nodeId.includes('ward')) return 'Urban Ward Leaf Node Only';
+    if (!nodeId) return 'Assigned Scope';
+    const matchedNode = jurisdictionNodes.find((n) => n.id === nodeId);
+    if (matchedNode) {
+      const tier = matchedNode.tierLevel || '';
+      if (tier === 'VILLAGE' || tier === 'WARD') return `${matchedNode.name} (${tier} Leaf)`;
+      if (tier === 'MANDAL' || tier === 'TALUK') return `Covers ${matchedNode.name} & child villages`;
+      if (tier === 'SUB_DIVISION') return `Covers ${matchedNode.name} Sub-Division`;
+      if (tier === 'DISTRICT') return `Covers entire ${matchedNode.name}`;
+      if (tier === 'STATE') return `State-wide Authority`;
+      return `${matchedNode.name} (${tier})`;
+    }
+    if (nodeId.includes('vil')) return 'Village Leaf Node';
+    if (nodeId.includes('man') || nodeId.includes('mdl')) return 'Mandal Scope';
+    if (nodeId.includes('sub') || nodeId.includes('rsd')) return 'Sub-Division Scope';
+    if (nodeId.includes('dist') || nodeId.includes('tpt') || nodeId.includes('mys') || nodeId.includes('tvm') || nodeId.includes('mdu')) return 'District Scope';
+    if (nodeId.includes('ward') || nodeId.includes('w14') || nodeId.includes('w50')) return 'Ward Leaf Node';
     return 'Assigned Node Scope';
   };
 
@@ -373,11 +393,16 @@ export default function OfficersManagementPage() {
               onChange={(e) => setNewOfficer({ ...newOfficer, assignedNodeId: e.target.value })}
               required
             >
-              <option value="node_cg_vil">🌾 Chandragiri Village (node_cg_vil - Rural Leaf)</option>
-              <option value="node_cg_mdl">🏛️ Chandragiri Mandal (node_cg_mdl - Mandal Scope)</option>
-              <option value="node_rsd">🏢 Tirupati Revenue Sub-Division (node_rsd)</option>
-              <option value="node_tpt">🏢 Tirupati District (node_tpt - District Scope)</option>
-              <option value="node_w14">🏙️ Ward 14 (node_w14 - Urban Leaf)</option>
+              {jurisdictionNodes.length > 0 ? (
+                jurisdictionNodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.tierLevel === 'VILLAGE' ? '🌾' : n.tierLevel === 'WARD' ? '🏙️' : n.tierLevel === 'MANDAL' ? '🏛️' : n.tierLevel === 'DISTRICT' ? '🏢' : '📍'}{' '}
+                    {n.name} ({n.id} - {n.tierLevel})
+                  </option>
+                ))
+              ) : (
+                <option value="">No jurisdiction nodes available</option>
+              )}
             </select>
             <small style={{ color: 'var(--slate-500)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
               The officer will have verification authority over this node and all its child nodes.

@@ -10,8 +10,8 @@ import StatCard from '../../components/common/StatCard';
 
 export default function RevenuePage() {
   const { user } = useAuth();
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const departmentName = user?.dept || 'Revenue Department';
+  const departmentId = user?.departmentId || '';
+  const departmentName = user?.dept || 'Department';
 
   const [revData, setRevData] = useState({
     totalRevenue: 0,

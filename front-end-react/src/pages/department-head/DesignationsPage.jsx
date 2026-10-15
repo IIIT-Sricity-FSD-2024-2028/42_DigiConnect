@@ -15,8 +15,8 @@ import Modal from '../../components/common/Modal';
 
 export default function DesignationsPage() {
   const { user } = useAuth();
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const departmentName = user?.dept || 'Revenue Department';
+  const departmentId = user?.departmentId || '';
+  const departmentName = user?.dept || 'Department';
 
   const [designations, setDesignations] = useState([]);
   const [loading, setLoading] = useState(true);

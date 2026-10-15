@@ -21,8 +21,8 @@ export default function ServiceBuilderPage() {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id');
 
-  const departmentId = user?.departmentId || 'dept_rev_ap';
-  const stateId = user?.stateId || 'state_ap';
+  const departmentId = user?.departmentId || '';
+  const stateId = user?.stateId || '';
 
   const [availableDesignations, setAvailableDesignations] = useState([]);
   const [initialData, setInitialData] = useState(null);
