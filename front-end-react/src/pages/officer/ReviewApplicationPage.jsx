@@ -272,53 +272,69 @@ export default function ReviewApplicationPage() {
   // Applicant metadata fields list
   const applicantFields = currentApp
     ? [
-      { label: 'Full Name', value: currentApp.citizen || currentApp.citizenName || '—' },
-      { label: 'Aadhaar Number', value: currentApp.aadhaar || 'XXXX-XXXX-8921' },
-      { label: 'Mobile Phone', value: currentApp.phone || currentApp.citizenPhone || '—' },
-      { label: 'Date of Birth', value: currentApp.dob || '14 May 1988' },
-      { label: 'Gender', value: currentApp.gender || 'Male' },
-      { label: 'Jurisdiction / Ward', value: currentApp.jurisdiction || 'Ward 14, Zone B' },
-    ]
+        { label: 'Full Name', value: currentApp.citizen || currentApp.citizenName || '—' },
+        { label: 'Aadhaar Number', value: currentApp.aadhaar || (currentApp.formData?.aadhaar_number ? `XXXX-XXXX-${String(currentApp.formData.aadhaar_number).slice(-4)}` : '—') },
+        { label: 'Mobile Phone', value: currentApp.phone || currentApp.citizenPhone || currentApp.formData?.phone || '—' },
+        { label: 'Date of Birth', value: currentApp.dob || currentApp.formData?.dob || '—' },
+        { label: 'Gender', value: currentApp.gender || currentApp.formData?.gender || '—' },
+        { label: 'Jurisdiction / Scope', value: currentApp.jurisdiction || currentApp.selectedJurisdictionNodeId || '—' },
+      ]
     : [];
 
-  // Service specific fields list
-  const serviceFields = currentApp
-    ? [
+  // Service specific fields list - dynamically populated from application form data
+  const serviceFields = useMemo(() => {
+    if (!currentApp) return [];
+    const fields = [
       { label: 'Service Name', value: currentApp.service || currentApp.serviceName || '—' },
       { label: 'Application ID', value: currentApp.id || '—' },
-      { label: 'Annual Income Declared', value: currentApp.formData?.annualIncome ? `₹${Number(currentApp.formData.annualIncome).toLocaleString('en-IN')}` : '₹1,80,000' },
-      { label: 'Occupation', value: currentApp.formData?.occupation || 'Private Sector / Agriculture' },
-      { label: 'Purpose of Certificate', value: currentApp.formData?.purpose || 'Higher Education & Scholarship' },
-      { label: 'Family Members', value: currentApp.formData?.familyCount || '4' },
-    ]
-    : [];
-
-  // Documents list
-  const documents = currentApp?.documents?.length
-    ? currentApp.documents
-    : [
-      { name: 'Income_Proof_Salary_Slip.pdf', size: '420 KB', type: 'application/pdf' },
-      { name: 'Aadhaar_Card_Front_Back.pdf', size: '610 KB', type: 'application/pdf' },
-      { name: 'Ration_Card_Family_Proof.jpg', size: '1.2 MB', type: 'image/jpeg' },
     ];
+    if (currentApp.formData && typeof currentApp.formData === 'object') {
+      const skipKeys = ['applicant_name', 'aadhaar_number', 'phone', 'dob', 'gender', 'address', 'district', 'mandal'];
+      Object.entries(currentApp.formData).forEach(([key, val]) => {
+        if (!skipKeys.includes(key) && val !== undefined && val !== null && val !== '') {
+          const formattedLabel = key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/_/g, ' ')
+            .replace(/^\w/, (c) => c.toUpperCase());
+          const displayVal = (typeof val === 'number' || (typeof val === 'string' && /^\d+$/.test(val))) && key.toLowerCase().includes('income')
+            ? `₹${Number(val).toLocaleString('en-IN')}`
+            : String(val);
+          fields.push({ label: formattedLabel, value: displayVal });
+        }
+      });
+    }
+    return fields;
+  }, [currentApp]);
+
+  // Documents list directly from application record
+  const documents = Array.isArray(currentApp?.documents) ? currentApp.documents : [];
 
   // Application Timeline History list
-  const timelineEvents = currentApp?.timeline?.length
-    ? currentApp.timeline
-    : [
+  const timelineEvents = useMemo(() => {
+    if (currentApp?.timeline?.length) {
+      return currentApp.timeline.map((ev) => ({
+        action: ev.action || ev.stepName || 'Workflow Step',
+        date: ev.date || ev.completedDate || 'Recently',
+        actor: ev.actor || 'System',
+        note: ev.note || ev.remarks || '',
+      }));
+    }
+    const submittedDateStr = currentApp?.submitted || currentApp?.submittedDate || 'Recently';
+    return [
       {
         action: 'Application Submitted',
-        date: currentApp?.submitted || '23 Jan 2025, 10:30 AM',
-        actor: currentApp?.citizen || 'Applicant',
-        note: 'Online submission through Citizen Portal',
+        date: submittedDateStr,
+        actor: currentApp?.citizen || currentApp?.citizenName || 'Applicant',
+        note: 'Online submission through DigiConnect Portal',
       },
       {
-        action: 'Stage 1 Verification Assigned',
-        date: '23 Jan 2025, 11:15 AM',
+        action: 'Stage Verification Queued',
+        date: submittedDateStr,
         actor: user?.name || 'Department Officer',
-        note: 'Assigned to field officer queue for document verification',
+        note: 'Assigned to field officer verification queue',
       },
     ];
+  }, [currentApp, user]);
 
   if (loading) {
     return (
@@ -519,27 +535,33 @@ export default function ReviewApplicationPage() {
             </div>
             <div className="info-block-body">
               {/* [Lists] Map uploaded documents */}
-              {documents.map((doc, idx) => (
-                <div key={idx} className="doc-row">
-                  <div className="doc-icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                    <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                      <polyline points="14,2 14,8 20,8" />
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div className="doc-name">{doc.name || `Document_${idx + 1}.pdf`}</div>
-                    <div className="doc-size">{doc.size || 'Document · ~400 KB'}</div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => viewDocumentInNewTab(doc, currentApp)}
-                  >
-                    View Document
-                  </button>
+              {documents.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                  No uploaded verification documents attached to this application.
                 </div>
-              ))}
+              ) : (
+                documents.map((doc, idx) => (
+                  <div key={idx} className="doc-row">
+                    <div className="doc-icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14,2 14,8 20,8" />
+                      </svg>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="doc-name">{doc.name || `Document_${idx + 1}.pdf`}</div>
+                      <div className="doc-size">{doc.size || 'Document · ~400 KB'}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => viewDocumentInNewTab(doc, currentApp)}
+                    >
+                      View Document
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

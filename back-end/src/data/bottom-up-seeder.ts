@@ -754,17 +754,100 @@ export function generateBottomUpApplications(): any[] {
             address: citizen.address,
             district: citizen.district,
             mandal: citizen.mandal,
+            ...(srv.serviceName.toLowerCase().includes('income')
+              ? { annualIncome: '180000', occupation: 'Agriculture / Private Enterprise', purpose: 'Higher Education & Statutory Benefits', familyCount: '4' }
+              : srv.serviceName.toLowerCase().includes('caste') || srv.serviceName.toLowerCase().includes('community')
+              ? { communityCategory: 'OBC / BC', caste: 'BC-A', subCaste: 'Traditional Craft', purpose: 'Higher Education & Examination Registration' }
+              : srv.serviceName.toLowerCase().includes('mutation') || srv.serviceName.toLowerCase().includes('land') || srv.serviceName.toLowerCase().includes('patta')
+              ? { surveyNumber: '142/3B', extentAcres: '2.45 Acres', mutationReason: 'Sale Deed Purchase', previousOwner: 'K. Venkateswara Rao' }
+              : srv.serviceName.toLowerCase().includes('building') || srv.serviceName.toLowerCase().includes('trade')
+              ? { plotNumber: 'Plot 48', buildingType: 'Residential G+1', estimatedArea: '1850 sq.ft' }
+              : { servicePurpose: 'Statutory Certification', remarks: 'All mandatory citizen declarations affirmed' }),
           },
           documents: [
             {
               id: `doc_${appId}_1`,
-              name: 'Aadhaar_Verified.pdf',
-              size: '220 KB',
+              name: `Aadhaar_${citizen.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+              size: '340 KB',
               type: 'Identity Proof',
               status: 'verified',
               date: submittedDate,
               url: '#',
             },
+            ...(srv.serviceName.toLowerCase().includes('income')
+              ? [
+                  {
+                    id: `doc_${appId}_2`,
+                    name: 'Salary_Slip_or_Pattadar_Passbook.pdf',
+                    size: '520 KB',
+                    type: 'Income Proof',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                  {
+                    id: `doc_${appId}_3`,
+                    name: 'Ration_Card_Family_Proof.pdf',
+                    size: '410 KB',
+                    type: 'Family & Residence Proof',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                ]
+              : srv.serviceName.toLowerCase().includes('caste') || srv.serviceName.toLowerCase().includes('community')
+              ? [
+                  {
+                    id: `doc_${appId}_2`,
+                    name: 'School_Transfer_Certificate.pdf',
+                    size: '480 KB',
+                    type: 'School Study Proof',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                  {
+                    id: `doc_${appId}_3`,
+                    name: 'Father_Caste_Certificate.pdf',
+                    size: '390 KB',
+                    type: 'Parental Caste Proof',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                ]
+              : srv.serviceName.toLowerCase().includes('mutation') || srv.serviceName.toLowerCase().includes('land') || srv.serviceName.toLowerCase().includes('patta')
+              ? [
+                  {
+                    id: `doc_${appId}_2`,
+                    name: 'Registered_Sale_Deed.pdf',
+                    size: '1.2 MB',
+                    type: 'Sale Deed',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                  {
+                    id: `doc_${appId}_3`,
+                    name: 'Encumbrance_Certificate_EC.pdf',
+                    size: '640 KB',
+                    type: 'EC Search (13 Years)',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                ]
+              : [
+                  {
+                    id: `doc_${appId}_2`,
+                    name: 'Supporting_Self_Declaration.pdf',
+                    size: '310 KB',
+                    type: 'Supporting Document',
+                    status: 'verified',
+                    date: submittedDate,
+                    url: '#',
+                  },
+                ]),
           ],
           timeline: [
             {

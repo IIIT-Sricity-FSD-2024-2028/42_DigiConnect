@@ -28,21 +28,29 @@ import {
   apiGetOfficerWeekChart,
   apiCreateNotification,
 } from '../../api/officerApi';
+import { apiGetStateJurisdictionNodes } from '../../api/departmentHeadApi';
 
-function getJurisdictionDisplay(nodeId) {
-  const map = {
-    node_cg_vil: 'Chandragiri Village (Rural Tier 5)',
-    node_w14: 'Ward 14 (Urban Municipal Tier 5)',
-    node_cg_mdl: 'Chandragiri Mandal (Rural Tier 4)',
-    node_tpt: 'Tirupati District / Taluk (Tier 2/3)',
-    node_ap: 'Andhra Pradesh State (Tier 1)',
-    node_bilikere_vil: 'Bilikere Village (Rural Tier 5)',
-    node_hunsur_taluk: 'Hunsur Taluk (Tier 4)',
-    node_mys: 'Mysuru District (Tier 2)',
-    node_nedumangad_vil: 'Nedumangad Village (Tier 5)',
-    node_tvm: 'Thiruvananthapuram (Tier 2)',
+function formatJurisdictionNode(nodeId, nodes = []) {
+  if (!nodeId) return 'Assigned Hierarchy Scope';
+  if (Array.isArray(nodes) && nodes.length > 0) {
+    const found = nodes.find((n) => n.id === nodeId || n.nodeId === nodeId);
+    if (found) {
+      const typeStr = found.type ? ` (${found.type.charAt(0).toUpperCase() + found.type.slice(1)} Tier ${found.level || found.tier || ''})`.replace(' Tier )', ')') : '';
+      return `${found.name}${typeStr}`;
+    }
+  }
+  const clean = nodeId.replace(/^node_/, '');
+  const dict = {
+    vil: 'Village', mdl: 'Mandal', tlk: 'Taluk', dist: 'District',
+    mdu: 'Madurai', chn: 'Chennai', cbe: 'Coimbatore', tcy: 'Tiruchirappalli', slm: 'Salem',
+    blr: 'Bengaluru', mys: 'Mysuru', bgm: 'Belagavi', mng: 'Mangaluru', hub: 'Hubballi',
+    tvm: 'Thiruvananthapuram', ekm: 'Ernakulam', clt: 'Kozhikode', tsr: 'Thrissur', kdr: 'Kollam',
+    tpt: 'Tirupati', vsp: 'Visakhapatnam', kri: 'Krishna', gun: 'Guntur', ant: 'Ananthapuramu',
+    ap: 'Andhra Pradesh', ka: 'Karnataka', kl: 'Kerala', tn: 'Tamil Nadu',
+    cg: 'Chandragiri', w14: 'Ward 14',
   };
-  return map[nodeId] || nodeId || 'Assigned Hierarchy Scope';
+  const parts = clean.split('_').map((p) => dict[p.toLowerCase()] || (p.charAt(0).toUpperCase() + p.slice(1)));
+  return parts.join(' ');
 }
 
 export default function OfficerDashboard() {
@@ -60,6 +68,7 @@ export default function OfficerDashboard() {
   const [queries, setQueries] = useState([]);
   const [slaRisks, setSlaRisks] = useState([]);
   const [weekChart, setWeekChart] = useState(null); // null until API responds
+  const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -83,14 +92,21 @@ export default function OfficerDashboard() {
       setError(null);
       try {
         // [API calls] Fetch parallel datasets for the officer dashboard
-        const [queueRes, queriesRes, slaRes, chartRes] = await Promise.allSettled([
+        const [queueRes, queriesRes, slaRes, chartRes, nodesRes] = await Promise.allSettled([
           apiGetOfficerQueue(),
           apiGetOfficerQueries(),
           apiGetOfficerSlaRisks(),
           apiGetOfficerWeekChart(),
+          apiGetStateJurisdictionNodes(user?.stateId),
         ]);
 
         if (!isMounted) return;
+
+        if (nodesRes.status === 'fulfilled' && nodesRes.value?.data) {
+          setJurisdictionNodes(nodesRes.value.data);
+        } else if (nodesRes.status === 'fulfilled' && Array.isArray(nodesRes.value)) {
+          setJurisdictionNodes(nodesRes.value);
+        }
 
         // Populate queue
         if (queueRes.status === 'fulfilled' && queueRes.value?.data) {
@@ -185,14 +201,19 @@ export default function OfficerDashboard() {
   // ── [Callbacks + API calls] Send reminder for pending query ──
   const handleSendReminder = async (queryItem) => {
     try {
+      const targetCitizenId = queryItem.citizenId || (queryItem.citizenUser && queryItem.citizenUser.id);
+      if (!targetCitizenId) {
+        showToast('Unable to send reminder: citizen identifier missing.', 'warning');
+        return;
+      }
       await apiCreateNotification({
-        userId: queryItem.citizenId || 'citizen-001',
+        userId: targetCitizenId,
         title: 'Query Reminder',
         message: `Reminder: Please respond to the pending query for application ${queryItem.id || queryItem.appId}.`,
         type: 'warning',
         link: `/citizen/track?id=${queryItem.id || queryItem.appId}`,
       });
-      showToast(`Reminder sent successfully to ${queryItem.citizen || 'citizen'}.`, 'success');
+      showToast(`Reminder sent successfully to ${queryItem.citizen || queryItem.citizenName || 'citizen'}.`, 'success');
     } catch (err) {
       showToast('Failed to send reminder notification.', 'error');
     }
@@ -295,9 +316,9 @@ export default function OfficerDashboard() {
               </span>
             </div>
             <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: '4px' }}>
-              <span>🏢 {user?.dept || 'Revenue Department'}</span>
+              <span>🏢 {user?.dept || user?.departmentName || 'Department'}</span>
               &nbsp;·&nbsp;
-              <span>📍 Assigned Jurisdiction: <strong>{getJurisdictionDisplay(user?.assignedNodeId || user?.jurisdiction)}</strong></span>
+              <span>📍 Assigned Jurisdiction: <strong>{formatJurisdictionNode(user?.assignedNodeId || user?.jurisdiction, jurisdictionNodes)}</strong></span>
             </div>
           </div>
         </div>
