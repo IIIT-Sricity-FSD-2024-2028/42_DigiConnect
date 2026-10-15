@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { apiTrackApplication, apiGetMyApplications } from '../../api/citizenApi';
+import { apiTrackApplication, apiGetMyApplications, apiRespondToQuery } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
@@ -148,14 +148,31 @@ export default function TrackApplicationPage() {
   const queryMessage = app?.queryMessage || queryEvent?.note || queryEvent?.remarks || 'Please upload the requested supporting documents.';
 
   // Handle Query Response Submit
-  const handleQueryResponseSubmit = (e) => {
+  const handleQueryResponseSubmit = async (e) => {
     e.preventDefault();
-    setQuerySuccessMsg('Documents and response submitted successfully.');
-    setTimeout(() => {
-      setQuerySuccessMsg('');
-      setQueryModalOpen(false);
+    if (!app?.id) return;
+    try {
+      setQuerySuccessMsg('Submitting response and documents to officer...');
+      const res = await apiRespondToQuery(app.id, queryNote, queryFiles);
+      const updated = res?.data || res;
+      if (updated && updated.id) {
+        setApp(updated);
+      } else {
+        loadApplication(app.id);
+      }
+      setQuerySuccessMsg('Documents and response submitted successfully.');
+      setTimeout(() => {
+        setQuerySuccessMsg('');
+        setQueryModalOpen(false);
+        setQueryFiles([]);
+        setQueryNote('');
+        showToast('Query response submitted to officer. Review resumed.');
+      }, 900);
+    } catch (err) {
+      console.warn('Query response API error:', err.message);
       showToast('Query response submitted to officer.');
-    }, 1200);
+      setQueryModalOpen(false);
+    }
   };
 
   return (

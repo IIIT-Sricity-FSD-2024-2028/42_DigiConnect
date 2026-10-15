@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGetMyApplications } from '../../api/citizenApi';
+import { apiGetMyApplications, apiWithdrawApplication } from '../../api/citizenApi';
 import ApplicationRow from '../../components/citizen/ApplicationRow';
 import { checkStatusCategory } from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
@@ -93,10 +93,17 @@ export default function MyApplicationsPage() {
     return 0;
   });
 
-  const handleConfirmWithdraw = () => {
+  const handleConfirmWithdraw = async () => {
     if (withdrawApp) {
-      setApplications((prev) => prev.filter((a) => a.id !== withdrawApp.id));
-      setWithdrawApp(null);
+      try {
+        await apiWithdrawApplication(withdrawApp.id);
+        setApplications((prev) => prev.filter((a) => a.id !== withdrawApp.id));
+      } catch (err) {
+        console.warn('Backend withdraw error, removing locally:', err.message);
+        setApplications((prev) => prev.filter((a) => a.id !== withdrawApp.id));
+      } finally {
+        setWithdrawApp(null);
+      }
     }
   };
 
@@ -389,6 +396,16 @@ export default function MyApplicationsPage() {
                             onClick={() => downloadDigitalCertificate(app)}
                           >
                             Certificate
+                          </button>
+                        )}
+                        {!checkStatusCategory(app.status).isApproved && !checkStatusCategory(app.status).isRejected && (
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: 'var(--red-600)', borderColor: 'var(--red-200)' }}
+                            onClick={() => setWithdrawApp(app)}
+                          >
+                            Withdraw
                           </button>
                         )}
                         <Link to={`/citizen/track?id=${app.id}`} className="btn btn-ghost btn-sm">

@@ -118,7 +118,7 @@ export default function ApplicationRow({ app, onWithdraw, onDownloadCert }) {
               </svg>
             </button>
           )}
-          {isDraft && onWithdraw && (
+          {!isApproved && !isRejected && onWithdraw && (
             <button
               type="button"
               className="icon-btn"

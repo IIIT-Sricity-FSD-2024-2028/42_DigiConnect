@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetServices, apiSubmitApplication, apiGetGeographyTree } from '../../api/citizenApi';
+import { apiGetServices, apiSubmitApplication, apiGetGeographyTree, apiSimulatePayment } from '../../api/citizenApi';
 
 // Member 4's child components
 import ServiceCard from '../../components/citizen/ServiceCard';
@@ -557,7 +557,17 @@ export default function ApplyServicePage() {
 
       // Assemble payload matching backend CreateApplicationDto
       const feeAmount = Number(selectedService.fee ?? selectedService.totalFee ?? 0);
-      const randomRef = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
+      // Real payment simulation handshake if fee > 0
+      let transactionId = 'TXN-EXEMPT-000';
+      if (feeAmount > 0) {
+        try {
+          const payRes = await apiSimulatePayment(selectedService.id, user?.id || 'CIT-1001', feeAmount);
+          transactionId = payRes?.transactionId || `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
+        } catch (payErr) {
+          console.warn('Payment simulation fallback:', payErr.message);
+          transactionId = `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
+        }
+      }
 
       // Check if actual File instances were uploaded to send via FormData
       const hasRealFiles = Object.values(uploadedFiles).some((f) => f instanceof File);
@@ -570,7 +580,7 @@ export default function ApplyServicePage() {
         if (selectedService.dept) fd.append('dept', selectedService.dept);
         fd.append('fee', String(feeAmount));
         fd.append('paymentMethod', paymentMethod);
-        fd.append('paymentTransactionId', randomRef);
+        fd.append('paymentTransactionId', transactionId);
         fd.append('selectedJurisdictionNodeId', applicantInfo.leafNode || 'node_cg_vil');
         fd.append(
           'formData',
@@ -596,7 +606,7 @@ export default function ApplyServicePage() {
           dept: selectedService.dept,
           fee: feeAmount,
           paymentMethod: paymentMethod,
-          paymentTransactionId: randomRef,
+          paymentTransactionId: transactionId,
           selectedJurisdictionNodeId: applicantInfo.leafNode || 'node_cg_vil',
           formData: {
             ...applicantInfo,

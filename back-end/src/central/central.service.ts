@@ -598,7 +598,7 @@ export class CentralService {
         totalCitizens: finalCitizens,
         totalApplications: finalApps,
         totalRevenue: finalRevenue,
-        platformFees: totalPlatformFees,
+        platformFees: finalPlatformFees,
         serviceFees: totalServiceFees,
         avgRevenuePerApp: finalApps > 0 ? Math.round(finalRevenue / finalApps) : 0,
         totalDepartments: finalDepts,
