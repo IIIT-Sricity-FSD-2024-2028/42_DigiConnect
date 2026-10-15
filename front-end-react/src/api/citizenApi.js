@@ -28,3 +28,12 @@ export const apiRaiseGrievance = (data) => {
     body,
   });
 };
+
+export const apiGetStates = () => apiFetch('/central/states').catch(() => null);
+
+export const apiGetGeographyTree = (stateId = 'state_ap') =>
+  apiFetch(`/geography/tree?stateId=${stateId}`);
+
+export const apiGetNodeChildren = (nodeId, stateId) =>
+  apiFetch(`/geography/nodes/${nodeId}/children${stateId ? `?stateId=${stateId}` : ''}`);
+

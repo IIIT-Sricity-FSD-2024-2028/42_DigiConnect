@@ -7,7 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetServices, apiSubmitApplication } from '../../api/citizenApi';
+import { apiGetServices, apiSubmitApplication, apiGetGeographyTree } from '../../api/citizenApi';
 
 // Member 4's child components
 import ServiceCard from '../../components/citizen/ServiceCard';
@@ -47,6 +47,194 @@ const DEFAULT_SERVICE_SCHEMAS = {
     { key: 'remarks', label: 'Additional Information / Purpose', type: 'textarea', required: false, placeholder: 'Enter any additional details required for this application…' },
   ],
 };
+
+// ── Master Geography Datasets & Fallbacks (matching backend master-architecture) ──
+const DEFAULT_STATES = [
+  { id: 'state_ap', name: 'Andhra Pradesh' },
+  { id: 'state_ka', name: 'Karnataka' },
+  { id: 'state_kl', name: 'Kerala' },
+  { id: 'state_tn', name: 'Tamil Nadu' },
+];
+
+const JURISDICTION_FALLBACK_DATA = {
+  state_ap: {
+    name: 'Andhra Pradesh',
+    districts: [{ id: 'node_tpt', name: 'Tirupati District' }],
+    RURAL: {
+      tier4Label: 'Mandal',
+      tier5Label: 'Village / Gram Panchayat',
+      tier4: [{ id: 'node_cg_mdl', name: 'Chandragiri Mandal', districtId: 'node_tpt' }],
+      leaves: {
+        node_cg_mdl: [
+          { id: 'node_cg_vil', name: 'Chandragiri Village' },
+          { id: 'node_pn_vil', name: 'Panakam Village' },
+        ],
+      },
+    },
+    URBAN: {
+      tier4Label: 'Municipal Corporation',
+      tier5Label: 'Urban Ward',
+      tier4: [{ id: 'node_tmc', name: 'Tirupati Municipal Corporation', districtId: 'node_tpt' }],
+      leaves: {
+        node_tmc: [
+          { id: 'node_w14', name: 'Ward 14 - Bhavani Nagar' },
+          { id: 'node_w22', name: 'Ward 22 - Korlagunta' },
+        ],
+      },
+    },
+  },
+  state_ka: {
+    name: 'Karnataka',
+    districts: [{ id: 'node_mys', name: 'Mysuru District' }],
+    RURAL: {
+      tier4Label: 'Taluk',
+      tier5Label: 'Village',
+      tier4: [{ id: 'node_hunsur_taluk', name: 'Hunsur Taluk', districtId: 'node_mys' }],
+      leaves: {
+        node_hunsur_taluk: [
+          { id: 'node_bilikere_vil', name: 'Bilikere Village' },
+          { id: 'node_ratnapuri_vil', name: 'Ratnapuri Village' },
+        ],
+      },
+    },
+    URBAN: {
+      tier4Label: 'City Corporation',
+      tier5Label: 'Urban Ward',
+      tier4: [{ id: 'node_bbmp', name: 'Bruhat Bengaluru Mahanagara Palike (BBMP)', districtId: 'node_mys' }],
+      leaves: {
+        node_bbmp: [
+          { id: 'node_bbmp_w150', name: 'Ward 150 - Bellandur' },
+          { id: 'node_bbmp_w174', name: 'Ward 174 - HSR Layout' },
+        ],
+      },
+    },
+  },
+  state_kl: {
+    name: 'Kerala',
+    districts: [{ id: 'node_tvm', name: 'Thiruvananthapuram District' }],
+    RURAL: {
+      tier4Label: 'Taluk',
+      tier5Label: 'Village',
+      tier4: [{ id: 'node_ned_taluk', name: 'Nedumangad Taluk', districtId: 'node_tvm' }],
+      leaves: {
+        node_ned_taluk: [
+          { id: 'node_vembayam_vil', name: 'Vembayam Village' },
+          { id: 'node_karakulam_vil', name: 'Karakulam Village' },
+        ],
+      },
+    },
+    URBAN: {
+      tier4Label: 'Municipal Corporation',
+      tier5Label: 'Urban Ward',
+      tier4: [{ id: 'node_tvm_corp', name: 'Thiruvananthapuram Municipal Corporation', districtId: 'node_tvm' }],
+      leaves: {
+        node_tvm_corp: [
+          { id: 'node_tvm_w12', name: 'Ward 12 - Palayam' },
+          { id: 'node_tvm_w18', name: 'Ward 18 - Pattom' },
+        ],
+      },
+    },
+  },
+  state_tn: {
+    name: 'Tamil Nadu',
+    districts: [{ id: 'node_madurai', name: 'Madurai District' }],
+    RURAL: {
+      tier4Label: 'Taluk',
+      tier5Label: 'Village',
+      tier4: [{ id: 'node_tpk_taluk', name: 'Thiruparankundram Taluk', districtId: 'node_madurai' }],
+      leaves: {
+        node_tpk_taluk: [
+          { id: 'node_valayankulam_vil', name: 'Valayankulam Village' },
+          { id: 'node_nilaiyur_vil', name: 'Nilaiyur Village' },
+        ],
+      },
+    },
+    URBAN: {
+      tier4Label: 'City Corporation',
+      tier5Label: 'Urban Ward',
+      tier4: [{ id: 'node_gcc', name: 'Greater Chennai Corporation (GCC)', districtId: 'node_madurai' }],
+      leaves: {
+        node_gcc: [
+          { id: 'node_gcc_w50', name: 'Ward 50 - Royapuram' },
+          { id: 'node_gcc_w114', name: 'Ward 114 - T. Nagar' },
+        ],
+      },
+    },
+  },
+};
+
+/**
+ * Traverses a backend recursive jurisdiction tree and categorizes nodes by tierLevel.
+ */
+function extractJurisdictionsFromTree(treeNodes, areaType = 'RURAL') {
+  const districts = [];
+  const tier4Map = {};
+  const leavesMap = {};
+
+  const targetArea = (areaType || 'RURAL').toUpperCase();
+
+  const traverse = (node, currentDistrictId, currentTier4Id) => {
+    if (!node) return;
+
+    let distId = currentDistrictId;
+    let t4Id = currentTier4Id;
+
+    const tier = (node.tierLevel || '').toUpperCase();
+    const govType = (node.governanceType || node.areaType || '').toUpperCase();
+    const matchesArea = !govType || govType === 'COMMON' || govType === targetArea;
+
+    if (tier === 'DISTRICT') {
+      distId = node.id;
+      if (!districts.some((d) => d.id === node.id)) {
+        districts.push({ id: node.id, name: node.name });
+      }
+    } else if (
+      tier === 'MANDAL' ||
+      tier === 'MUNICIPALITY' ||
+      tier === 'MUNICIPAL_CORP' ||
+      tier === 'TALUK' ||
+      node.id.includes('mdl') ||
+      node.id.includes('man') ||
+      node.id.includes('taluk') ||
+      node.id.includes('tmc') ||
+      node.id.includes('corp') ||
+      node.id.includes('bbmp') ||
+      node.id.includes('gcc')
+    ) {
+      if (matchesArea && distId) {
+        t4Id = node.id;
+        if (!tier4Map[distId]) tier4Map[distId] = [];
+        if (!tier4Map[distId].some((t) => t.id === node.id)) {
+          tier4Map[distId].push({ id: node.id, name: node.name, areaType: govType });
+        }
+      }
+    } else if (
+      tier === 'VILLAGE' ||
+      tier === 'WARD' ||
+      node.id.includes('vil') ||
+      node.id.includes('ward') ||
+      node.id.startsWith('node_w') ||
+      node.id.includes('_w')
+    ) {
+      if (matchesArea && t4Id) {
+        if (!leavesMap[t4Id]) leavesMap[t4Id] = [];
+        if (!leavesMap[t4Id].some((l) => l.id === node.id)) {
+          leavesMap[t4Id].push({ id: node.id, name: node.name });
+        }
+      }
+    }
+
+    if (Array.isArray(node.children)) {
+      node.children.forEach((child) => traverse(child, distId, t4Id));
+    }
+  };
+
+  (Array.isArray(treeNodes) ? treeNodes : [treeNodes]).forEach((root) =>
+    traverse(root, null, null)
+  );
+
+  return { districts, tier4Map, leavesMap };
+}
 
 export default function ApplyServicePage() {
   // ── 1. Context & Router ──
@@ -162,6 +350,100 @@ export default function ApplyServicePage() {
       }));
     }
   }, [user]);
+
+  // ── Dynamic Geography & Cascading Jurisdiction State ──
+  const [geoData, setGeoData] = useState(() => {
+    const fb = JURISDICTION_FALLBACK_DATA['state_ap'];
+    const r = fb.RURAL;
+    return {
+      districts: fb.districts,
+      tier4Map: { [fb.districts[0].id]: r.tier4 },
+      leavesMap: r.leaves,
+    };
+  });
+
+  // Fetch live geography tree whenever selected state or area type changes
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchTree() {
+      try {
+        const res = await apiGetGeographyTree(applicantInfo.stateId || 'state_ap');
+        const tree = Array.isArray(res) ? res : res?.data || [];
+        if (tree.length > 0 && isMounted) {
+          const parsed = extractJurisdictionsFromTree(tree, applicantInfo.areaType);
+          if (parsed.districts.length > 0) {
+            setGeoData(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load geography tree, using fallback hierarchy:', err);
+      }
+    }
+
+    fetchTree();
+    return () => {
+      isMounted = false;
+    };
+  }, [applicantInfo.stateId, applicantInfo.areaType]);
+
+  const fallback =
+    JURISDICTION_FALLBACK_DATA[applicantInfo.stateId] || JURISDICTION_FALLBACK_DATA['state_ap'];
+  const fallbackArea = fallback[applicantInfo.areaType] || fallback.RURAL;
+
+  const currentDistricts =
+    geoData.districts && geoData.districts.length > 0 ? geoData.districts : fallback.districts;
+
+  const activeDistrictId = applicantInfo.district || currentDistricts[0]?.id || 'node_tpt';
+
+  const currentTier4List =
+    geoData.tier4Map?.[activeDistrictId] && geoData.tier4Map[activeDistrictId].length > 0
+      ? geoData.tier4Map[activeDistrictId]
+      : fallbackArea.tier4;
+
+  const activeTier4Id = applicantInfo.tier4 || currentTier4List[0]?.id || '';
+
+  const currentLeavesList =
+    geoData.leavesMap?.[activeTier4Id] && geoData.leavesMap[activeTier4Id].length > 0
+      ? geoData.leavesMap[activeTier4Id]
+      : fallbackArea.leaves?.[activeTier4Id] || Object.values(fallbackArea.leaves || {})[0] || [];
+
+  const tier4Label =
+    applicantInfo.areaType === 'RURAL' ? 'Mandal / Taluk' : 'Municipal Corporation / Zone';
+  const leafLabel =
+    applicantInfo.areaType === 'RURAL' ? 'Village / Gram Panchayat' : 'Urban Ward (Leaf Node)';
+
+  // Synchronize downstream jurisdiction selections when parent level changes
+  useEffect(() => {
+    setApplicantInfo((prev) => {
+      const distValid = currentDistricts.some((d) => d.id === prev.district);
+      const nextDist = distValid ? prev.district : currentDistricts[0]?.id || '';
+
+      const tier4ForDist =
+        geoData.tier4Map?.[nextDist] && geoData.tier4Map[nextDist].length > 0
+          ? geoData.tier4Map[nextDist]
+          : fallbackArea.tier4;
+      const tier4Valid = tier4ForDist.some((t) => t.id === prev.tier4);
+      const nextTier4 = tier4Valid ? prev.tier4 : tier4ForDist[0]?.id || '';
+
+      const leavesForTier4 =
+        geoData.leavesMap?.[nextTier4] && geoData.leavesMap[nextTier4].length > 0
+          ? geoData.leavesMap[nextTier4]
+          : fallbackArea.leaves?.[nextTier4] || Object.values(fallbackArea.leaves || {})[0] || [];
+      const leafValid = leavesForTier4.some((l) => l.id === prev.leafNode);
+      const nextLeaf = leafValid ? prev.leafNode : leavesForTier4[0]?.id || '';
+
+      if (nextDist === prev.district && nextTier4 === prev.tier4 && nextLeaf === prev.leafNode) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        district: nextDist,
+        tier4: nextTier4,
+        leafNode: nextLeaf,
+      };
+    });
+  }, [applicantInfo.stateId, applicantInfo.areaType, activeDistrictId, activeTier4Id, currentDistricts, currentTier4List, currentLeavesList, fallbackArea]);
 
   // ── 4. Callbacks: Step 0 (Service Selection) ──
   const handleSelectService = (service) => {
@@ -751,32 +1033,83 @@ export default function ApplyServicePage() {
                     required
                   />
                 </div>
+                {/* Dynamic State Selector */}
                 <div className="form-group">
                   <label className="form-label">State <span className="required">*</span></label>
-                  <select className="form-input" name="stateId" value={applicantInfo.stateId} onChange={handleApplicantInfoChange}>
-                    <option value="state_ap">Andhra Pradesh</option>
-                    <option value="state_ka">Karnataka</option>
-                    <option value="state_kl">Kerala</option>
-                    <option value="state_tn">Tamil Nadu</option>
+                  <select
+                    className="form-input"
+                    name="stateId"
+                    value={applicantInfo.stateId}
+                    onChange={handleApplicantInfoChange}
+                    required
+                  >
+                    {DEFAULT_STATES.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Dynamic District Selector */}
                 <div className="form-group">
                   <label className="form-label">District <span className="required">*</span></label>
-                  <select className="form-input" name="district" value={applicantInfo.district} onChange={handleApplicantInfoChange}>
-                    <option value="node_tpt">Tirupati District</option>
-                    <option value="node_bengaluru">Bengaluru Urban</option>
+                  <select
+                    className="form-input"
+                    name="district"
+                    value={applicantInfo.district}
+                    onChange={handleApplicantInfoChange}
+                    required
+                  >
+                    {currentDistricts.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Dynamic Mandal / Municipal Corporation Selector */}
                 <div className="form-group">
                   <label className="form-label">
-                    {applicantInfo.areaType === 'RURAL' ? 'Mandal' : 'Municipal Ward'} <span className="required">*</span>
+                    {tier4Label} <span className="required">*</span>
                   </label>
-                  <select className="form-input" name="tier4" value={applicantInfo.tier4} onChange={handleApplicantInfoChange}>
-                    <option value="node_cg_man">Chandragiri Mandal</option>
-                    <option value="node_tpt_man">Tirupati Rural Mandal</option>
-                    <option value="node_tmc">Tirupati Municipal Corporation (TMC)</option>
+                  <select
+                    className="form-input"
+                    name="tier4"
+                    value={applicantInfo.tier4}
+                    onChange={handleApplicantInfoChange}
+                    required
+                  >
+                    {currentTier4List.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
+
+                {/* Dynamic Village / Ward (Leaf Node) Selector */}
+                <div className="form-group">
+                  <label className="form-label">
+                    {leafLabel} <span className="required">*</span>
+                  </label>
+                  <select
+                    className="form-input"
+                    name="leafNode"
+                    value={applicantInfo.leafNode}
+                    onChange={handleApplicantInfoChange}
+                    required
+                  >
+                    {currentLeavesList.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* PIN Code */}
                 <div className="form-group">
                   <label className="form-label">PIN Code <span className="required">*</span></label>
                   <input
