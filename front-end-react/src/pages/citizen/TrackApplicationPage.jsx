@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { apiTrackApplication, apiGetMyApplications } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
+import { downloadDigitalCertificate } from '../../utils/certificate';
+import { viewDocumentInNewTab } from '../../utils/documentViewer';
 
 export default function TrackApplicationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -632,7 +634,7 @@ export default function TrackApplicationPage() {
                                 type="button"
                                 className="btn btn-ghost btn-sm"
                                 style={{ fontSize: '0.75rem' }}
-                                onClick={() => showToast(`Document verified: ${doc.name}`)}
+                                onClick={() => viewDocumentInNewTab(doc, app)}
                               >
                                 View Proof
                               </button>
@@ -694,7 +696,7 @@ export default function TrackApplicationPage() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  onClick={() => showToast('Certificate downloaded successfully!')}
+                  onClick={() => downloadDigitalCertificate(app)}
                 >
                   Download Certificate
                 </button>

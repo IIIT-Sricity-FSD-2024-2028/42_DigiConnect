@@ -5,6 +5,7 @@ import ApplicationRow from '../../components/citizen/ApplicationRow';
 import { checkStatusCategory } from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import SearchBar from '../../components/common/SearchBar';
+import { downloadDigitalCertificate } from '../../utils/certificate';
 
 export default function MyApplicationsPage() {
   const [applications, setApplications] = useState([]);
@@ -537,7 +538,12 @@ export default function MyApplicationsPage() {
                   </thead>
                   <tbody>
                     {sortedApps.map((app) => (
-                      <ApplicationRow key={app.id} app={app} onWithdraw={(a) => setWithdrawApp(a)} />
+                      <ApplicationRow
+                        key={app.id}
+                        app={app}
+                        onWithdraw={(a) => setWithdrawApp(a)}
+                        onDownloadCert={(a) => downloadDigitalCertificate(a)}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -594,9 +600,21 @@ export default function MyApplicationsPage() {
                       <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                         Officer: {app.officerName || app.assignedOfficerName || '—'}
                       </span>
-                      <Link to={`/citizen/track?id=${app.id}`} className="btn btn-ghost btn-sm">
-                        Track Details →
-                      </Link>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {checkStatusCategory(app.status).isApproved && (
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '4px 8px', color: '#047857', borderColor: '#a7f3d0' }}
+                            onClick={() => downloadDigitalCertificate(app)}
+                          >
+                            Certificate
+                          </button>
+                        )}
+                        <Link to={`/citizen/track?id=${app.id}`} className="btn btn-ghost btn-sm">
+                          Track Details →
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 );
