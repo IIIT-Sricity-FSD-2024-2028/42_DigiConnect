@@ -244,24 +244,56 @@ export default function ApplyServicePage() {
       const feeAmount = Number(selectedService.fee ?? selectedService.totalFee ?? 0);
       const randomRef = 'TXN-' + Math.floor(100000 + Math.random() * 900000);
 
-      const payload = {
-        serviceId: selectedService.id,
-        citizenId: user?.id || 'CIT-1001',
-        dept: selectedService.dept,
-        fee: feeAmount,
-        paymentMethod: paymentMethod,
-        paymentTransactionId: randomRef,
-        selectedJurisdictionNodeId: applicantInfo.leafNode || 'node_cg_vil',
-        formData: {
-          ...applicantInfo,
-          ...dynamicAnswers,
-        },
-        documents: Object.keys(uploadedFiles).map((docName) => ({
-          name: docName,
-          fileName: uploadedFiles[docName]?.name || docName,
-          size: uploadedFiles[docName]?.size || 0,
-        })),
-      };
+      // Check if actual File instances were uploaded to send via FormData
+      const hasRealFiles = Object.values(uploadedFiles).some((f) => f instanceof File);
+
+      let payload;
+      if (hasRealFiles) {
+        const fd = new FormData();
+        fd.append('serviceId', selectedService.id);
+        fd.append('citizenId', user?.id || 'CIT-1001');
+        if (selectedService.dept) fd.append('dept', selectedService.dept);
+        fd.append('fee', String(feeAmount));
+        fd.append('paymentMethod', paymentMethod);
+        fd.append('paymentTransactionId', randomRef);
+        fd.append('selectedJurisdictionNodeId', applicantInfo.leafNode || 'node_cg_vil');
+        fd.append(
+          'formData',
+          JSON.stringify({
+            ...applicantInfo,
+            ...dynamicAnswers,
+          })
+        );
+
+        // Append actual binary files under 'documents' field for NestJS Multer FilesInterceptor
+        Object.keys(uploadedFiles).forEach((docName) => {
+          const file = uploadedFiles[docName];
+          if (file instanceof File) {
+            fd.append('documents', file);
+          }
+        });
+
+        payload = fd;
+      } else {
+        payload = {
+          serviceId: selectedService.id,
+          citizenId: user?.id || 'CIT-1001',
+          dept: selectedService.dept,
+          fee: feeAmount,
+          paymentMethod: paymentMethod,
+          paymentTransactionId: randomRef,
+          selectedJurisdictionNodeId: applicantInfo.leafNode || 'node_cg_vil',
+          formData: {
+            ...applicantInfo,
+            ...dynamicAnswers,
+          },
+          documents: Object.keys(uploadedFiles).map((docName) => ({
+            name: docName,
+            fileName: uploadedFiles[docName]?.name || docName,
+            size: uploadedFiles[docName]?.size || 0,
+          })),
+        };
+      }
 
       const res = await apiSubmitApplication(payload);
       const createdApp = res?.data || res;

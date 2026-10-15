@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { apiGetMyApplications, apiGetMyGrievances } from '../../api/citizenApi';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
+import { downloadDigitalCertificate } from '../../utils/certificate';
 
 // Sub-component for individual application item in the list
 // Demonstrates: Components, Props, Prop Drilling, Events, and Callbacks
@@ -53,15 +54,20 @@ function RecentApplicationItem({ app, onTrack, formatDate }) {
           {statusInfo.badgeLabel}
         </span>
         {isApproved && (
-          <span
+          <button
+            type="button"
             className="btn btn-outline btn-sm"
-            title="Approved Application"
-            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+            title="Download Certificate"
+            style={{ padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadDigitalCertificate(app);
+            }}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-          </span>
+          </button>
         )}
       </div>
     </div>

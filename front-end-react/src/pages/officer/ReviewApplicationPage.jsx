@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
 import DecisionModal from '../../components/officer/DecisionModal';
+import { viewDocumentInNewTab } from '../../utils/documentViewer';
 import {
   apiGetOfficerQueue,
   apiGetApplicationById,
@@ -533,7 +534,7 @@ export default function ReviewApplicationPage() {
                   <button
                     type="button"
                     className="btn btn-ghost btn-sm"
-                    onClick={() => showToast(`Opening ${doc.name}...`, 'info')}
+                    onClick={() => viewDocumentInNewTab(doc, currentApp)}
                   >
                     View Document
                   </button>
