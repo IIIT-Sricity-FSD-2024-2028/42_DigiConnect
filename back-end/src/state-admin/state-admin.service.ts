@@ -600,10 +600,123 @@ export class StateAdminService {
   }
 
   /**
+   * Helper to collect all descendant node IDs under a given node.
+   */
+  private getDescendantNodeIds(nodeId: string): string[] {
+    const directChildren = db.jurisdictionNodes.filter((n) => n.parentId === nodeId);
+    let allIds: string[] = directChildren.map((c) => c.id);
+    for (const child of directChildren) {
+      allIds = allIds.concat(this.getDescendantNodeIds(child.id));
+    }
+    return allIds;
+  }
+
+  /**
+   * Standard district collectors directory for state districts.
+   */
+  private readonly districtCollectorsMap: Record<string, string> = {
+    // AP
+    node_tpt: 'Dr. S. Venkateswar IAS',
+    node_vsp: 'M. N. Harendhira Prasad IAS',
+    node_kri: 'D. K. Balaji IAS',
+    node_gun: 'S. Nagalakshmi IAS',
+    node_ant: 'Dr. V. Vinod Kumar IAS',
+    // KA
+    node_mys: 'Dr. K. V. Rajendra IAS',
+    node_blr: 'J. Manjunath IAS',
+    node_bel: 'Nitesh Patil IAS',
+    node_mng: 'Mullai Muhilan IAS',
+    node_hub: 'Divya Prabhu IAS',
+    // KL
+    node_tvm: 'Geromic George IAS',
+    node_ekm: 'N. S. K. Umesh IAS',
+    node_clt: 'Snehil Kumar Singh IAS',
+    node_klm: 'Afsana Parveen IAS',
+    node_tsr: 'Arjun Pandian IAS',
+    // TN
+    node_mdu: 'M. S. Sangeetha IAS',
+    node_chn: 'Rashmi Siddharth Zagade IAS',
+    node_cbe: 'Kranthi Kumar Pati IAS',
+    node_slm: 'R. Brindha Devi IAS',
+    node_try: 'M. Pradeep Kumar IAS',
+  };
+
+  /**
+   * Dynamically build district leaderboard for a given state.
+   */
+  getDistrictLeaderboard(stateId: string) {
+    const districts = db.jurisdictionNodes.filter(
+      (n) => n.stateId === stateId && (n.tierLevel as string) === 'DISTRICT',
+    );
+
+    if (!districts.length) return [];
+
+    const leaderboard = districts.map((district) => {
+      const descendantIds = new Set([district.id, ...this.getDescendantNodeIds(district.id)]);
+      const cleanDistName = district.name.replace(/ District$/i, '').trim().toLowerCase();
+
+      const districtApps = db.applications.filter((a) => {
+        const jId = a.jurisdiction || (a as any).selectedJurisdictionNodeId;
+        if (jId && descendantIds.has(jId)) return true;
+        const appDist = String((a as any).district || (a as any).formData?.district || '').toLowerCase();
+        if (appDist && (appDist === cleanDistName || appDist.includes(cleanDistName) || cleanDistName.includes(appDist))) {
+          return true;
+        }
+        return false;
+      });
+
+      let completed = 0;
+      let pending = 0;
+
+      districtApps.forEach((a) => {
+        const st = String((a as any).currentStatus || a.status || '').toLowerCase();
+        if (st.includes('completed') || st.includes('approved')) completed++;
+        else pending++;
+      });
+
+      const totalApps = districtApps.length;
+      const slaRate = totalApps > 0 ? Number(((completed / totalApps) * 100).toFixed(1)) : 95.0;
+
+      const collector =
+        this.districtCollectorsMap[district.id] ||
+        (() => {
+          const officer = db.officers.find(
+            (o) => o.assignedNodeId === district.id || descendantIds.has(o.assignedNodeId),
+          );
+          return officer ? `${officer.name} IAS` : `Collector ${district.name.replace(/ District$/i, '')} IAS`;
+        })();
+
+      return {
+        id: district.id,
+        name: district.name.replace(/ District$/i, ''),
+        collector,
+        apps: totalApps,
+        completed,
+        pending,
+        slaRate,
+        rank: 1,
+      };
+    });
+
+    leaderboard.sort((a, b) => b.completed - a.completed || b.apps - a.apps);
+
+    leaderboard.forEach((item, index) => {
+      item.rank = index + 1;
+    });
+
+    return leaderboard;
+  }
+
+  /**
    * Complete Monitoring Details for State Admin Dashboard (Unified with Central Admin)
    */
   getStateDashboard(stateId: string) {
-    return this.centralService.getStateDetails(stateId);
+    const details = this.centralService.getStateDetails(stateId);
+    const districtsLeaderboard = this.getDistrictLeaderboard(stateId);
+    return {
+      ...details,
+      districtsLeaderboard,
+    };
   }
 
   /**

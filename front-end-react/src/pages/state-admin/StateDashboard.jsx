@@ -34,14 +34,6 @@ function formatNum(val) {
   return num.toLocaleString('en-IN');
 }
 
-// Sample district performance data for the state-wide leaderboard
-const SAMPLE_DISTRICTS = [
-  { id: 'dist_tpt', name: 'Tirupati', collector: 'Dr. S. Venkateswar IAS', apps: 4210, completed: 3980, pending: 230, slaRate: 94.5, rank: 1 },
-  { id: 'dist_vsp', name: 'Visakhapatnam', collector: 'M. N. Harendhira Prasad IAS', apps: 5120, completed: 4800, pending: 320, slaRate: 93.7, rank: 2 },
-  { id: 'dist_kri', name: 'Krishna', collector: 'D. K. Balaji IAS', apps: 3840, completed: 3560, pending: 280, slaRate: 92.7, rank: 3 },
-  { id: 'dist_gun', name: 'Guntur', collector: 'S. Nagalakshmi IAS', apps: 4620, completed: 4210, pending: 410, slaRate: 91.1, rank: 4 },
-  { id: 'dist_ant', name: 'Anantapur', collector: 'Dr. V. Vinod Kumar IAS', apps: 2940, completed: 2610, pending: 330, slaRate: 88.8, rank: 5 },
-];
 
 export default function StateDashboard() {
   // Router: navigation hook for redirecting to subpages
@@ -138,24 +130,25 @@ export default function StateDashboard() {
   }
 
   // Extract metrics from API response with fallback safe defaults
-  const state = dashboardData?.state || { name: 'Andhra Pradesh', code: 'AP', status: 'ACTIVE' };
+  const state = dashboardData?.state || { name: user?.state || 'State Government', code: user?.stateCode || 'ST', status: 'ACTIVE' };
   const stateAdmin = dashboardData?.stateAdmin || { name: user?.name || 'State Administrator' };
   const summary = dashboardData?.summary || {
-    totalDepartments: 8,
-    totalOfficers: 42,
-    totalServices: 14,
-    totalApplications: 20730,
-    totalRevenue: 5182500,
-    totalGrievances: 184,
+    totalDepartments: 0,
+    totalOfficers: 0,
+    totalServices: 0,
+    totalApplications: 0,
+    totalRevenue: 0,
+    totalGrievances: 0,
   };
   const jurisdiction = dashboardData?.jurisdiction || {
-    districtsCount: 5,
-    subDivisionsCount: 12,
-    mandalsCount: 48,
-    villagesCount: 320,
-    municipalitiesCount: 6,
-    wardsCount: 94,
+    districtsCount: 0,
+    subDivisionsCount: 0,
+    mandalsCount: 0,
+    villagesCount: 0,
+    municipalitiesCount: 0,
+    wardsCount: 0,
   };
+  const districtsLeaderboard = dashboardData?.districtsLeaderboard || [];
   const departments = dashboardData?.departments || [];
   const visibleDepts = showAllDepts ? departments : departments.slice(0, 5);
 
@@ -345,75 +338,81 @@ export default function StateDashboard() {
           🏆 District Performance Leaderboard
         </h2>
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-          {/* Lists: mapping over district leaderboard array with keys */}
-          {SAMPLE_DISTRICTS.map((dist) => (
-            <div
-              key={dist.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 20px',
-                borderBottom: '1px solid #f1f5f9',
-                gap: '12px',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span
-                  style={{
-                    width: '28px',
-                    height: '28px',
-                    borderRadius: '50%',
-                    background: dist.rank === 1 ? '#fef3c7' : '#f1f5f9',
-                    color: dist.rank === 1 ? '#b45309' : '#475569',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.85rem',
-                  }}
-                >
-                  #{dist.rank}
-                </span>
-                <div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
-                    {dist.name} District
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    District Collector: {dist.collector}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '0.85rem' }}>
-                <div>
-                  <span style={{ color: '#64748b' }}>Submissions: </span>
-                  <strong>{formatNum(dist.apps)}</strong>
-                </div>
-                <div>
-                  <span style={{ color: '#16a34a' }}>Completed: </span>
-                  <strong>{formatNum(dist.completed)}</strong>
-                </div>
-                <div>
-                  <span style={{ color: '#ca8a04' }}>Pending: </span>
-                  <strong>{formatNum(dist.pending)}</strong>
-                </div>
-                <div
-                  style={{
-                    background: dist.slaRate >= 92 ? '#dcfce7' : '#fef9c3',
-                    color: dist.slaRate >= 92 ? '#15803d' : '#854d0e',
-                    padding: '3px 10px',
-                    borderRadius: '12px',
-                    fontWeight: 700,
-                    fontSize: '0.75rem',
-                  }}
-                >
-                  {dist.slaRate}% SLA Compliance
-                </div>
-              </div>
+          {/* Lists: mapping over dynamic district leaderboard from backend */}
+          {districtsLeaderboard.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
+              No district performance data available for this state.
             </div>
-          ))}
+          ) : (
+            districtsLeaderboard.map((dist) => (
+              <div
+                key={dist.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 20px',
+                  borderBottom: '1px solid #f1f5f9',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: dist.rank === 1 ? '#fef3c7' : '#f1f5f9',
+                      color: dist.rank === 1 ? '#b45309' : '#475569',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    #{dist.rank}
+                  </span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
+                      {dist.name} District
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      District Collector: {dist.collector}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '0.85rem' }}>
+                  <div>
+                    <span style={{ color: '#64748b' }}>Submissions: </span>
+                    <strong>{formatNum(dist.apps)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#16a34a' }}>Completed: </span>
+                    <strong>{formatNum(dist.completed)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#ca8a04' }}>Pending: </span>
+                    <strong>{formatNum(dist.pending)}</strong>
+                  </div>
+                  <div
+                    style={{
+                      background: dist.slaRate >= 92 ? '#dcfce7' : '#fef9c3',
+                      color: dist.slaRate >= 92 ? '#15803d' : '#854d0e',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    {dist.slaRate}% SLA Compliance
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -521,7 +520,7 @@ export default function StateDashboard() {
                       {formatINR(d.revenue || 0)}
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: '#16a34a' }}>
-                      {d.resolutionRate || 92}%
+                      {d.resolutionRate ?? 100}%
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       {/* Component reuse: StatusBadge */}

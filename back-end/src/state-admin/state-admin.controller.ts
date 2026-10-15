@@ -44,6 +44,19 @@ export class StateAdminController {
     };
   }
 
+  @Get('districts/leaderboard')
+  @ApiOperation({ summary: 'Get dynamic district performance leaderboard for state' })
+  getDistrictLeaderboard(
+    @Query('stateId') stateId?: string,
+    @Headers('x-state-id') headerStateId?: string,
+  ) {
+    const targetState = stateId || headerStateId || 'state_ap';
+    return {
+      success: true,
+      data: this.stateAdminService.getDistrictLeaderboard(targetState),
+    };
+  }
+
   @Get('departments')
   @ApiOperation({ summary: 'List departments in state' })
   listDepartments(
