@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, Logger, BadRequestException } from '@nes
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { db } from '../data/store';
 import { TransitionDto } from './dto/transition.dto';
-import { AppStatus, GrievanceStatus } from '../models/enums';
+import { AppStatus, GrievanceStatus, Role } from '../models/enums';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -127,13 +127,65 @@ export class WorkflowService {
         if (isLocked) continue;
 
         const slaTime = new Date(app.slaDate).getTime();
-        if (now > slaTime) {
+        const hasSlaRemaining = typeof (app as any).slaRemaining === 'number';
+        const isBreached = hasSlaRemaining ? (app as any).slaRemaining <= 0 : (now > slaTime);
+        if (isBreached) {
+          const prevOfficer = app.officerName || 'Field Officer';
+          const service = (db.dynamicServices || []).find((s: any) => s.id === app.serviceId) ||
+                          (db.services || []).find((s: any) => s.id === app.serviceId);
+          const workflowSteps = (service as any)?.workflowSteps || [];
+          const currentStepNum = Number((app as any).currentStepNumber || (app as any).currentStep) || 1;
+          const isAtFinalStep = workflowSteps.length > 0 && currentStepNum >= workflowSteps.length;
+          let higherOfficer: any = null;
+
+          if (!isAtFinalStep && workflowSteps.length > 0) {
+            const nextStepConfig = workflowSteps.find((s: any) => s.stepNumber === currentStepNum + 1);
+            if (nextStepConfig && nextStepConfig.requiredDesignationId) {
+              higherOfficer = db.officers.find(o => 
+                o.designationId === nextStepConfig.requiredDesignationId &&
+                o.departmentId === (app as any).departmentId
+              ) || db.officers.find(o => o.designationId === nextStepConfig.requiredDesignationId);
+              if (higherOfficer) {
+                (app as any).currentStepNumber = nextStepConfig.stepNumber;
+              }
+            }
+          }
+
+          // If breached at final approval step (e.g. Tahsildar / MRO) or next step officer unassigned:
+          // Escalate upward to Appellate Authority / Grievance Redressal Officer / Department Head
+          if (!higherOfficer) {
+            higherOfficer = db.officers.find(o => 
+              o.departmentId === (app as any).departmentId &&
+              (o.designationId?.includes('grv2') || (o.designationTitle || '').toLowerCase().includes('appellate'))
+            ) || db.officers.find(o => 
+              o.departmentId === (app as any).departmentId &&
+              (o.designationId?.includes('grv1') || (o.designationTitle || '').toLowerCase().includes('grievance'))
+            ) || db.users.find(u => 
+              (u.role === Role.DEPARTMENT_HEAD || (u as any).backendRole === Role.DEPARTMENT_HEAD) &&
+              (u as any).departmentId === (app as any).departmentId
+            );
+          }
+
+          if (higherOfficer) {
+            app.officerId = higherOfficer.id;
+            app.officerName = `${higherOfficer.name} (${higherOfficer.designationTitle || higherOfficer.designationId || 'Supervisory Authority'})`;
+            (app as any).assignedOfficerId = higherOfficer.id;
+            (app as any).assignedOfficerName = app.officerName;
+            (app as any).escalatedFrom = prevOfficer;
+          }
+
           app.status = AppStatus.ESCALATED;
+          const noteText = isAtFinalStep
+            ? `SLA Breached at Final Statutory Authority ${prevOfficer}. Escalated to State Appellate Authority ${app.officerName} for priority administrative overrule.`
+            : higherOfficer 
+              ? `SLA Breached at ${prevOfficer}. Escalated to supervisory authority ${app.officerName} for priority intervention.`
+              : `Auto-Escalated due to SLA breach at ${prevOfficer}.`;
+
           app.timeline.push({
-            action: 'Status transitioned to escalated',
+            action: 'Auto-Escalated to Higher Authority',
             date: new Date().toISOString(),
             actor: 'System Daemon',
-            note: 'Auto-Escalated due to SLA breach'
+            note: noteText,
           });
           
           db.auditLogs.unshift({
@@ -142,7 +194,7 @@ export class WorkflowService {
             actor: 'System Daemon',
             role: 'System',
             date: new Date().toISOString(),
-            details: `Application ${app.id} auto-escalated (SLA Breached)`
+            details: `Application ${app.id} auto-escalated (SLA Breached at ${prevOfficer} → Escalated to ${app.officerName})`
           });
 
           // Auto-push notification to citizen

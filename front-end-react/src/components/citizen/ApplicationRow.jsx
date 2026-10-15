@@ -38,13 +38,29 @@ export default function ApplicationRow({ app, onWithdraw, onDownloadCert }) {
     : 'Recent';
 
   // SLA calculations
-  const daysRemaining = app.daysLeft !== undefined && app.daysLeft !== null ? app.daysLeft : 7;
   const isClosed = isApproved || isRejected;
+  const isEscalatedStatus = isEscalated || (app.status || '').toLowerCase().includes('escalat');
+
+  const calcDaysRemaining = () => {
+    if (typeof app.daysLeft === 'number') return app.daysLeft;
+    if (typeof app.slaRemaining === 'number') return app.slaRemaining;
+    if (typeof app.slaDaysRemaining === 'number') return app.slaDaysRemaining;
+    if (typeof app.slaLeft === 'number') return app.slaLeft;
+    if (app.slaDate) {
+      const diffMs = new Date(app.slaDate).getTime() - Date.now();
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    }
+    return 5;
+  };
+
+  const daysRemaining = calcDaysRemaining();
 
   const slaText = isClosed
     ? isRejected
       ? 'Rejected'
       : 'Closed'
+    : isEscalatedStatus
+    ? 'SLA Breached (Escalated)'
     : daysRemaining >= 0
     ? `${daysRemaining} days left`
     : `${Math.abs(daysRemaining)} days overdue`;
@@ -53,13 +69,17 @@ export default function ApplicationRow({ app, onWithdraw, onDownloadCert }) {
     ? isRejected
       ? 'breach'
       : 'safe'
+    : isEscalatedStatus
+    ? 'breach'
     : daysRemaining > 4
     ? 'safe'
     : daysRemaining >= 0
     ? 'warn'
     : 'breach';
 
-  const slaWidth = isClosed ? 100 : Math.max(10, Math.min(100, Math.max(0, daysRemaining) * 10));
+  const totalSlaDays = Number(app.slaTotal || app.slaDays || 15);
+  const usedDays = isClosed ? totalSlaDays : Math.max(0, totalSlaDays - daysRemaining);
+  const slaWidth = isClosed ? 100 : Math.min(100, Math.max(10, Math.round((usedDays / totalSlaDays) * 100)));
 
   const officerName = app.officerName || app.assignedOfficerName || app.officer || '—';
   const dept = app.dept || app.departmentName || app.department || '—';
@@ -92,7 +112,17 @@ export default function ApplicationRow({ app, onWithdraw, onDownloadCert }) {
           <div className={`sla-text ${slaCls}`}>{slaText}</div>
         </div>
       </td>
-      <td>{officerName}</td>
+      <td>
+        <div style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{officerName}</div>
+        {Array.isArray(app.workflowStages) && app.workflowStages.length > 1 && (
+          <div
+            style={{ fontSize: '0.7rem', color: 'var(--navy-600)', marginTop: '2px', cursor: 'help' }}
+            title={app.workflowStages.map((s, idx) => `Stage ${idx + 1} (${s.stepName}): ${s.officerName} [${s.status}]`).join('\n')}
+          >
+            Stage {app.currentStepNumber || 1} of {app.workflowStages.length} ({app.workflowStages.length} Officers)
+          </div>
+        )}
+      </td>
       <td>
         <div className="row-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Link

@@ -109,6 +109,8 @@ export default function CreateStateModal({
         code: formData.code.trim().toUpperCase(),
         stateAdminName: formData.stateAdminName.trim(),
         stateAdminEmail: formData.stateAdminEmail.trim(),
+        stateAdminPhone: formData.stateAdminPhone.trim(),
+        stateAdminPassword: formData.stateAdminPassword.trim() || 'GovAdmin@2026',
       };
 
       const result = await apiCreateCentralState(payload);

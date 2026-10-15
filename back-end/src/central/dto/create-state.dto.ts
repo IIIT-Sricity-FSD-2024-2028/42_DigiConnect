@@ -16,4 +16,13 @@ export class CreateStateDto {
   @IsOptional()
   @IsString()
   stateAdminEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  stateAdminPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  stateAdminPassword?: string;
 }
+

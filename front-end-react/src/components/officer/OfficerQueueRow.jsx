@@ -47,8 +47,10 @@ function getSlaPercent(slaLeft, slaTotal) {
 
 // ── Helper: Map status to badge class & label ──
 function getStatusBadge(status) {
-  if (status === 'new') return { className: 'badge badge-info', text: 'New' };
-  if (status === 'urgent') return { className: 'badge badge-danger', text: 'Urgent' };
+  const s = (status || '').toLowerCase();
+  if (s === 'new') return { className: 'badge badge-info', text: 'New' };
+  if (s === 'urgent') return { className: 'badge badge-danger', text: 'Urgent' };
+  if (s.includes('escalat')) return { className: 'badge badge-danger', text: '⚡ Escalated' };
   return { className: 'badge badge-warning', text: 'In Review' };
 }
 

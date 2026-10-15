@@ -89,6 +89,7 @@ export default function StateDetailPage() {
       await apiUpdateCentralState(id, {
         stateAdminName: editForm.stateAdminName.trim(),
         stateAdminEmail: editForm.stateAdminEmail.trim(),
+        stateAdminPhone: editForm.stateAdminPhone.trim(),
       });
       showToast('State Administrator details updated successfully.', 'success');
       setIsEditModalOpen(false);
@@ -156,15 +157,14 @@ export default function StateDetailPage() {
   }
 
   const isActive = (stateData.status || '').toUpperCase() === 'ACTIVE';
+  const stateCode = (stateData.code || '').toUpperCase();
   const summary = detailsData?.summary || {};
   const metrics = {
     ...summary,
     ...(detailsData?.metrics || {}),
   };
 
-  const departmentsList = (detailsData?.departments && detailsData.departments.length > 0)
-    ? detailsData.departments
-    : defaultDepartments;
+  const departmentsList = Array.isArray(detailsData?.departments) ? detailsData.departments : [];
 
   const totalApps = summary.totalApplications ?? stateData.totalApplications ?? 0;
   const totalRev = summary.totalRevenue ?? stateData.totalRevenue ?? 0;
@@ -175,34 +175,10 @@ export default function StateDetailPage() {
 
   const admin = detailsData?.stateAdmin || stateData.stateAdmin || {
     name: stateData.stateAdminName || `${stateData.name} State Admin IAS`,
-    email: stateData.stateAdminEmail || `admin@${(stateData.code || '').toLowerCase()}.gov.in`,
-    phone: '+91 98765 43200',
-    joined: '01/01/2026',
+    email: stateData.stateAdminEmail || `admin@${stateCode.toLowerCase()}.gov.in`,
+    phone: stateData.stateAdminPhone || '',
+    joined: stateData.createdAt ? new Date(stateData.createdAt).toLocaleDateString('en-GB') : '01/01/2026',
   };
-
-  const stateCode = (stateData.code || '').toUpperCase();
-
-  // 1. Departments List
-  const defaultDepartments = [
-    {
-      id: `dept_rev_${stateCode.toLowerCase()}`,
-      name: 'Revenue, Registration & Stamps Department',
-      headName: 'Dr. B. R. Ambedkar IAS',
-      headEmail: `head.rev@${stateCode.toLowerCase()}.gov.in`,
-      servicesCount: 2,
-      officersCount: 6,
-      status: 'Active',
-    },
-    {
-      id: `dept_wel_${stateCode.toLowerCase()}`,
-      name: 'Social Welfare & Empowerment Department',
-      headName: 'Sri K. Harshavardhan IAS',
-      headEmail: `head.wel@${stateCode.toLowerCase()}.gov.in`,
-      servicesCount: 2,
-      officersCount: 6,
-      status: 'Active',
-    },
-  ];
 
   // 2. Services Overview
   const servicesData = detailsData?.services || {
@@ -220,42 +196,20 @@ export default function StateDetailPage() {
   // 4. Grievance Overview
   const grievancesData = detailsData?.grievances || {
     total: totalGrievances,
-    resolved: Math.round(totalGrievances * 0.72),
-    pending: Math.max(0, totalGrievances - Math.round(totalGrievances * 0.72)),
+    resolved: totalGrievances > 0 ? Math.round(totalGrievances * 0.72) : 0,
+    pending: totalGrievances > 0 ? Math.max(0, totalGrievances - Math.round(totalGrievances * 0.72)) : 0,
   };
 
   // 5. Recent Activity Timeline
-  const defaultActivities = [
-    {
-      id: 'act-1',
-      details: `Application APP-${stateCode}-3002 auto-escalated (SLA Breached)`,
-      date: '10/14/2026, 3:22:00 AM',
-    },
-    {
-      id: 'act-2',
-      details: `Application APP-${stateCode}-2001 auto-escalated (SLA Breached)`,
-      date: '10/14/2026, 3:22:00 AM',
-    },
-    {
-      id: 'act-3',
-      details: 'Central Admin verified and activated 4 state instances: AP, KA, KL, TN.',
-      date: '1/1/2026, 5:30:00 AM',
-    },
-    {
-      id: 'act-4',
-      details: `${stateData.name} Revenue Principal Secretary published CASTE_CERT_${stateCode} with 3-tier workflow.`,
-      date: '1/5/2026, 3:30:00 PM',
-    },
-    {
-      id: 'act-5',
-      details: `Tahsildar approved & digitally signed Certificate for APP-${stateCode}-1001.`,
-      date: '4/15/2026, 9:30:00 PM',
-    },
-  ];
-
-  const recentActivities = (detailsData?.recentActivity && detailsData.recentActivity.length > 0)
+  const recentActivities = (Array.isArray(detailsData?.recentActivity) && detailsData.recentActivity.length > 0)
     ? detailsData.recentActivity
-    : defaultActivities;
+    : [
+        {
+          id: 'act-init',
+          details: `State Government instance initialized for ${stateData.name} (${stateCode}).`,
+          date: stateData.createdAt ? new Date(stateData.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
+        },
+      ];
 
   return (
     <div className="state-detail-page" style={{ padding: '4px 0 32px 0' }}>
@@ -466,7 +420,7 @@ export default function StateDetailPage() {
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)', fontWeight: 600 }}>Official Phone</div>
             <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-              {admin.phone || '+91 98765 43200'}
+              {admin.phone || stateData.stateAdminPhone || 'Not Configured'}
             </div>
           </div>
           <div>
@@ -571,7 +525,7 @@ export default function StateDetailPage() {
             <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '8px', border: '1px solid var(--slate-200, #e2e8f0)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--slate-600, #475569)', fontWeight: 700 }}>Avg / Application</div>
               <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', marginTop: '2px' }}>
-                {formatINR(totalApps > 0 ? totalRev / totalApps : 500)}
+                {formatINR(totalApps > 0 ? totalRev / totalApps : 0)}
               </div>
             </div>
             <div style={{ padding: '12px', background: 'var(--slate-50, #f8fafc)', borderRadius: '8px', border: '1px solid var(--slate-200, #e2e8f0)' }}>
@@ -716,59 +670,67 @@ export default function StateDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {departmentsList.map((d) => (
-                <tr key={d.id || d.name} style={{ borderBottom: '1px solid var(--slate-100, #f1f5f9)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--navy-900, #0f172a)' }}>
-                    🏢 {d.name}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--navy-900, #0f172a)' }}>{d.headName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)' }}>{d.headEmail}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: '#f5f3ff',
-                        color: '#6d28d9',
-                      }}
-                    >
-                      {d.servicesCount || 2} Services
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: 'var(--slate-100, #f1f5f9)',
-                        color: 'var(--slate-700, #334155)',
-                      }}
-                    >
-                      {d.officersCount || 6} Officers
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        background: '#f0fdf4',
-                        color: '#16a34a',
-                      }}
-                    >
-                      ● Active
-                    </span>
+              {departmentsList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--slate-500, #64748b)' }}>
+                    No departments onboarded yet for {stateData.name}. State Administrator can onboard departments.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                departmentsList.map((d) => (
+                  <tr key={d.id || d.name} style={{ borderBottom: '1px solid var(--slate-100, #f1f5f9)' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--navy-900, #0f172a)' }}>
+                      🏢 {d.name}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--navy-900, #0f172a)' }}>{d.headName || 'Department Head'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--slate-500, #64748b)' }}>{d.headEmail || '—'}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: '#f5f3ff',
+                          color: '#6d28d9',
+                        }}
+                      >
+                        {d.servicesCount ?? 0} Services
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: 'var(--slate-100, #f1f5f9)',
+                          color: 'var(--slate-700, #334155)',
+                        }}
+                      >
+                        {d.officersCount ?? 0} Officers
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: '#f0fdf4',
+                          color: '#16a34a',
+                        }}
+                      >
+                        ● {d.status || 'Active'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -804,7 +766,7 @@ export default function StateDetailPage() {
                 Total Services Configured
               </span>
               <strong style={{ color: 'var(--navy-900, #0f172a)', fontSize: '1.1rem' }}>
-                {servicesData.total || 6}
+                {servicesData.total ?? 0}
               </strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid var(--slate-100, #f1f5f9)' }}>
@@ -812,7 +774,7 @@ export default function StateDetailPage() {
                 Active & Published
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#f0fdf4', color: '#16a34a' }}>
-                {servicesData.active || 6} Active
+                {servicesData.active ?? 0} Active
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -820,7 +782,7 @@ export default function StateDetailPage() {
                 Suspended / Draft
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#fefce8', color: '#ca8a04' }}>
-                {servicesData.suspended || 0} Suspended
+                {servicesData.suspended ?? 0} Suspended
               </span>
             </div>
           </div>
@@ -847,7 +809,7 @@ export default function StateDetailPage() {
                 Total Onboarded Officers
               </span>
               <strong style={{ color: 'var(--navy-900, #0f172a)', fontSize: '1.1rem' }}>
-                {officersData.total || 432}
+                {officersData.total ?? 0}
               </strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid var(--slate-100, #f1f5f9)' }}>
@@ -855,7 +817,7 @@ export default function StateDetailPage() {
                 Active in Queue
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#f0fdf4', color: '#16a34a' }}>
-                {officersData.active || 432} Active
+                {officersData.active ?? 0} Active
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -863,7 +825,7 @@ export default function StateDetailPage() {
                 VRO / MRO / Tahsildar Scope
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#f5f3ff', color: '#7c3aed' }}>
-                4 Tiers
+                {totalOfficers > 0 ? `${detailsData?.officers?.designations?.length || 4} Tiers` : '0 Tiers'}
               </span>
             </div>
           </div>
@@ -890,7 +852,7 @@ export default function StateDetailPage() {
                 Total Filed Grievances
               </span>
               <strong style={{ color: 'var(--navy-900, #0f172a)', fontSize: '1.1rem' }}>
-                {formatNum(grievancesData.total || 1242)}
+                {formatNum(grievancesData.total ?? 0)}
               </strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid var(--slate-100, #f1f5f9)' }}>
@@ -898,7 +860,7 @@ export default function StateDetailPage() {
                 Resolved (Direct / Overrule)
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#f0fdf4', color: '#16a34a' }}>
-                {formatNum(grievancesData.resolved || 0)} Resolved
+                {formatNum(grievancesData.resolved ?? 0)} Resolved
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -906,7 +868,7 @@ export default function StateDetailPage() {
                 Pending In Investigation
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#fefce8', color: '#ca8a04' }}>
-                {formatNum(grievancesData.pending || 0)} Pending
+                {formatNum(grievancesData.pending ?? 0)} Pending
               </span>
             </div>
           </div>

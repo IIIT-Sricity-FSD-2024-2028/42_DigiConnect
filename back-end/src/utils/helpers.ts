@@ -1,5 +1,9 @@
-export function generateId(prefix: string): string {
-  const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+export function generateId(prefix: string, scopeCode?: string): string {
+  const randomNum = Math.floor(1000 + Math.random() * 9000).toString();
+  if (scopeCode) {
+    const clean = scopeCode.replace('state_', '').toUpperCase();
+    return `${prefix}-${clean}-${randomNum}`;
+  }
   return `${prefix}-${randomNum}`;
 }
 

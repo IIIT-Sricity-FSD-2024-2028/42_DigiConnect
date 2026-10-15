@@ -28,8 +28,19 @@ export class GrievancesService {
     // Auto assign to a grievance officer
     const officer = this.usersService.findOfficerByRole('grievance');
 
+    // Resolve stateCode for uniform ID generation (matching mock/seeded IDs like GRV-AP-001)
+    let stateCode = 'AP';
+    if (citizen?.stateId) {
+      stateCode = citizen.stateId.replace('state_', '').toUpperCase();
+    } else if (citizen?.state) {
+      stateCode = citizen.state.toUpperCase();
+    } else if (createGrievanceDto.relatedAppId) {
+      const parts = createGrievanceDto.relatedAppId.split('-');
+      if (parts.length >= 2) stateCode = parts[1].toUpperCase();
+    }
+
     const newGrievance: Grievance = {
-      id: generateId('GRV'),
+      id: generateId('GRV', stateCode),
       citizenId: createGrievanceDto.citizenId,
       citizenName: citizen ? citizen.name : 'Unknown Citizen',
       jurisdiction: citizen && citizen.jurisdiction ? citizen.jurisdiction : '-',

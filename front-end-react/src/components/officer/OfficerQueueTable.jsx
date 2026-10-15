@@ -20,27 +20,21 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import OfficerQueueRow from './OfficerQueueRow';
 
-// Service options for filter dropdown
-const SERVICE_OPTIONS = [
-  'All Services',
-  'Income Certificate',
-  'Caste Certificate',
-  'Residence Certificate',
-  'Record Correction',
-];
-
 // Sort options for order dropdown
 const SORT_OPTIONS = [
-  { value: 'sla', label: 'Sort: SLA Urgency' },
+  { value: 'sla', label: 'Sort: SLA Urgency (Escalated First)' },
+  { value: 'escalated', label: 'Sort: Escalated Priority' },
   { value: 'date', label: 'Sort: Submission Date' },
   { value: 'service', label: 'Sort: Service Type' },
 ];
 
 export default function OfficerQueueTable({
   applications = [],
+  departmentServices = [],
   loading = false,
   error = null,
   onSelect,
+  onQuickAction,
 }) {
   // [Context] Officer info from AuthContext
   const { user } = useAuth();
@@ -59,10 +53,36 @@ export default function OfficerQueueTable({
     setCurrentPage(1);
   }, [serviceFilter, sortBy, pageSize]);
 
-  // Helper: SLA urgency calculation (mirrors urgency() in dashboard.js)
+  // Dynamically extract unique services: All services belonging to this department + active queue items
+  const dynamicServiceOptions = useMemo(() => {
+    const serviceSet = new Set();
+
+    // 1. All services belonging to this officer's department
+    if (Array.isArray(departmentServices)) {
+      departmentServices.forEach((svc) => {
+        const name = typeof svc === 'string' ? svc : (svc.name || svc.serviceName);
+        if (name) serviceSet.add(name);
+      });
+    }
+
+    // 2. Also ensure any services in active applications are present
+    applications.forEach((app) => {
+      const name = app.service || app.serviceName;
+      if (name) serviceSet.add(name);
+    });
+
+    return ['All Services', ...Array.from(serviceSet).sort()];
+  }, [applications, departmentServices]);
+
+  // Helper: SLA urgency calculation (Escalated tagged items rank at the very top with -9999)
   const getUrgency = (a) => {
-    if (a.slaLeft < 0) return a.slaLeft; // breaches first (most negative)
-    return a.slaLeft;
+    const isEscalated =
+      (a.status || '').toLowerCase().includes('escalat') ||
+      a.isEscalated ||
+      (a.statusBadge || '').toLowerCase().includes('escalat');
+    if (isEscalated) return -9999;
+    if (typeof a.slaLeft === 'number' && a.slaLeft < 0) return a.slaLeft; // breaches first (most negative)
+    return typeof a.slaLeft === 'number' ? a.slaLeft : 999;
   };
 
   // ── [Hooks + Lists] useMemo: Filter and Sort Applications ──
@@ -78,6 +98,12 @@ export default function OfficerQueueTable({
 
     // 2. Sorting
     result.sort((a, b) => {
+      if (sortBy === 'escalated') {
+        const isEscA = (a.status || '').toLowerCase().includes('escalat') ? 1 : 0;
+        const isEscB = (b.status || '').toLowerCase().includes('escalat') ? 1 : 0;
+        if (isEscA !== isEscB) return isEscB - isEscA;
+        return getUrgency(a) - getUrgency(b);
+      }
       if (sortBy === 'date') {
         const dateA = new Date(a.submittedDate || a.submitted || 0);
         const dateB = new Date(b.submittedDate || b.submitted || 0);
@@ -86,7 +112,7 @@ export default function OfficerQueueTable({
       if (sortBy === 'service') {
         return (a.service || a.serviceName || '').localeCompare(b.service || b.serviceName || '');
       }
-      // Default: 'sla' urgency
+      // Default: 'sla' urgency (Escalated items will be first due to score -9999)
       return getUrgency(a) - getUrgency(b);
     });
 
@@ -142,8 +168,8 @@ export default function OfficerQueueTable({
               padding: '6px 28px 6px 10px',
             }}
           >
-            {/* [Lists] Render service options */}
-            {SERVICE_OPTIONS.map((service) => (
+            {/* [Lists] Render dynamic service options */}
+            {dynamicServiceOptions.map((service) => (
               <option key={service} value={service === 'All Services' ? '' : service}>
                 {service}
               </option>

@@ -145,14 +145,19 @@ export class CentralService {
 
     // 2. Create the Single State Admin User
     const adminId = `USR-SA-${codeUpper}`;
+    const adminPhone = dto.stateAdminPhone?.trim() || '9876543200';
+    const adminPassword = dto.stateAdminPassword?.trim() || 'GovAdmin@2026';
     const adminUser: User = {
       id: adminId,
       name: dto.stateAdminName || `${nameTrimmed} State Administrator`,
-      email: dto.stateAdminEmail || `admin@${codeUpper.toLowerCase()}.gov.in`,
-      phone: '9876543200',
+      email: (dto.stateAdminEmail || `admin@${codeUpper.toLowerCase()}.gov.in`).toLowerCase().trim(),
+      phone: adminPhone,
+      password: adminPassword,
       aadhaar: '895421670000',
-      role: Role.STATE_ADMIN,
+      role: 'state_admin' as any,
+      backendRole: Role.STATE_ADMIN,
       state: nameTrimmed,
+      stateId: stateId,
       status: 'Active',
       joinedDate: new Date().toISOString(),
     };
@@ -167,7 +172,10 @@ export class CentralService {
       stateAdminId: adminId,
       status: 'ACTIVE',
       createdAt: new Date().toISOString(),
-    };
+      ...(dto.stateAdminName ? { stateAdminName: dto.stateAdminName } : {}),
+      ...(dto.stateAdminEmail ? { stateAdminEmail: dto.stateAdminEmail } : {}),
+      ...(dto.stateAdminPhone ? { stateAdminPhone: dto.stateAdminPhone } : {}),
+    } as any;
     db.states.push(newState);
 
     // 4. Audit Log
@@ -186,15 +194,17 @@ export class CentralService {
   /**
    * Update State Government metadata
    */
-  updateState(id: string, dto: { name?: string; code?: string; stateAdminName?: string; stateAdminEmail?: string }): StateGovernment {
+  updateState(id: string, dto: { name?: string; code?: string; stateAdminName?: string; stateAdminEmail?: string; stateAdminPhone?: string }): StateGovernment {
     const state = this.getStateById(id);
     if (dto.name) state.name = dto.name.trim();
     if (dto.code) state.code = dto.code.trim().toUpperCase();
+    if (dto.stateAdminPhone) (state as any).stateAdminPhone = dto.stateAdminPhone.trim();
 
-    if (dto.stateAdminName || dto.stateAdminEmail) {
+    if (dto.stateAdminName || dto.stateAdminEmail || dto.stateAdminPhone) {
       const admin = this.getOrCreateStateAdmin(state);
       if (dto.stateAdminName) admin.name = dto.stateAdminName.trim();
       if (dto.stateAdminEmail) admin.email = dto.stateAdminEmail.trim();
+      if (dto.stateAdminPhone) admin.phone = dto.stateAdminPhone.trim();
     }
 
     db.auditLogs.push({
@@ -237,17 +247,22 @@ export class CentralService {
       const code = state.code.toUpperCase();
       admin = {
         id: state.stateAdminId || `USR-SA-${code}`,
-        name: `${state.name} State Administrator`,
-        email: `admin@${code.toLowerCase()}.gov.in`,
-        phone: '+91 98765 43200',
+        name: (state as any).stateAdminName || `${state.name} State Administrator`,
+        email: ((state as any).stateAdminEmail || `admin@${code.toLowerCase()}.gov.in`).toLowerCase().trim(),
+        phone: (state as any).stateAdminPhone || '+91 98765 43200',
+        password: (state as any).stateAdminPassword || 'GovAdmin@2026',
         aadhaar: '895421670000',
-        role: Role.STATE_ADMIN,
+        role: 'state_admin' as any,
+        backendRole: Role.STATE_ADMIN,
         state: state.name,
+        stateId: state.id,
         status: 'Active',
         joinedDate: state.createdAt || '2026-01-01T00:00:00.000Z',
       };
       state.stateAdminId = admin.id;
       db.users.push(admin);
+    } else {
+      if (!admin.password) admin.password = 'GovAdmin@2026';
     }
     return admin;
   }
@@ -280,6 +295,7 @@ export class CentralService {
     const admin = this.getOrCreateStateAdmin(state);
 
     const tempPass = `Gov@${state.code}${Math.floor(1000 + Math.random() * 9000)}`;
+    admin.password = tempPass;
 
     db.auditLogs.push({
       id: `AUD-${Date.now()}`,
@@ -457,16 +473,16 @@ export class CentralService {
         id: admin.id,
         name: admin.name,
         email: admin.email,
-        phone: admin.phone || '+91 98765 43200',
+        phone: admin.phone || (state as any).stateAdminPhone || '',
         username: `sa_${state.code.toLowerCase()}`,
         role: 'State Government Administrator',
         status: admin.status || 'Active',
         joinedDate: admin.joinedDate || state.createdAt,
       } : {
         id: `USR-SA-${state.code}`,
-        name: `${state.name} State Administrator`,
-        email: `admin@${state.code.toLowerCase()}.gov.in`,
-        phone: '+91 98765 43200',
+        name: (state as any).stateAdminName || `${state.name} State Administrator`,
+        email: (state as any).stateAdminEmail || `admin@${state.code.toLowerCase()}.gov.in`,
+        phone: (state as any).stateAdminPhone || '',
         username: `sa_${state.code.toLowerCase()}`,
         role: 'State Government Administrator',
         status: 'Active',

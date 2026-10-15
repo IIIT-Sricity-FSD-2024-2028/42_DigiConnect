@@ -8,7 +8,7 @@
 // 6. Context API (useAuth for citizenId and user session)
 // 7. Conditional rendering (step wizard: Step 1 -> 2 -> 3 -> 4 -> Success)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetMyApplications, apiRaiseGrievance } from '../../api/citizenApi';
@@ -142,8 +142,9 @@ export default function RaiseGrievancePage() {
     let isMounted = true;
     apiGetMyApplications()
       .then((res) => {
-        if (isMounted && res.data) {
-          setMyApplications(res.data);
+        if (isMounted) {
+          const list = Array.isArray(res) ? res : res?.data || res?.items || [];
+          setMyApplications(list);
         }
       })
       .catch((err) => {
@@ -154,6 +155,25 @@ export default function RaiseGrievancePage() {
       isMounted = false;
     };
   }, []);
+
+  // Compute dynamic department choices from citizen applications & state departments
+  const departmentOptions = useMemo(() => {
+    const set = new Set();
+    myApplications.forEach((a) => {
+      const d = a.dept || a.departmentName || a.department;
+      if (d) set.add(d);
+    });
+    [
+      'Revenue, Registration & Stamps Department',
+      'Social Welfare Department',
+      'Municipal Administration & Urban Development',
+      'Rural Development & Panchayat Raj',
+      'Civil Supplies & Consumer Affairs',
+      'Health & Family Welfare',
+      'Other Department',
+    ].forEach((d) => set.add(d));
+    return Array.from(set);
+  }, [myApplications]);
 
   // ── Step 2: Handle URL Query Pre-fill (e.g. from rejection appeal link) ──
   useEffect(() => {
@@ -173,9 +193,51 @@ export default function RaiseGrievancePage() {
     }
   }, [searchParams]);
 
+  // ── Real-time Application Selection & Department Auto-fill ──
+  const handleRelatedAppChange = (selectedAppId) => {
+    const appId = (selectedAppId || '').trim();
+    const matchedApp = myApplications.find(
+      (a) => (a.id || a.applicationNumber || '').toUpperCase() === appId.toUpperCase()
+    );
+
+    setFormData((prev) => {
+      const next = { ...prev, relatedAppId: appId };
+      if (matchedApp) {
+        const d = matchedApp.dept || matchedApp.departmentName || matchedApp.department;
+        if (d) next.department = d;
+        if (matchedApp.officerName || matchedApp.assignedOfficerName) {
+          next.officerNames = matchedApp.officerName || matchedApp.assignedOfficerName;
+        }
+        if (!prev.title || prev.title.startsWith('Grievance regarding') || prev.title.startsWith('Delay in Processing') || prev.title.startsWith('Appeal Against')) {
+          if (category === 'delay') {
+            next.title = `Delay in Processing: ${matchedApp.serviceName || appId}`;
+          } else if (category === 'rejection') {
+            next.title = `Appeal Against Rejection: ${matchedApp.serviceName || appId}`;
+          } else {
+            next.title = `Grievance regarding ${matchedApp.serviceName || appId}`;
+          }
+        }
+      }
+      return next;
+    });
+
+    if (matchedApp && (matchedApp.status === 'approved' || matchedApp.status === 'completed')) {
+      setFormErrors((prev) => ({
+        ...prev,
+        relatedAppId: 'This application is already approved. Grievances cannot be filed for approved applications.',
+      }));
+    } else {
+      setFormErrors((prev) => ({ ...prev, relatedAppId: '' }));
+    }
+  };
+
   // ── Controlled Input Change Handler ──
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'relatedAppId') {
+      handleRelatedAppChange(value);
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: '' }));
@@ -195,26 +257,7 @@ export default function RaiseGrievancePage() {
       return;
     }
 
-    const matchedApp = myApplications.find(
-      (a) => (a.id || a.applicationNumber || '').toUpperCase() === appId.toUpperCase()
-    );
-
-    if (matchedApp) {
-      if (matchedApp.status === 'approved' || matchedApp.status === 'completed') {
-        setFormErrors((prev) => ({
-          ...prev,
-          relatedAppId: 'This application is already approved. Grievances cannot be filed for approved applications.',
-        }));
-      } else {
-        setFormErrors((prev) => ({ ...prev, relatedAppId: '' }));
-        if (matchedApp.dept || matchedApp.department) {
-          setFormData((prev) => ({
-            ...prev,
-            department: matchedApp.dept || matchedApp.department,
-          }));
-        }
-      }
-    }
+    handleRelatedAppChange(appId);
   };
 
   // ── Step Navigation & Validation ──
@@ -519,21 +562,36 @@ export default function RaiseGrievancePage() {
                   {/* Related Application ID */}
                   <div className="form-group">
                     <label className="form-label" htmlFor="relatedAppId">
-                      Related Application ID
+                      Related Application
                     </label>
+                    {myApplications.length > 0 && (
+                      <select
+                        className="form-input"
+                        style={{ marginBottom: '8px', background: '#f8fafc' }}
+                        value={formData.relatedAppId}
+                        onChange={(e) => handleRelatedAppChange(e.target.value)}
+                      >
+                        <option value="">-- Choose from your active applications --</option>
+                        {myApplications.map((app) => (
+                          <option key={app.id} value={app.id}>
+                            {app.id} — {app.serviceName || 'Service'} ({app.status})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     <input
                       type="text"
                       id="relatedAppId"
                       name="relatedAppId"
                       className="form-input"
-                      placeholder="e.g. APP-AP-1001"
+                      placeholder="Or enter Application ID manually (e.g. APP-AP-1001)"
                       style={{ fontFamily: 'var(--font-mono)' }}
                       value={formData.relatedAppId}
                       onChange={handleInputChange}
                       onBlur={handleAppIdBlur}
                     />
                     <div className="form-hint" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                      Leave blank if this is a general complaint not tied to a specific application.
+                      Selecting an application automatically detects the concerned department and processing officer. Leave blank if this is a general complaint.
                     </div>
                     {formErrors.relatedAppId && (
                       <div style={{ color: 'var(--red-600)', fontSize: '0.85rem', marginTop: '4px' }}>
@@ -555,7 +613,7 @@ export default function RaiseGrievancePage() {
                       onChange={handleInputChange}
                     >
                       <option value="">Select department</option>
-                      {DEFAULT_DEPARTMENTS.map((dept) => (
+                      {departmentOptions.map((dept) => (
                         <option key={dept} value={dept}>
                           {dept}
                         </option>

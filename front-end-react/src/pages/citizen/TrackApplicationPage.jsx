@@ -112,14 +112,39 @@ export default function TrackApplicationPage() {
 
   // SLA calculations
   const totalSlaDays = Number(app?.slaTotal || app?.slaDays || 15);
-  const daysLeft = app?.daysLeft !== undefined && app?.daysLeft !== null ? app.daysLeft : 7;
+  const calcDaysLeft = () => {
+    if (typeof app?.daysLeft === 'number') return app.daysLeft;
+    if (typeof app?.slaRemaining === 'number') return app.slaRemaining;
+    if (typeof app?.slaDaysRemaining === 'number') return app.slaDaysRemaining;
+    if (typeof app?.slaLeft === 'number') return app.slaLeft;
+    if (app?.slaDate) {
+      const diffMs = new Date(app.slaDate).getTime() - Date.now();
+      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    }
+    return 5;
+  };
+  const daysLeft = calcDaysLeft();
   const isClosed = isApproved || isRejected;
+  const isEscalatedStatus = isEscalated || (app?.status || '').toLowerCase().includes('escalat');
   const usedDays = isClosed ? totalSlaDays : Math.max(0, totalSlaDays - daysLeft);
   const slaPerc = isClosed ? 100 : Math.min(100, Math.max(0, Math.round((usedDays / totalSlaDays) * 100)));
-  const slaCls = isClosed ? (isRejected ? 'breach' : 'safe') : daysLeft > 4 ? 'safe' : daysLeft >= 0 ? 'warn' : 'breach';
+  const slaCls = isClosed ? (isRejected ? 'breach' : 'safe') : isEscalatedStatus ? 'breach' : daysLeft > 4 ? 'safe' : daysLeft >= 0 ? 'warn' : 'breach';
 
   // Workflow Stages
-  const stages = app?.workflowSteps && app.workflowSteps.length > 0
+  const stages = app?.workflowStages && app.workflowStages.length > 0
+    ? [
+        { label: 'Application Submitted', step: 0, officerName: app.citizenName || 'Citizen', officerRole: 'Citizen' },
+        ...app.workflowStages.map((ws, i) => ({
+          label: ws.stepName || `Stage ${ws.stepNumber || i + 1}`,
+          step: ws.stepNumber || i + 1,
+          officerName: ws.officerName,
+          officerRole: ws.officerRole,
+          status: ws.status,
+          actor: ws.actor,
+        })),
+        { label: 'Certificate Generated', step: app.workflowStages.length + 1, officerName: 'Digital Signature Authority', officerRole: 'Issuance' },
+      ]
+    : app?.workflowSteps && app.workflowSteps.length > 0
     ? [
         { label: 'Application Submitted', step: 0 },
         ...app.workflowSteps.map((ws, i) => ({
@@ -377,6 +402,59 @@ export default function TrackApplicationPage() {
                   <span>SLA: {totalSlaDays} days total</span>
                 </div>
               </div>
+
+              {/* Full Multi-Tier Workflow Officers Chain */}
+              {Array.isArray(app.workflowStages) && app.workflowStages.length > 0 && (
+                <div style={{ marginTop: 'var(--space-lg)', background: 'var(--slate-50)', padding: '14px 18px', borderRadius: 'var(--radius-md)', border: '1px solid var(--slate-200)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--navy-800)' }}>
+                      🏛️ Workflow Processing Chain (All Officers across Process)
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                      Stage {app.currentStepNumber || 1} of {app.workflowStages.length}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                    {app.workflowStages.map((ws, i) => {
+                      const isStepActive = ws.status === 'IN_PROGRESS' || ws.status === 'ESCALATED';
+                      const isStepDone = ws.status === 'COMPLETED';
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            background: '#fff',
+                            border: `1.5px solid ${isStepActive ? (ws.status === 'ESCALATED' ? '#ef4444' : 'var(--navy-500)') : isStepDone ? '#10b981' : 'var(--slate-200)'}`,
+                            borderRadius: '8px',
+                            padding: '10px 14px',
+                            boxShadow: isStepActive ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                              Stage {ws.stepNumber}
+                            </span>
+                            <span
+                              className={`badge ${
+                                isStepDone ? 'badge-success' : ws.status === 'ESCALATED' ? 'badge-danger' : isStepActive ? 'badge-warning' : 'badge-slate'
+                              }`}
+                              style={{ fontSize: '0.65rem', padding: '1px 6px' }}
+                            >
+                              {ws.status === 'IN_PROGRESS' ? 'Current Review' : ws.status}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--navy-900)' }}>
+                            {ws.officerName}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                            {ws.stepName}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -551,7 +629,13 @@ export default function TrackApplicationPage() {
                     { label: 'Category', val: (app.serviceType || 'Certificate').toUpperCase() },
                     { label: 'Department', val: app.dept || app.departmentName || '—' },
                     { label: 'Applicant Name', val: app.citizenName || 'Citizen' },
-                    { label: 'Assigned Officer', val: app.officerName || app.assignedOfficerName || '—' },
+                    { label: 'Current Officer', val: app.officerName || app.assignedOfficerName || '—' },
+                    ...(Array.isArray(app.workflowStages) && app.workflowStages.length > 0 ? [
+                      { 
+                        label: 'All Pipeline Officers', 
+                        val: app.workflowStages.map((s, i) => `Stage ${i + 1} (${s.stepName}): ${s.officerName} [${s.status}]`).join(' ➔ ') 
+                      }
+                    ] : []),
                     { label: 'Submitted Date', val: formatDate(app.submittedDate || app.createdAt) },
                     { label: 'SLA Due Date', val: formatDate(app.slaDate) },
                     { label: 'Fee Paid', val: app.fee > 0 ? `₹${app.fee}` : 'Free / ₹0' },

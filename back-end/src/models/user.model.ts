@@ -7,6 +7,7 @@ export interface User {
   phone: string;
   aadhaar: string; // raw 12-digit
   role: Role | string;
+  backendRole?: Role | string;
   title?: string; // VRO, RI, MRO etc.
   dept?: string;
   jurisdiction?: string;

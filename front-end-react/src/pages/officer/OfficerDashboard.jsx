@@ -29,6 +29,7 @@ import {
   apiCreateNotification,
 } from '../../api/officerApi';
 import { apiGetStateJurisdictionNodes } from '../../api/departmentHeadApi';
+import { apiGetServices } from '../../api/citizenApi';
 
 function formatJurisdictionNode(nodeId, nodes = []) {
   if (!nodeId) return 'Assigned Hierarchy Scope';
@@ -69,6 +70,7 @@ export default function OfficerDashboard() {
   const [slaRisks, setSlaRisks] = useState([]);
   const [weekChart, setWeekChart] = useState(null); // null until API responds
   const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
+  const [allServices, setAllServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -92,12 +94,13 @@ export default function OfficerDashboard() {
       setError(null);
       try {
         // [API calls] Fetch parallel datasets for the officer dashboard
-        const [queueRes, queriesRes, slaRes, chartRes, nodesRes] = await Promise.allSettled([
+        const [queueRes, queriesRes, slaRes, chartRes, nodesRes, servicesRes] = await Promise.allSettled([
           apiGetOfficerQueue(),
           apiGetOfficerQueries(),
           apiGetOfficerSlaRisks(),
           apiGetOfficerWeekChart(),
           apiGetStateJurisdictionNodes(user?.stateId),
+          apiGetServices(),
         ]);
 
         if (!isMounted) return;
@@ -142,6 +145,12 @@ export default function OfficerDashboard() {
             setWeekChart(raw);
           }
         }
+
+        // Populate catalog services
+        if (servicesRes.status === 'fulfilled') {
+          const sData = servicesRes.value?.data || servicesRes.value;
+          setAllServices(Array.isArray(sData) ? sData : []);
+        }
       } catch (err) {
         if (isMounted) {
           setError(err.message || 'Failed to load officer dashboard');
@@ -163,8 +172,16 @@ export default function OfficerDashboard() {
   // ── [Hooks] Computed Stats Derived from Queue, Chart, and Session Actions ──
   const stats = useMemo(() => {
     const pendingCount = queue.length;
-    const breachedItems = queue.filter((item) => (typeof item.slaLeft === 'number' && item.slaLeft < 0));
-    const breachCount = breachedItems.length;
+    // SLA at risk: applications with <= 3 days left that are not completed/rejected
+    const atRiskItems = queue.filter(
+      (item) =>
+        typeof item.slaLeft === 'number' &&
+        item.slaLeft >= 0 &&
+        item.slaLeft <= 3 &&
+        item.status !== 'completed' &&
+        item.status !== 'rejected'
+    );
+    const atRiskCount = atRiskItems.length;
     const queriesCount = queries.length;
 
     // Read today's approved count from the chart's today bar (matching current day of the week)
@@ -175,12 +192,37 @@ export default function OfficerDashboard() {
 
     return {
       pendingCount,
-      breachCount,
-      breachedItems,
+      atRiskCount,
+      atRiskItems,
       queriesCount,
       approvedToday,
     };
   }, [queue, queries, weekChart]);
+
+  // Compute all services belonging to this officer's department
+  const departmentServices = useMemo(() => {
+    const officerDept = (user?.dept || user?.department || queue[0]?.dept || queue[0]?.department || '').toLowerCase();
+    const officerDeptId = user?.departmentId || queue[0]?.departmentId;
+
+    if (!Array.isArray(allServices) || allServices.length === 0) return [];
+
+    return allServices
+      .filter((svc) => {
+        const sDept = (svc.dept || svc.department || '').toLowerCase();
+        const sDeptId = svc.departmentId;
+
+        if (officerDeptId && sDeptId && officerDeptId === sDeptId) return true;
+        if (officerDept && sDept) {
+          if (sDept === officerDept) return true;
+          if (officerDept.includes('revenue') && sDept.includes('revenue')) return true;
+          if (officerDept.includes('welfare') && sDept.includes('welfare')) return true;
+          if (officerDept.includes('panchayat') && sDept.includes('panchayat')) return true;
+        }
+        return false;
+      })
+      .map((s) => s.name || s.serviceName)
+      .filter(Boolean);
+  }, [allServices, user, queue]);
 
   // showToast and hideToast are provided by the useToast hook above
 
@@ -239,7 +281,7 @@ export default function OfficerDashboard() {
   // Tab definitions list
   const TABS = [
     { id: 'queue', label: 'Pending Queue', count: stats.pendingCount, badgeBg: 'var(--amber-100)', badgeColor: 'var(--amber-700)' },
-    { id: 'breach', label: 'SLA Breaches', count: stats.breachCount, badgeBg: 'var(--red-100)', badgeColor: 'var(--red-600)' },
+    { id: 'breach', label: 'SLA at Risk (≤ 3 Days)', count: stats.atRiskCount, badgeBg: '#fef3c7', badgeColor: '#b45309' },
     { id: 'queries', label: 'Queries Sent', count: stats.queriesCount, badgeBg: 'var(--slate-100)', badgeColor: 'var(--slate-600)' },
   ];
 
@@ -340,28 +382,28 @@ export default function OfficerDashboard() {
         </div>
       </div>
 
-      {/* ── Breach Alert Banner ── */}
-      {stats.breachCount > 0 && (
+      {/* ── SLA at Risk Alert Banner ── */}
+      {stats.atRiskCount > 0 && (
         <div
-          className="alert alert-danger"
+          className="alert alert-warning"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: 'var(--space-lg)',
-            backgroundColor: 'var(--red-50, #fef2f2)',
-            border: '1px solid var(--red-200, #fecaca)',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
             borderRadius: 'var(--radius-md)',
             padding: '12px 16px',
-            color: 'var(--red-800, #991b1b)',
+            color: '#92400e',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <svg width="20" height="20" fill="none" stroke="var(--red-600)" strokeWidth="2" viewBox="0 0 24 24">
+            <svg width="20" height="20" fill="none" stroke="#d97706" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <span style={{ fontSize: '0.875rem' }}>
-              <strong>{stats.breachCount} application{stats.breachCount === 1 ? '' : 's'} have breached SLA.</strong> Immediate action required to prevent escalation to supervisor.
+              <strong>{stats.atRiskCount} application{stats.atRiskCount === 1 ? '' : 's'} approaching SLA breach (≤ 3 days left).</strong> Take action now before authority is automatically revoked and escalated to supervisor.
             </span>
           </div>
           <button
@@ -369,7 +411,7 @@ export default function OfficerDashboard() {
             className="btn btn-sm"
             onClick={() => setActiveTab('breach')}
             style={{
-              backgroundColor: 'var(--red-600)',
+              backgroundColor: '#d97706',
               color: '#ffffff',
               border: 'none',
               padding: '6px 14px',
@@ -379,7 +421,7 @@ export default function OfficerDashboard() {
               flexShrink: 0,
             }}
           >
-            View Breaches →
+            Review at Risk →
           </button>
         </div>
       )}
@@ -426,23 +468,23 @@ export default function OfficerDashboard() {
           </div>
         </div>
 
-        {/* Card 3: SLA Breached */}
-        <div className="stat-card danger">
+        {/* Card 3: SLA at Risk */}
+        <div className="stat-card warning" style={{ borderColor: stats.atRiskCount > 0 ? '#f59e0b' : undefined }}>
           <div className="stat-card-inner">
             <div>
-              <div className="stat-label">SLA Breached</div>
-              <div className="stat-value" style={{ color: 'var(--red-500)' }}>
-                {loading ? '…' : stats.breachCount}
+              <div className="stat-label">SLA at Risk (≤3d)</div>
+              <div className="stat-value" style={{ color: '#d97706' }}>
+                {loading ? '…' : stats.atRiskCount}
               </div>
             </div>
-            <div className="stat-icon red">
+            <div className="stat-icon amber" style={{ background: '#fef3c7', color: '#d97706' }}>
               <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--red-500)', fontWeight: 600, marginTop: '4px' }}>
-            Action required
+          <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600, marginTop: '4px' }}>
+            {stats.atRiskCount > 0 ? 'Urgent action recommended' : 'All SLAs healthy'}
           </div>
         </div>
 
@@ -544,6 +586,7 @@ export default function OfficerDashboard() {
             /* [Component + Props + Prop Drilling] */
             <OfficerQueueTable
               applications={queue}
+              departmentServices={departmentServices}
               loading={loading}
               error={error}
               onSelect={handleSelectApplication}
@@ -551,27 +594,29 @@ export default function OfficerDashboard() {
             />
           )}
 
-          {/* TAB 2: SLA BREACHES */}
+          {/* TAB 2: SLA AT RISK (≤ 3 DAYS) */}
           {activeTab === 'breach' && (
-            <div className="card" style={{ borderTop: '3px solid var(--red-500)' }}>
+            <div className="card" style={{ borderTop: '3px solid #f59e0b' }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="card-title" style={{ color: 'var(--red-600)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="card-title" style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                  SLA Breached Applications
+                  Approaching SLA Breach (≤ 3 Days Remaining)
                 </span>
-                <span className="badge badge-danger">Immediate Action Required</span>
+                <span className="badge badge-warning" style={{ backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }}>
+                  Urgent Attention Required
+                </span>
               </div>
 
               <div>
-                {stats.breachedItems.length === 0 ? (
+                {stats.atRiskItems.length === 0 ? (
                   <div style={{ padding: 'var(--space-xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                    No breached applications currently. All SLAs are on track!
+                    No applications currently at risk of SLA breach. All assigned applications have more than 3 days remaining.
                   </div>
                 ) : (
-                  /* [Lists] Map breached applications */
-                  stats.breachedItems.map((item) => (
+                  /* [Lists] Map at-risk applications */
+                  stats.atRiskItems.map((item) => (
                     <div
                       key={item.id}
                       className="app-row"
@@ -590,24 +635,24 @@ export default function OfficerDashboard() {
                           width: '40px',
                           height: '40px',
                           borderRadius: '50%',
-                          background: 'var(--red-100)',
+                          background: item.slaLeft === 0 ? 'var(--red-100)' : '#fef3c7',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
                         }}
                       >
-                        <svg width="18" height="18" fill="none" stroke="var(--red-500)" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <svg width="18" height="18" fill="none" stroke={item.slaLeft === 0 ? 'var(--red-500)' : '#d97706'} strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 800, color: 'var(--red-600)' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 800, color: 'var(--navy-700)' }}>
                             {item.id}
                           </span>
-                          <span className="badge badge-danger">
-                            {Math.abs(item.slaLeft || 0)} days overdue
+                          <span className={`badge ${item.slaLeft === 0 ? 'badge-danger' : 'badge-warning'}`}>
+                            {item.slaLeft === 0 ? 'Breaching Today ⚠' : `${item.slaLeft} day${item.slaLeft === 1 ? '' : 's'} left`}
                           </span>
                         </div>
                         <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--navy-900)' }}>
@@ -616,20 +661,21 @@ export default function OfficerDashboard() {
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                           Submitted {item.submitted || item.submittedDate} · SLA: {item.slaTotal || 7} days
                         </div>
-                        <div className="alert alert-danger" style={{ marginTop: '8px', padding: '6px 10px', fontSize: '0.75rem', borderRadius: '4px' }}>
-                          If not processed within 24 hours, this case will be auto-escalated to your Supervisor.
+                        <div className="alert alert-warning" style={{ marginTop: '8px', padding: '6px 10px', fontSize: '0.75rem', borderRadius: '4px', backgroundColor: '#fffbeb', border: '1px solid #fef3c7', color: '#92400e' }}>
+                          Prioritize processing this application before SLA expires to prevent revocation and escalation to supervisory authority.
                         </div>
                       </div>
                       <div>
                         <button
                           type="button"
-                          className="btn btn-sm btn-danger"
+                          className="btn btn-sm"
+                          style={{ backgroundColor: '#d97706', color: '#ffffff', border: 'none' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/officer/review/${item.id}`);
                           }}
                         >
-                          Review Now
+                          Review Now →
                         </button>
                       </div>
                     </div>

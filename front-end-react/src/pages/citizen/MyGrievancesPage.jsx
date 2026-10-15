@@ -11,11 +11,12 @@
 //  [Props]     — Passing title, value, variant to StatCard and status to StatusBadge
 //  [Router]    — Link to navigate to "/citizen/raise-grievance"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiGetMyGrievances } from '../../api/citizenApi';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
+import SearchBar from '../../components/common/SearchBar';
 
 // Helper mapping category keys to human-readable names
 const CATEGORY_LABELS = {
@@ -34,6 +35,7 @@ export default function MyGrievancesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all' | 'open' | 'resolved'
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
   // Router search params (support linking directly via ?id=GRV-...)
@@ -74,13 +76,41 @@ export default function MyGrievancesPage() {
     ['resolved', 'escalated-resolved'].includes((g.status || '').toLowerCase())
   ).length;
 
-  // Filter list based on selected tab
-  const filteredGrievances = grievances.filter((g) => {
-    const isClosed = TERMINAL_STATUSES.includes((g.status || '').toLowerCase());
-    if (filter === 'open') return !isClosed;
-    if (filter === 'resolved') return isClosed;
-    return true;
-  });
+  // Filter list based on selected tab and search query
+  const filteredGrievances = useMemo(() => {
+    return grievances.filter((g) => {
+      const isClosed = TERMINAL_STATUSES.includes((g.status || '').toLowerCase());
+      if (filter === 'open' && isClosed) return false;
+      if (filter === 'resolved' && !isClosed) return false;
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.trim().toLowerCase();
+        const idMatch = (g.id || '').toLowerCase().includes(query);
+        const subjectMatch = (g.subject || g.title || '').toLowerCase().includes(query);
+        const relatedAppMatch = (g.relatedAppId || '').toLowerCase().includes(query);
+        const deptMatch = (g.dept || g.department || g.departmentName || '').toLowerCase().includes(query);
+        const descMatch = (g.description || g.complaint || '').toLowerCase().includes(query);
+        const categoryMatch = (CATEGORY_LABELS[g.category] || g.category || '').toLowerCase().includes(query);
+        const officerMatch = (g.assignedOfficerName || g.officer || '').toLowerCase().includes(query);
+
+        if (!idMatch && !subjectMatch && !relatedAppMatch && !deptMatch && !descMatch && !categoryMatch && !officerMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [grievances, filter, searchQuery]);
+
+  // Keep selectedId synchronized when search/filter narrows results
+  useEffect(() => {
+    if (filteredGrievances.length > 0) {
+      const stillInList = filteredGrievances.some((g) => g.id === selectedId);
+      if (!stillInList) {
+        setSelectedId(filteredGrievances[0].id);
+      }
+    }
+  }, [filteredGrievances, selectedId]);
 
   // Currently selected grievance object
   const selectedGrv = grievances.find((g) => g.id === selectedId) || null;
@@ -212,6 +242,16 @@ export default function MyGrievancesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: 'var(--space-lg)', alignItems: 'start' }}>
           {/* Left Column: Filter tabs + Cards List */}
           <div>
+            {/* Live Search Bar */}
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <SearchBar
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by ID, subject, officer..."
+              />
+            </div>
+
             <div style={{ display: 'flex', gap: 'var(--space-xs)', marginBottom: 'var(--space-md)' }}>
               {[
                 { key: 'all', label: 'All' },
@@ -232,7 +272,20 @@ export default function MyGrievancesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
               {filteredGrievances.length === 0 ? (
                 <div style={{ padding: 'var(--space-lg)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-                  No {filter} grievances found.
+                  {searchQuery ? (
+                    <>
+                      <p style={{ margin: '0 0 8px 0' }}>No grievances match &ldquo;{searchQuery}&rdquo;</p>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => setSearchQuery('')}
+                      >
+                        Clear search
+                      </button>
+                    </>
+                  ) : (
+                    `No ${filter} grievances found.`
+                  )}
                 </div>
               ) : (
                 filteredGrievances.map((g) => {

@@ -82,7 +82,15 @@ export default function TimelineTracker({
                     idx + 1
                   )}
                 </div>
-                <div className="stage-label">{s.label}</div>
+                <div className="stage-label">
+                  <div style={{ fontWeight: 600 }}>{s.label}</div>
+                  {(s.officerName || s.officerRole) && (
+                    <div style={{ fontSize: '0.68rem', color: 'var(--navy-600)', marginTop: '2px', lineHeight: 1.2 }}>
+                      {s.officerName ? s.officerName.replace(/\s*\([^)]*\)$/, '') : ''}
+                      {s.officerRole ? ` (${s.officerRole.split('(')[0].trim()})` : ''}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

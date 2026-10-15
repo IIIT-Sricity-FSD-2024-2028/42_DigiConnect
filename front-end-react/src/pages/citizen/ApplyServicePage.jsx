@@ -494,6 +494,17 @@ export default function ApplyServicePage() {
     setSubmitError(null);
   };
 
+  // Auto-select service if serviceId query param is passed in URL (e.g. from featured scheme banner)
+  useEffect(() => {
+    const urlServiceId = searchParams.get('serviceId');
+    if (urlServiceId && services.length > 0 && !selectedService) {
+      const match = services.find((s) => s.id === urlServiceId);
+      if (match) {
+        handleSelectService(match);
+      }
+    }
+  }, [searchParams, services, selectedService]);
+
   // ── 5. Callbacks: Step 1 (Applicant Info & Dynamic Inputs) ──
   const handleApplicantInfoChange = (e) => {
     const { name, value } = e.target;

@@ -15,9 +15,10 @@ import Toast from '../../components/common/Toast';
 
 const STATES = [
   'Andhra Pradesh',
-  'Telangana',
-  'Tamil Nadu',
   'Karnataka',
+  'Kerala',
+  'Tamil Nadu',
+  'Telangana',
   'Maharashtra',
   'Gujarat',
   'Rajasthan',
@@ -81,6 +82,13 @@ export default function ProfilePage() {
   // Sync role-aware documents whenever user changes
   useEffect(() => {
     if (!user) return;
+    if (Array.isArray(user.documents) && user.documents.length > 0) {
+      setDocuments(user.documents);
+      return;
+    }
+    const regDate = user.createdAt ? new Date(user.createdAt) : new Date(Date.now() - 30 * 86400000);
+    const dateStr = regDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
     const isCitizen = !user.role || user.role === 'citizen';
     if (isCitizen) {
       setDocuments([
@@ -88,7 +96,7 @@ export default function ProfilePage() {
           id: 'doc-cit-1',
           name: 'Aadhaar Card',
           type: 'Identity',
-          uploadedOn: '12 Jan 2025',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -96,7 +104,7 @@ export default function ProfilePage() {
           id: 'doc-cit-2',
           name: 'Ration Card / Rice Card',
           type: 'Family Record',
-          uploadedOn: '05 Feb 2025',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -104,7 +112,7 @@ export default function ProfilePage() {
           id: 'doc-cit-3',
           name: 'Integrated Caste & Income Certificate',
           type: 'Income / Caste',
-          uploadedOn: '20 Mar 2025',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -112,7 +120,7 @@ export default function ProfilePage() {
           id: 'doc-cit-4',
           name: 'Permanent Residence / Domicile Certificate',
           type: 'Residence',
-          uploadedOn: '10 Apr 2025',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -123,7 +131,7 @@ export default function ProfilePage() {
           id: 'doc-off-1',
           name: 'Department Appointment & Cadre Order',
           type: 'Service Record',
-          uploadedOn: '01 Feb 2024',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -131,7 +139,7 @@ export default function ProfilePage() {
           id: 'doc-off-2',
           name: 'Official Government Employee ID Card',
           type: 'Credential',
-          uploadedOn: '15 Feb 2024',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
@@ -139,7 +147,7 @@ export default function ProfilePage() {
           id: 'doc-off-3',
           name: 'Digital Signature Certificate (DSC - Class 3)',
           type: 'Security & Signing',
-          uploadedOn: '10 Jan 2025',
+          uploadedOn: dateStr,
           status: 'Active',
           badgeClass: 'badge-success',
         },
@@ -147,13 +155,13 @@ export default function ProfilePage() {
           id: 'doc-off-4',
           name: 'Vigilance & Service Integrity Clearance',
           type: 'Compliance',
-          uploadedOn: '05 Jan 2025',
+          uploadedOn: dateStr,
           status: 'Verified',
           badgeClass: 'badge-success',
         },
       ]);
     }
-  }, [user?.role]);
+  }, [user]);
 
   // ── Fetch Profile on Mount ──
   useEffect(() => {

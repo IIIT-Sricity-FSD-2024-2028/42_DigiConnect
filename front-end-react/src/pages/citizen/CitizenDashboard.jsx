@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetMyApplications, apiGetMyGrievances } from '../../api/citizenApi';
+import { apiGetMyApplications, apiGetMyGrievances, apiGetServices } from '../../api/citizenApi';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
 import { downloadDigitalCertificate } from '../../utils/certificate';
@@ -79,6 +79,7 @@ export default function CitizenDashboard() {
   const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [grievances, setGrievances] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -96,13 +97,17 @@ export default function CitizenDashboard() {
         setError(null);
 
         // Fetch real data from backend APIs with consistent limit (100)
-        const [appsRes, grievRes] = await Promise.all([
+        const [appsRes, grievRes, servRes] = await Promise.all([
           apiGetMyApplications(1, 100).catch((err) => {
             console.error('Error fetching applications:', err);
             return { data: [] };
           }),
           apiGetMyGrievances().catch((err) => {
             console.error('Error fetching grievances:', err);
+            return { data: [] };
+          }),
+          apiGetServices().catch((err) => {
+            console.error('Error fetching services:', err);
             return { data: [] };
           }),
         ]);
@@ -113,9 +118,13 @@ export default function CitizenDashboard() {
         const grievList = Array.isArray(grievRes)
           ? grievRes
           : grievRes?.data || grievRes?.items || [];
+        const servList = Array.isArray(servRes)
+          ? servRes
+          : servRes?.data || servRes?.items || [];
 
         setApplications(appsList);
         setGrievances(grievList);
+        setServices(servList);
       } catch (err) {
         setError(err.message || 'Failed to load dashboard data');
       } finally {
@@ -137,6 +146,16 @@ export default function CitizenDashboard() {
   ).length;
 
   const approvalRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
+
+  // Derive active featured scheme dynamically based on citizen's state jurisdiction
+  const userStateId = user?.stateId || (user?.state ? `state_${user.state.toLowerCase().substring(0, 2)}` : 'state_ap');
+  const stateServices = services.filter((s) => s.stateId === userStateId);
+  const pool = stateServices.length > 0 ? stateServices : services;
+  const featuredScheme =
+    pool.find((s) => (s.cat || '').toLowerCase() === 'welfare' || s.id?.includes('vidya') || s.id?.includes('cheyutha') || s.name?.toLowerCase().includes('scholarship')) ||
+    pool.find((s) => (s.cat || '').toLowerCase() === 'welfare') ||
+    pool[0] ||
+    null;
 
   // Format date helper
   const formatDate = (dateStr) => {
@@ -391,16 +410,20 @@ export default function CitizenDashboard() {
                 marginBottom: '4px',
               }}
             >
-              New Scheme Available
+              New Scheme Available {featuredScheme?.dept ? `· ${featuredScheme.dept}` : ''}
             </div>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', marginBottom: '4px' }}>
-              PM Kisan Scholarship 2025
+              {featuredScheme?.name || 'State Welfare & Education Scheme 2026'}
             </h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--navy-200)', margin: 0 }}>
-              Eligible students can apply for up to ₹25,000 scholarship. Applications open until 31 March 2025.
+              {featuredScheme?.desc || featuredScheme?.description || 'Eligible citizens can apply online now through DigiConnect.'}
             </p>
           </div>
-          <Link to="/citizen/apply?type=welfare" className="btn btn-accent" style={{ whiteSpace: 'nowrap' }}>
+          <Link
+            to={featuredScheme?.id ? `/citizen/apply?serviceId=${encodeURIComponent(featuredScheme.id)}` : '/citizen/apply?type=welfare'}
+            className="btn btn-accent"
+            style={{ whiteSpace: 'nowrap' }}
+          >
             Apply Now →
           </Link>
         </div>

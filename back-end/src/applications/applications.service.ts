@@ -115,8 +115,21 @@ export class ApplicationsService {
     const slaIso = new Date(Date.now() + slaTotalDays * 24 * 60 * 60 * 1000).toISOString();
     const assignedOffName = officer ? `${officer.name} (${officer.designationTitle || officer.designationId || 'Officer'})` : 'Unassigned';
 
+    let stateCode = 'AP';
+    if ((service as any)?.stateId) {
+      stateCode = (service as any).stateId.replace('state_', '').toUpperCase();
+    } else if (citizen?.stateId) {
+      stateCode = citizen.stateId.replace('state_', '').toUpperCase();
+    } else if (citizen?.state) {
+      const s = citizen.state.toLowerCase();
+      if (s.includes('andhra') || s === 'ap') stateCode = 'AP';
+      else if (s.includes('karnataka') || s === 'ka') stateCode = 'KA';
+      else if (s.includes('kerala') || s === 'kl') stateCode = 'KL';
+      else if (s.includes('tamil') || s === 'tn') stateCode = 'TN';
+    }
+
     const newApp: Application = {
-      id: generateId('APP'),
+      id: generateId('APP', stateCode),
       serviceId: createApplicationDto.serviceId,
       serviceName: service ? service.name : 'Unknown Service',
       serviceType: service ? ((service as any).category || (service as any).cat || 'certificate').toLowerCase() : 'certificate',
@@ -199,15 +212,66 @@ export class ApplicationsService {
     return app;
   }
 
+  enrichWithWorkflowStages(app: Application): any {
+    const service = (db.dynamicServices || []).find((s: any) => s.id === app.serviceId) ||
+                    (db.services || []).find((s: any) => s.id === app.serviceId);
+    const workflowSteps = (service as any)?.workflowSteps || [];
+    const leafNodeId = (app as any).selectedJurisdictionNodeId || app.jurisdiction;
+    const currentStepNum = Number((app as any).currentStepNumber || (app as any).currentStep) || 1;
+
+    const workflowStages = workflowSteps.map((step: any) => {
+      const officer = db.officers.find(o => 
+        o.designationId === step.requiredDesignationId &&
+        this.geographyService.isNodeWithinScope(leafNodeId, o.assignedNodeId)
+      ) || db.officers.find(o => o.designationId === step.requiredDesignationId);
+
+      const isCurrent = currentStepNum === step.stepNumber;
+      const isPast = currentStepNum > step.stepNumber || app.status === AppStatus.COMPLETED;
+      const isEscalated = isCurrent && (app.status === AppStatus.ESCALATED || (app.status as any) === 'escalated');
+
+      // Check if timeline has recorded this officer's activity
+      const timelineEvent = (app.timeline || []).find((t: any) => 
+        (t.stepName && t.stepName.toLowerCase().includes(step.stepName.toLowerCase())) ||
+        (officer && t.actor && t.actor.includes(officer.name))
+      );
+
+      return {
+        stepNumber: step.stepNumber,
+        stepName: step.stepName,
+        requiredDesignationId: step.requiredDesignationId,
+        officerId: officer?.id || 'UNASSIGNED',
+        officerName: officer ? `${officer.name} (${officer.designationTitle || officer.designationId})` : 'Designated Department Officer',
+        officerRole: officer?.designationTitle || step.stepName,
+        status: isPast ? 'COMPLETED' : isEscalated ? 'ESCALATED' : isCurrent ? 'IN_PROGRESS' : 'PENDING',
+        canApprove: step.canApprove,
+        canReject: step.canReject,
+        canRaiseQuery: step.canRaiseQuery,
+        isFinalApprovalStep: step.isFinalApprovalStep,
+        actor: timelineEvent?.actor || (officer ? `${officer.name} (${officer.designationTitle || ''})` : null),
+        date: timelineEvent?.date || null,
+        note: timelineEvent?.note || timelineEvent?.remarks || null,
+      };
+    });
+
+    return {
+      ...app,
+      workflowStages,
+      workflowOfficersSummary: workflowStages.length > 0 
+        ? workflowStages.map((s: any) => s.officerName).join(' ➔ ')
+        : (app.officerName || 'Department Officer')
+    };
+  }
+
   findByRef(ref: string): Application {
     const app = db.applications.find(a => a.id === ref);
     if (!app) throw new NotFoundException('Application not found');
-    return app;
+    return this.enrichWithWorkflowStages(app);
   }
 
   findByCitizen(citizenId: string, page: number, limit: number) {
     const apps = db.applications.filter(a => a.citizenId === citizenId);
-    return paginate(apps, page, limit);
+    const enriched = apps.map(a => this.enrichWithWorkflowStages(a));
+    return paginate(enriched, page, limit);
   }
 
   updateStatus(id: string, updateStatusDto: UpdateStatusDto, actorUserId: string): Application {
@@ -621,10 +685,12 @@ export class ApplicationsService {
       AppStatus.QUERY,
       AppStatus.QUERY_RAISED,
       AppStatus.PENDING_OFFICER_REVIEW,
+      AppStatus.ESCALATED,
       'pending',
       'under-review',
       'query',
       'pending_officer_review',
+      'escalated',
     ];
 
     let apps = db.applications.filter(a => ACTIONABLE.includes(a.status as any));
@@ -647,6 +713,22 @@ export class ApplicationsService {
                         (db.services || []).find((s: any) => s.id === a.serviceId);
         const workflowSteps = (service as any)?.workflowSteps || [];
 
+        // Check if application has breached SLA or is escalated
+        const isEscalatedOrBreached = a.status === AppStatus.ESCALATED || 
+                                     (a.status as any) === 'escalated' || 
+                                     (a.slaDate && new Date(a.slaDate).getTime() < Date.now());
+
+        if (isEscalatedOrBreached) {
+          // Breached & Escalated applications belong SOLELY to the higher supervisory authority (a.officerId)
+          // The delinquent officer whose SLA breached NO LONGER has jurisdiction or actionable access!
+          return a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId);
+        }
+
+        // Direct officer ID assignment (e.g. manually assigned) takes precedence
+        if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) {
+          return true;
+        }
+
         if (workflowSteps.length > 0 && resolvedDesignationId) {
           const currentStep = workflowSteps.find((s: any) => s.stepNumber === currentStepNum);
           if (currentStep) {
@@ -662,8 +744,7 @@ export class ApplicationsService {
           }
         }
 
-        // Fallback: direct officer ID assignment
-        return a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId);
+        return false;
       });
     }
 
@@ -688,7 +769,20 @@ export class ApplicationsService {
       const slaDate = new Date(slaDateStr);
       const totalDays = Math.max(1, Math.ceil((slaDate.getTime() - submittedDate.getTime()) / 86400000));
       const usedDays = Math.ceil((new Date().getTime() - submittedDate.getTime()) / 86400000);
-      const slaLeft = (a as any).slaRemaining !== undefined ? (a as any).slaRemaining : (totalDays - usedDays);
+      const now = Date.now();
+      const isEscalatedStatus = a.status === AppStatus.ESCALATED || (a.status as any) === 'escalated';
+
+      let slaLeft: number;
+      if (isEscalatedStatus) {
+        const diffDays = Math.ceil((slaDate.getTime() - now) / 86400000);
+        slaLeft = diffDays < 0 ? diffDays : -1;
+      } else if ((a as any).slaRemaining !== undefined && (a as any).slaRemaining !== null) {
+        slaLeft = Number((a as any).slaRemaining);
+      } else if (now > slaDate.getTime()) {
+        slaLeft = Math.ceil((slaDate.getTime() - now) / 86400000);
+      } else {
+        slaLeft = totalDays - usedDays;
+      }
 
       // Mask aadhaar — show only last 4 digits
       const rawAadhaar = citizenUser?.aadhaar || '';
@@ -719,7 +813,11 @@ export class ApplicationsService {
         submitted: submittedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         slaLeft,
         slaTotal: totalDays,
-        status: a.status === AppStatus.PENDING || a.status === ('pending' as any) ? 'new' : a.status,
+        status: a.status === AppStatus.PENDING || a.status === ('pending' as any) 
+          ? 'new' 
+          : isEscalatedStatus 
+          ? 'escalated' 
+          : a.status,
         // Citizen personal details for officer review
         aadhaar: maskedAadhaar,
         dob: citizenUser?.dob || '—',
@@ -814,16 +912,15 @@ export class ApplicationsService {
     let queueApps = this.getOfficerQueue(officerId);
 
     return queueApps.map(a => {
-      const submittedDate = new Date(a.submittedDate);
-      const slaDate = new Date(a.slaDate);
-      const totalDays = Math.max(1, Math.ceil((slaDate.getTime() - submittedDate.getTime()) / 86400000));
-      const usedDays = Math.ceil((new Date().getTime() - submittedDate.getTime()) / 86400000);
-      const slaLeft = totalDays - usedDays;
+      const isEscalated = a.status === AppStatus.ESCALATED || (a.status as any) === 'escalated';
+      const slaLeft = typeof a.slaLeft === 'number' ? a.slaLeft : (isEscalated ? -1 : 5);
+      const totalDays = Number(a.slaTotal) || 15;
+      const usedDays = Math.max(0, totalDays - slaLeft);
       const pct = Math.min(100, Math.max(0, (usedDays / totalDays) * 100));
       
       return {
         id: a.id,
-        status: slaLeft < 0 ? 'breach' : slaLeft <= 2 ? 'warn' : 'safe',
+        status: slaLeft < 0 || isEscalated ? 'breach' : slaLeft <= 3 ? 'warn' : 'safe',
         pct: pct,
         slaLeft
       };

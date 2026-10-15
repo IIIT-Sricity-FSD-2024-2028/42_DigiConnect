@@ -88,15 +88,27 @@ export default function LoginPage() {
       const user = res.data;
 
       // Build session object (matches original auth.js structure)
+      const rawRole = (user.role || '').toLowerCase();
+      const rawBackend = (user.backendRole || '').toLowerCase();
+      const normalizedRole =
+        rawRole === 'super_user' || rawRole === 'central_admin' || rawBackend === 'central_admin'
+          ? 'central_admin'
+          : rawRole === 'state_admin' || rawBackend === 'state_admin'
+          ? 'state_admin'
+          : rawRole === 'department_head' || rawBackend === 'department_head'
+          ? 'department_head'
+          : rawRole;
+
       const session = {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role === 'super_user' || user.role === 'central_admin' ? 'central_admin' : user.role,
-        roleKey: user.role === 'super_user' || user.role === 'central_admin' ? 'central_admin' : user.role,
+        role: normalizedRole,
+        roleKey: normalizedRole,
         backendRole: user.backendRole || user.role,
         actualRole: user.role,
         stateId: user.stateId || '',
+        state: user.state || '',
         departmentId: user.departmentId || '',
         assignedNodeId: user.assignedNodeId || user.jurisdiction || '',
         designationId: user.designationId || '',

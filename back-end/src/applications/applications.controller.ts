@@ -10,6 +10,7 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../guards/roles.decorator';
 import { Role } from '../models/enums';
+import { db } from '../data/store';
 
 @ApiTags('applications')
 @Controller('applications')
@@ -67,7 +68,18 @@ export class ApplicationsController {
   async simulatePayment(@Body() body: { serviceId: string; citizenId: string; amount: number }) {
     // Simulate an async 2-second delay to mimic bank gateway handshake
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const transactionId = `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
+    let stateCode = 'AP';
+    const citizen = db.users.find(u => u.id === body.citizenId);
+    const service = db.services.find(s => s.id === body.serviceId);
+    if (citizen?.stateId) {
+      stateCode = citizen.stateId.replace('state_', '').toUpperCase();
+    } else if (citizen?.state) {
+      stateCode = citizen.state.toUpperCase();
+    } else if (service?.stateId) {
+      stateCode = service.stateId.replace('state_', '').toUpperCase();
+    }
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const transactionId = `TXN-${stateCode}-REV-${rand}`;
     return {
       success: true,
       transactionId,
