@@ -4,7 +4,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { apiGetGrievances } from '../../api/grievanceApi';
+import SearchBar from '../../components/common/SearchBar';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -19,28 +21,34 @@ function formatDate(dateStr) {
 }
 
 function getCatLabel(c = '') {
+  const normalized = c.toLowerCase().replace(/_/g, '-');
   const map = {
     delay: 'Service Delay',
     rejection: 'App. Rejection',
+    'rejection-appeal': 'Rejection Appeal',
+    clarification: 'Clarification Inquiry',
     payment: 'Payment Issue',
     misconduct: 'Officer Misconduct',
     technical: 'Technical Issue',
     'wrong-info': 'Wrong Information',
     other: 'Other Issue',
   };
-  return map[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'General');
+  return map[normalized] || map[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' ') : 'General');
 }
 
 function getCatClass(c = '') {
+  const normalized = c.toLowerCase().replace(/_/g, '-');
   const map = {
     delay: 'cat-delay',
     rejection: 'cat-rejection',
+    'rejection-appeal': 'cat-rejection',
+    clarification: 'cat-clarification',
     payment: 'cat-payment',
     misconduct: 'cat-misconduct',
-    technical: 'cat-delay',
-    'wrong-info': 'cat-rejection',
+    technical: 'cat-technical',
+    'wrong-info': 'cat-wrong-info',
   };
-  return map[c] || 'cat-delay';
+  return map[normalized] || map[c] || 'cat-delay';
 }
 
 function getStatusInfo(status = '') {
@@ -69,6 +77,7 @@ function getSlaDisplay(g) {
 }
 
 export default function GrievanceDashboard() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -87,6 +96,13 @@ export default function GrievanceDashboard() {
   // Quick View Modal
   const [quickViewGrievance, setQuickViewGrievance] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+
+  // Dynamic distinct categories available across seeded & live grievance records
+  const availableCategories = useMemo(() => {
+    const canonical = ['delay', 'rejection', 'rejection_appeal', 'clarification', 'payment', 'misconduct', 'technical', 'wrong-info', 'other'];
+    const present = grievances.map((g) => g.category).filter(Boolean);
+    return Array.from(new Set([...canonical, ...present]));
+  }, [grievances]);
 
   const showToast = (msg, type = 'info') => {
     setToastMessage({ msg, type });
@@ -271,11 +287,17 @@ export default function GrievanceDashboard() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
           <div>
-            <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--navy-900)', margin: '0 0 4px 0' }}>
-              Grievance Queue
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--navy-900)', margin: 0 }}>
+                Grievance Queue
+              </h1>
+              <span className="badge badge-info" style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                {user?.dept || 'Department Redressal Cell'}
+              </span>
+            </div>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
-              Manage, investigate and resolve citizen complaints — categorize, investigate, then resolve or escalate to Supervisor
+              Welcome, <strong style={{ color: 'var(--navy-800)' }}>{user?.name || 'Grievance Redressal Officer'}</strong>
+              {user?.title ? ` (${user.title})` : ''} — manage, investigate, and resolve citizen appellate complaints.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
@@ -314,19 +336,6 @@ export default function GrievanceDashboard() {
               <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* SRS Workflow Info Alert */}
-      <div className="alert alert-info" style={{ marginBottom: 0, fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <div>
-          <strong>Grievance workflow:</strong> Citizen complaint → You receive &amp; categorize → Investigate →{' '}
-          <strong>Resolve</strong> (valid / invalid) <em>or</em> <strong>Escalate to Supervisor</strong> (serious cases). Supervisor takes final action.
         </div>
       </div>
 
@@ -420,44 +429,34 @@ export default function GrievanceDashboard() {
         {/* Card Body with Search & Dropdowns */}
         <div className="card-body" style={{ paddingBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
-            <div className="search-box" style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-              <svg
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--slate-400)' }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                className="search-box-input"
-                id="tableSearch"
-                placeholder="Search by ID, citizen, or subject..."
-                value={activeSearchQ}
-                onChange={(e) => {
-                  setActiveSearchQ(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
+            <SearchBar
+              value={activeSearchQ}
+              onChange={(val) => {
+                setActiveSearchQ(val);
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setActiveSearchQ('');
+                setCurrentPage(1);
+              }}
+              placeholder="Search by ID, citizen, or subject..."
+            />
 
             <select
               className="form-select"
-              style={{ width: '160px' }}
+              style={{ width: '180px' }}
               value={activeCatFilter}
               onChange={(e) => {
                 setActiveCatFilter(e.target.value);
                 setCurrentPage(1);
               }}
             >
-              <option value="">All Categories</option>
-              <option value="delay">Service Delay</option>
-              <option value="rejection">App. Rejection</option>
-              <option value="payment">Payment Issue</option>
-              <option value="misconduct">Officer Misconduct</option>
+              <option value="">All Categories ({grievances.length})</option>
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {getCatLabel(cat)}
+                </option>
+              ))}
             </select>
 
             <select

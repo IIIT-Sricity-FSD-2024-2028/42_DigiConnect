@@ -4,8 +4,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { apiGetGrievances } from '../../api/grievanceApi';
-import './GrievanceHistoryPage.css';
+import SearchBar from '../../components/common/SearchBar';
 
 const TERMINAL_STATUSES = ['resolved', 'rejected', 'escalated-resolved', 'escalated', 'closed'];
 
@@ -35,29 +36,56 @@ function formatDateTime(dateStr) {
       });
 }
 
+export function getGrievanceClosedDate(g) {
+  if (!g) return null;
+  return g.closedDate || g.resolvedDate || g.lastUpdated || g.updatedAt || null;
+}
+
+export function getGrievanceDaysTaken(g) {
+  if (!g) return null;
+  if (typeof g.daysTaken === 'number') return g.daysTaken;
+  const closed = getGrievanceClosedDate(g);
+  const filed = g.filedDate || g.createdAt;
+  if (closed && filed) {
+    const start = new Date(filed).getTime();
+    const end = new Date(closed).getTime();
+    if (!isNaN(start) && !isNaN(end) && end >= start) {
+      const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+      return Math.max(1, diff);
+    }
+  }
+  return null;
+}
+
 function getCatLabel(c = '') {
+  const normalized = c.toLowerCase().replace(/_/g, '-');
   const map = {
     delay: 'Service Delay',
     rejection: 'App. Rejection',
+    'rejection-appeal': 'Rejection Appeal',
+    clarification: 'Clarification Inquiry',
+    payment: 'Payment Issue',
     misconduct: 'Officer Misconduct',
     technical: 'Technical Issue',
     'wrong-info': 'Wrong Information',
-    payment: 'Payment Issue',
     other: 'Other Issue',
   };
-  return map[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : 'General');
+  return map[normalized] || map[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1).replace(/_/g, ' ') : 'General');
 }
 
 function getCatClass(c = '') {
+  const normalized = c.toLowerCase().replace(/_/g, '-');
   const map = {
     delay: 'cat-delay',
     rejection: 'cat-rejection',
+    'rejection-appeal': 'cat-rejection',
+    clarification: 'cat-clarification',
     payment: 'cat-payment',
     misconduct: 'cat-misconduct',
-    technical: 'cat-delay',
-    'wrong-info': 'cat-rejection',
+    technical: 'cat-technical',
+    'wrong-info': 'cat-wrong-info',
   };
-  return map[c] || 'cat-delay';
+  return map[normalized] || map[c] || 'cat-delay';
 }
 
 function getOutcomeDisplay(status = '') {
@@ -75,6 +103,7 @@ function getOutcomeDisplay(status = '') {
 }
 
 export default function GrievanceHistoryPage() {
+  const { user } = useAuth();
   const [allGrievances, setAllGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,6 +116,13 @@ export default function GrievanceHistoryPage() {
   const [sortOption, setSortOption] = useState('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Dynamic distinct categories
+  const availableCategories = useMemo(() => {
+    const canonical = ['delay', 'rejection', 'rejection_appeal', 'clarification', 'payment', 'misconduct', 'technical', 'wrong-info', 'other'];
+    const present = allGrievances.map((g) => g.category).filter(Boolean);
+    return Array.from(new Set([...canonical, ...present]));
+  }, [allGrievances]);
 
   // Modal State
   const [selectedGrievance, setSelectedGrievance] = useState(null);
@@ -146,21 +182,29 @@ export default function GrievanceHistoryPage() {
     }).length;
   }, [terminalGrievances]);
 
-  const avgDays = useMemo(() => {
-    const withDays = terminalGrievances.filter((g) => typeof g.daysTaken === 'number');
-    if (!withDays.length) {
-      const withDates = terminalGrievances.filter((g) => g.filedDate && (g.closedDate || g.updatedAt));
-      if (!withDates.length) return '—';
-      const sum = withDates.reduce((acc, g) => {
-        const start = new Date(g.filedDate).getTime();
-        const end = new Date(g.closedDate || g.updatedAt).getTime();
-        const diff = Math.max(0, Math.round((end - start) / (1000 * 60 * 60 * 24)));
-        return acc + diff;
-      }, 0);
-      return (sum / withDates.length).toFixed(1) + 'd';
+  const { avgDays, slaPerformanceRate } = useMemo(() => {
+    if (!terminalGrievances.length) {
+      return { avgDays: '—', slaPerformanceRate: '100% WITHIN SLA' };
     }
-    const sum = withDays.reduce((acc, g) => acc + g.daysTaken, 0);
-    return (sum / withDays.length).toFixed(1) + 'd';
+    const daysList = terminalGrievances
+      .map(getGrievanceDaysTaken)
+      .filter((d) => typeof d === 'number' && !isNaN(d));
+
+    if (!daysList.length) {
+      return { avgDays: '—', slaPerformanceRate: 'SLA COMPLIANT' };
+    }
+
+    const sum = daysList.reduce((acc, d) => acc + d, 0);
+    const avg = (sum / daysList.length).toFixed(1) + 'd';
+
+    // Grievance statutory SLA is 7 days
+    const withinSlaCount = daysList.filter((d) => d <= 7).length;
+    const rate = Math.round((withinSlaCount / daysList.length) * 100);
+
+    return {
+      avgDays: avg,
+      slaPerformanceRate: `${rate}% WITHIN 7d SLA`,
+    };
   }, [terminalGrievances]);
 
   // Filtered & Sorted Data
@@ -188,7 +232,7 @@ export default function GrievanceHistoryPage() {
 
       let matchDate = true;
       if (dateRangeFilter !== 'all') {
-        const targetDate = g.closedDate || g.updatedAt || g.filedDate;
+        const targetDate = getGrievanceClosedDate(g) || g.filedDate;
         if (targetDate) {
           const d = new Date(targetDate);
           const now = new Date();
@@ -206,10 +250,10 @@ export default function GrievanceHistoryPage() {
     });
 
     result.sort((a, b) => {
-      const dateA = new Date(a.closedDate || a.updatedAt || a.filedDate || 0).getTime();
-      const dateB = new Date(b.closedDate || b.updatedAt || b.filedDate || 0).getTime();
-      const daysA = a.daysTaken || 0;
-      const daysB = b.daysTaken || 0;
+      const dateA = new Date(getGrievanceClosedDate(a) || a.filedDate || 0).getTime();
+      const dateB = new Date(getGrievanceClosedDate(b) || b.filedDate || 0).getTime();
+      const daysA = getGrievanceDaysTaken(a) || 0;
+      const daysB = getGrievanceDaysTaken(b) || 0;
 
       if (sortOption === 'date_desc') return dateB - dateA;
       if (sortOption === 'date_asc') return dateA - dateB;
@@ -235,8 +279,10 @@ export default function GrievanceHistoryPage() {
     const headers = ['Grievance ID,Citizen Name,Application ID,Category,Priority,Status,Closed Date,Days Taken,Resolved By,Subject'];
     const rows = filteredData.map((g) => {
       const outcome = getOutcomeDisplay(g.status).label;
-      const days = g.daysTaken != null ? g.daysTaken : '';
-      const closed = g.closedDate ? formatDate(g.closedDate) : '';
+      const daysVal = getGrievanceDaysTaken(g);
+      const days = daysVal != null ? `${daysVal}d` : '';
+      const closedVal = getGrievanceClosedDate(g);
+      const closed = closedVal ? formatDate(closedVal) : '';
       const clean = (str = '') => '"' + String(str).replace(/"/g, '""') + '"';
       return [
         clean(g.id),
@@ -300,11 +346,16 @@ export default function GrievanceHistoryPage() {
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
           <div>
-            <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--navy-900)', margin: '0 0 4px 0' }}>
-              Grievance History
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--navy-900)', margin: 0 }}>
+                Grievance History
+              </h1>
+              <span className="badge badge-info" style={{ fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                {user?.dept || 'Department Redressal Cell'}
+              </span>
+            </div>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
-              Archive of resolved, rejected and escalated grievance cases — permanent audit trail
+              Archive of closed grievances for <strong style={{ color: 'var(--navy-800)' }}>{user?.name || 'Grievance Officer'}</strong> — resolved, rejected, and escalated audit records.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
@@ -400,7 +451,7 @@ export default function GrievanceHistoryPage() {
         <div className="summary-chip avg" style={{ cursor: 'default' }}>
           <div className="summary-chip-val" id="avgDays">{loading ? '...' : avgDays}</div>
           <div className="summary-chip-label">Avg Resolution Time</div>
-          <div className="summary-chip-status">SLA_PERFORMANCE</div>
+          <div className="summary-chip-status">{loading ? '...' : slaPerformanceRate}</div>
         </div>
       </div>
 
@@ -445,45 +496,35 @@ export default function GrievanceHistoryPage() {
         <div className="card-body" style={{ paddingBottom: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)', flexWrap: 'wrap' }}>
             {/* Search Box */}
-            <div className="search-box" style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-              <svg
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--slate-400)' }}
-              >
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                className="search-box-input"
-                id="tableSearch"
-                placeholder="Search by ID, citizen, or subject..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
+            <SearchBar
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              placeholder="Search by ID, citizen, or subject..."
+            />
 
             {/* Category Filter */}
             <select
               className="form-select"
-              style={{ width: '160px' }}
+              style={{ width: '180px' }}
               value={categoryFilter}
               onChange={(e) => {
                 setCategoryFilter(e.target.value);
                 setCurrentPage(1);
               }}
             >
-              <option value="">All Categories</option>
-              <option value="delay">Service Delay</option>
-              <option value="rejection">App. Rejection</option>
-              <option value="payment">Payment Issue</option>
-              <option value="misconduct">Officer Misconduct</option>
+              <option value="">All Categories ({terminalGrievances.length})</option>
+              {availableCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {getCatLabel(cat)}
+                </option>
+              ))}
             </select>
 
             {/* Time Filter */}
@@ -580,11 +621,15 @@ export default function GrievanceHistoryPage() {
               ) : (
                 pageItems.map((g) => {
                   const outcome = getOutcomeDisplay(g.status);
-                  const days = g.daysTaken != null ? `${g.daysTaken}d` : '—';
+                  const closedDate = getGrievanceClosedDate(g);
+                  const daysVal = getGrievanceDaysTaken(g);
+                  const days = daysVal != null ? `${daysVal}d` : '—';
+                  const isSlaBreach = daysVal != null && daysVal > 7;
+                  const isSlaWarn = daysVal != null && daysVal >= 5 && daysVal <= 7;
                   const slaColor =
-                    g.slaStatus === 'breach'
+                    g.slaStatus === 'breach' || isSlaBreach
                       ? 'var(--red-500)'
-                      : g.slaStatus === 'warn'
+                      : g.slaStatus === 'warn' || isSlaWarn
                       ? 'var(--amber-600)'
                       : '#166534';
 
@@ -619,7 +664,7 @@ export default function GrievanceHistoryPage() {
                         </span>
                       </td>
                       <td style={{ whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
-                        {formatDate(g.closedDate || g.updatedAt)}
+                        {formatDate(closedDate)}
                       </td>
                       <td style={{ color: slaColor, fontWeight: 700, fontSize: '0.8125rem' }}>{days}</td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--navy-700)' }}>
@@ -758,7 +803,9 @@ export default function GrievanceHistoryPage() {
                     Resolution Time
                   </div>
                   <div style={{ fontWeight: 700 }}>
-                    {selectedGrievance.daysTaken != null ? `${selectedGrievance.daysTaken} days` : '—'}
+                    {getGrievanceDaysTaken(selectedGrievance) != null
+                      ? `${getGrievanceDaysTaken(selectedGrievance)} days`
+                      : '—'}
                   </div>
                 </div>
                 <div>
@@ -771,7 +818,7 @@ export default function GrievanceHistoryPage() {
                   <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
                     Closed Date
                   </div>
-                  <div>{formatDate(selectedGrievance.closedDate || selectedGrievance.updatedAt)}</div>
+                  <div>{formatDate(getGrievanceClosedDate(selectedGrievance))}</div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>

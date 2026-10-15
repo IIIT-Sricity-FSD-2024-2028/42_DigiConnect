@@ -806,4 +806,287 @@
 .upload-slot.uploaded .upload-slot-icon {
     background: var(--green-100);
     color: var(--green-600);
-}
+}
+/* ---------------------------------------------------------------------------
+   GRIEVANCE REDRESSAL WORKFLOW (FORMS, CHECKLISTS & RESOLUTION CONTROLS)
+   --------------------------------------------------------------------------- */
+
+/* -- Categorize Choice Cards -- */
+.cat-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.cat-choice-card {
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  position: relative;
+  background: var(--color-surface);
+}
+
+.cat-choice-card:hover {
+  border-color: var(--navy-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.cat-choice-card.selected {
+  border-color: var(--navy-500);
+  background: var(--navy-50);
+  box-shadow: 0 0 0 3px rgba(37, 87, 160, 0.1);
+}
+
+.cat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cat-icon.delay {
+  background: var(--orange-100);
+  color: #9a3412;
+}
+
+.cat-icon.rejection {
+  background: var(--red-100);
+  color: #991b1b;
+}
+
+.cat-icon.payment {
+  background: var(--amber-100);
+  color: var(--amber-600);
+}
+
+.cat-icon.misconduct {
+  background: var(--purple-100);
+  color: #6b21a8;
+}
+
+.cat-choice-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 3px;
+}
+
+.cat-choice-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.cat-selected-check {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--navy-600);
+  color: #fff;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat-choice-card.selected .cat-selected-check {
+  display: flex;
+}
+
+/* -- Priority Selector -- */
+.priority-selector {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.priority-opt {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+  background: var(--color-surface);
+}
+
+.priority-opt.high {
+  color: var(--red-500);
+}
+
+.priority-opt.medium {
+  color: var(--amber-600);
+}
+
+.priority-opt.low {
+  color: #166534;
+}
+
+.priority-opt.selected.high {
+  background: var(--red-100);
+  border-color: var(--red-500);
+}
+
+.priority-opt.selected.medium {
+  background: var(--amber-100);
+  border-color: var(--amber-400);
+}
+
+.priority-opt.selected.low {
+  background: var(--green-100);
+  border-color: var(--green-500);
+}
+
+/* -- Investigation Checklist -- */
+.inv-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.inv-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--color-surface);
+}
+
+.inv-check-item:hover {
+  background: var(--slate-50);
+}
+
+.inv-check-item.done {
+  background: #f0fdf4;
+  border-color: var(--green-500);
+}
+
+.inv-check-box {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--slate-300);
+  flex-shrink: 0;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.inv-check-item.done .inv-check-box {
+  background: var(--green-500);
+  border-color: var(--green-500);
+  color: #fff;
+}
+
+.inv-check-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy-900);
+}
+
+.inv-check-sub {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* -- Resolution Outcome Buttons -- */
+.outcome-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.outcome-btn {
+  padding: var(--space-lg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--color-surface);
+}
+
+.outcome-btn:hover {
+  border-color: var(--navy-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.outcome-btn svg {
+  display: block;
+  margin: 0 auto var(--space-xs);
+}
+
+.outcome-btn .outcome-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--slate-700);
+  margin-bottom: 3px;
+}
+
+.outcome-btn .outcome-srs {
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.outcome-btn.selected {
+  border-color: var(--navy-500);
+  background: var(--navy-50);
+}
+
+.outcome-btn.selected .outcome-title {
+  color: var(--navy-700);
+}
+
+.outcome-btn.outcome-escalate.selected {
+  border-color: var(--red-500);
+  background: var(--red-50);
+}
+
+.outcome-btn.outcome-escalate.selected .outcome-title {
+  color: var(--red-700);
+}
+
+.outcome-btn.outcome-reject.selected {
+  border-color: var(--slate-500);
+  background: var(--slate-50);
+}
+
+@media (max-width: 1024px) {
+  .cat-choice-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .cat-choice-grid {
+    grid-template-columns: 1fr;
+  }
+  .outcome-grid {
+    grid-template-columns: 1fr;
+  }
+}

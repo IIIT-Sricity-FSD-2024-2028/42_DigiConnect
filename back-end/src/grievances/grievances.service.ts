@@ -78,7 +78,7 @@ export class GrievancesService {
           (g as any).assignedOfficerId === userId ||
           (officer.email && g.officerId === officer.email) ||
           (jurisdiction && jurisdiction !== 'All' && (g.jurisdiction === jurisdiction || g.jurisdiction.startsWith(jurisdiction))) ||
-          (g.stateId && officer.stateId && g.stateId === officer.stateId && (g.departmentId === officer.dept || !officer.dept))
+          (g.stateId && officer.stateId && g.stateId === officer.stateId && (g.departmentId === (officer as any).departmentId || g.departmentId === officer.dept || (g as any).dept === officer.dept || !(officer as any).departmentId))
         );
       }
     }
@@ -182,6 +182,14 @@ export class GrievancesService {
     grievance.closedDate = timestamp;
     grievance.resolvedBy = actorName;
     grievance.lastUpdated = timestamp;
+
+    const filed = (grievance as any).filedDate || (grievance as any).createdAt;
+    if (filed) {
+      const diffMs = Math.max(0, new Date(timestamp).getTime() - new Date(filed).getTime());
+      (grievance as any).daysTaken = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    } else {
+      (grievance as any).daysTaken = 1;
+    }
 
     grievance.history.push({
       action: `Grievance Resolved: ${action}`,

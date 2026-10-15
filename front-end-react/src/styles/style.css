@@ -1045,3 +1045,106 @@ h6 {
         padding: 0 var(--space-md);
     }
 }
+/* ---------------------------------------------------------------------------
+   GRIEVANCE & REDRESSAL DESIGN TOKENS (STATUS BADGES, PRIORITY & SLA)
+   --------------------------------------------------------------------------- */
+
+/* -- Priority Indicators -- */
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.priority-high .priority-dot,
+.priority-dot.priority-high {
+  background: var(--red-500);
+}
+
+.priority-medium .priority-dot,
+.priority-dot.priority-medium {
+  background: var(--amber-400);
+}
+
+.priority-low .priority-dot,
+.priority-dot.priority-low {
+  background: var(--green-500);
+}
+
+/* -- Category Tags -- */
+.category-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.cat-delay {
+  background: var(--orange-100);
+  color: #9a3412;
+}
+
+.cat-rejection {
+  background: var(--red-100);
+  color: #991b1b;
+}
+
+.cat-payment {
+  background: var(--amber-100);
+  color: #92400e;
+}
+
+.cat-misconduct {
+  background: var(--purple-100);
+  color: #6b21a8;
+}
+
+.cat-technical {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.cat-wrong-info {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.cat-clarification {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+/* -- Grievance ID -- */
+.grievance-id {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--navy-600);
+  font-weight: 600;
+}
+
+/* -- SLA Indicators -- */
+.sla-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sla-text.safe {
+  color: #166534;
+}
+
+.sla-text.warn {
+  color: var(--amber-600);
+}
+
+.sla-text.breach {
+  color: var(--red-500);
+}

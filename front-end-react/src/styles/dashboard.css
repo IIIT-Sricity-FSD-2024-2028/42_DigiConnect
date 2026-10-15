@@ -1741,3 +1741,329 @@ button.notif-btn:hover {
 @media (max-width: 640px) {
     .summary-strip { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GRIEVANCE REDRESSAL MODULE (DASHBOARD & AUDIT ARCHIVE)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Filter Buttons ── */
+.filter-btn {
+  padding: 6px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+  border-color: var(--navy-500);
+  background: var(--navy-50);
+  color: var(--navy-700);
+}
+
+/* ── Table Row Hover ── */
+.grievance-table-row,
+.history-table-row {
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.grievance-table-row:hover td,
+.history-table-row:hover td {
+  background: var(--navy-50) !important;
+}
+
+/* ── Summary Strip & KPI Chips ── */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.summary-chip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.summary-chip:hover {
+  border-color: var(--navy-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-chip.active-chip {
+  border-color: var(--navy-600);
+  box-shadow: 0 0 0 2px var(--navy-500);
+  background: var(--navy-50);
+}
+
+.summary-chip-val {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--navy-900);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.summary-chip-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.summary-chip-status {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+  margin-top: 3px;
+  opacity: 0.7;
+}
+
+.summary-chip.new .summary-chip-val { color: var(--navy-600); }
+.summary-chip.open .summary-chip-val { color: var(--amber-600); }
+.summary-chip.resolved .summary-chip-val { color: #166534; }
+.summary-chip.escalated .summary-chip-val,
+.summary-chip.rejected .summary-chip-val { color: var(--slate-600); }
+.summary-chip.escalated-resolved .summary-chip-val { color: var(--amber-600); }
+.summary-chip.breach .summary-chip-val { color: #9a3412; }
+.summary-chip.avg .summary-chip-val,
+.summary-chip.avg-days .summary-chip-val { color: var(--navy-600); }
+
+/* ── Officer Avatar ── */
+.assign-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy-500), var(--navy-300));
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Detail Page Hero Banner ── */
+.detail-hero {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--amber-400), var(--navy-500));
+}
+
+.detail-id {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--navy-600);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-xs);
+}
+
+.detail-title {
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--navy-900);
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-sm);
+}
+
+.detail-desc {
+  font-size: 0.9rem;
+  color: var(--slate-600);
+  line-height: 1.7;
+  max-width: 680px;
+  margin-bottom: var(--space-lg);
+}
+
+.detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.detail-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-meta-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.detail-meta-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy-900);
+}
+
+/* ── 4-Step Workflow Tab Bar ── */
+.detail-tab-list {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--slate-100);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-xl);
+  overflow-x: auto;
+}
+
+.detail-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 9px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.detail-tab-btn.active {
+  background: var(--color-surface);
+  color: var(--navy-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.detail-tab-btn:hover:not(.active) {
+  color: var(--color-text);
+}
+
+.detail-tab-btn .step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--slate-200);
+  color: var(--slate-600);
+  flex-shrink: 0;
+}
+
+.detail-tab-btn.active .step-num,
+.detail-tab-btn.completed .step-num {
+  background: var(--navy-600);
+  color: #fff;
+}
+
+.detail-tab-btn.locked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.detail-tab-content {
+  display: none;
+}
+
+.detail-tab-content.active {
+  display: block;
+}
+
+/* ── Info Block Cards ── */
+.info-block {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.info-block-header {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--navy-900);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.info-block-body {
+  padding: var(--space-lg);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--slate-100);
+  gap: var(--space-md);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-key {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.info-val {
+  font-size: 0.8125rem;
+  color: var(--navy-900);
+  font-weight: 600;
+  text-align: right;
+}
+
+@media (max-width: 1024px) {
+  .summary-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .summary-strip {
+    grid-template-columns: 1fr;
+  }
+}

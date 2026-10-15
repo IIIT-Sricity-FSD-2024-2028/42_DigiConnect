@@ -1,3 +1,4 @@
+
 // src/components/grievance/GrievanceQueueTable.jsx
 // React concepts used: Components, Props, State (useState), Events (onChange, onClick),
 // Lists (.map), Hooks (useState), Router (useNavigate), Callbacks
@@ -53,12 +54,25 @@ function getGrievanceStatusMeta(status = '') {
  * @returns {string} CSS class
  */
 function getCategoryTagClass(category = '') {
-  const c = category.toLowerCase();
+  const c = category.toLowerCase().replace(/_/g, '-');
   if (c.includes('delay')) return 'cat-delay';
   if (c.includes('reject')) return 'cat-rejection';
   if (c.includes('pay') || c.includes('fee')) return 'cat-payment';
-  if (c.includes('misconduct') || c.includes('officer')) return 'cat-misconduct';
-  return 'cat-delay';
+  if (c.includes('misconduct') || c.includes('officer') || c.includes('harass')) return 'cat-misconduct';
+  if (c.includes('clarif')) return 'cat-clarification';
+  if (c.includes('tech') || c.includes('system') || c.includes('portal')) return 'cat-technical';
+  return 'cat-other';
+}
+
+function getCategoryLabel(category = '') {
+  const c = category.toLowerCase().replace(/_/g, '-');
+  if (c.includes('delay')) return 'Service Delay';
+  if (c.includes('reject')) return 'Rejection Appeal';
+  if (c.includes('pay') || c.includes('fee')) return 'Fee / Payment';
+  if (c.includes('misconduct')) return 'Staff Misconduct';
+  if (c.includes('clarif')) return 'Clarification Required';
+  if (c.includes('tech')) return 'Portal Glitch';
+  return category || 'General Grievance';
 }
 
 /**
@@ -266,7 +280,7 @@ export default function GrievanceQueueTable({ grievances = [], onSelectGrievance
                       </div>
                       {g.category && (
                         <span className={`category-tag ${getCategoryTagClass(g.category)}`}>
-                          {g.category}
+                          {getCategoryLabel(g.category)}
                         </span>
                       )}
                     </td>

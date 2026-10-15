@@ -937,6 +937,9 @@ export function generateBottomUpGrievances(applications: any[]): any[] {
     const isResolved = status === GrievanceStatus.RESOLVED;
     const stateCode = app.stateId.replace('state_', '').toUpperCase();
     const grvId = `GRV-${stateCode}-${String(grvCounter++).padStart(3, '0')}`;
+    const daysTaken = isResolved
+      ? Math.max(1, Math.round((new Date(app.lastUpdated).getTime() - new Date(app.submittedDate).getTime()) / (1000 * 60 * 60 * 24)))
+      : undefined;
 
     grievances.push({
       id: grvId,
@@ -948,6 +951,10 @@ export function generateBottomUpGrievances(applications: any[]): any[] {
       description: `Applicant raised inquiry regarding SLA progress on ${app.serviceName}.`,
       filedDate: app.submittedDate,
       lastUpdated: app.lastUpdated,
+      closedDate: isResolved ? app.lastUpdated : undefined,
+      daysTaken,
+      resolvedBy: isResolved ? gro.officerName : undefined,
+      resolutionNote: isResolved ? 'Inquiry completed and resolution communicated to applicant.' : undefined,
       status,
       priority: idx % 4 === 0 ? 'high' : 'medium',
       slaStatus: isResolved ? 'safe' : idx % 3 === 0 ? 'warn' : 'safe',
