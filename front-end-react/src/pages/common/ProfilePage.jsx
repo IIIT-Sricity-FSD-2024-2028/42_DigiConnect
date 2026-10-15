@@ -75,33 +75,85 @@ export default function ProfilePage() {
     security: { sms: true, email: true },
   });
 
-  // ── Documents Mock State ──
-  const [documents, setDocuments] = useState([
-    {
-      id: 'doc-1',
-      name: 'Aadhaar Card',
-      type: 'Identity',
-      uploadedOn: '12 Jan 2025',
-      status: 'Verified',
-      badgeClass: 'badge-success',
-    },
-    {
-      id: 'doc-2',
-      name: 'Ration Card',
-      type: 'Family',
-      uploadedOn: '05 Feb 2025',
-      status: 'Verified',
-      badgeClass: 'badge-success',
-    },
-    {
-      id: 'doc-3',
-      name: 'Income Certificate',
-      type: 'Financial',
-      uploadedOn: '20 Mar 2025',
-      status: 'Pending',
-      badgeClass: 'badge-warning',
-    },
-  ]);
+  // ── Documents State (Role-Aware) ──
+  const [documents, setDocuments] = useState([]);
+
+  // Sync role-aware documents whenever user changes
+  useEffect(() => {
+    if (!user) return;
+    const isCitizen = !user.role || user.role === 'citizen';
+    if (isCitizen) {
+      setDocuments([
+        {
+          id: 'doc-cit-1',
+          name: 'Aadhaar Card',
+          type: 'Identity',
+          uploadedOn: '12 Jan 2025',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-cit-2',
+          name: 'Ration Card / Rice Card',
+          type: 'Family Record',
+          uploadedOn: '05 Feb 2025',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-cit-3',
+          name: 'Integrated Caste & Income Certificate',
+          type: 'Income / Caste',
+          uploadedOn: '20 Mar 2025',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-cit-4',
+          name: 'Permanent Residence / Domicile Certificate',
+          type: 'Residence',
+          uploadedOn: '10 Apr 2025',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+      ]);
+    } else {
+      setDocuments([
+        {
+          id: 'doc-off-1',
+          name: 'Department Appointment & Cadre Order',
+          type: 'Service Record',
+          uploadedOn: '01 Feb 2024',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-off-2',
+          name: 'Official Government Employee ID Card',
+          type: 'Credential',
+          uploadedOn: '15 Feb 2024',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-off-3',
+          name: 'Digital Signature Certificate (DSC - Class 3)',
+          type: 'Security & Signing',
+          uploadedOn: '10 Jan 2025',
+          status: 'Active',
+          badgeClass: 'badge-success',
+        },
+        {
+          id: 'doc-off-4',
+          name: 'Vigilance & Service Integrity Clearance',
+          type: 'Compliance',
+          uploadedOn: '05 Jan 2025',
+          status: 'Verified',
+          badgeClass: 'badge-success',
+        },
+      ]);
+    }
+  }, [user?.role]);
 
   // ── Fetch Profile on Mount ──
   useEffect(() => {
@@ -685,7 +737,9 @@ export default function ProfilePage() {
                 4. Verified Digital Documents
               </span>
               <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                These documents are linked to your profile and automatically attachable to applications.
+                {user?.role === 'citizen'
+                  ? 'These documents are linked to your profile and automatically attachable to applications.'
+                  : 'Official service credentials and verified departmental records linked to your administrative profile.'}
               </p>
             </div>
             <button
