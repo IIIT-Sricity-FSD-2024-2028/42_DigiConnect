@@ -835,20 +835,80 @@ export class ApplicationsService {
     const currentDayName = daysOfWeek[new Date().getDay()];
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    // Calculate real applications approved today
-    const appsApprovedToday = (db.applications || []).filter(a => {
-      return a.timeline?.some(t =>
-        t.action.toLowerCase().includes('approv') &&
-        (t.date || '').slice(0, 10) === todayStr
+    // Resolve officer
+    const officer = db.officers.find((o) => o.id === officerId) || db.users.find((u) => u.id === officerId);
+    const designationId = (officer?.designationId || (officer as any)?.designation || '').toLowerCase();
+
+    // Distinct baseline chart curves per officer designation
+    let baseWeekly: { day: string; approved: number; rejected: number; query: number }[];
+
+    if (designationId.includes('vro') || designationId.includes('vao') || designationId.includes('vo') || designationId.includes('wrs')) {
+      // Village level - high volume desk scrutiny
+      baseWeekly = [
+        { day: 'Mon', approved: 16, rejected: 1, query: 4 },
+        { day: 'Tue', approved: 22, rejected: 2, query: 3 },
+        { day: 'Wed', approved: 19, rejected: 1, query: 5 },
+        { day: 'Thu', approved: 25, rejected: 3, query: 2 },
+        { day: 'Fri', approved: 24, rejected: 0, query: 3 },
+        { day: 'Sat', approved: 0, rejected: 0, query: 0 },
+        { day: 'Sun', approved: 0, rejected: 0, query: 0 },
+      ];
+    } else if (designationId.includes('ri') || designationId.includes('inspector') || designationId.includes('dtah')) {
+      // Mandal/Firka level - medium volume spot surveys
+      baseWeekly = [
+        { day: 'Mon', approved: 8, rejected: 1, query: 2 },
+        { day: 'Tue', approved: 10, rejected: 2, query: 1 },
+        { day: 'Wed', approved: 12, rejected: 1, query: 3 },
+        { day: 'Thu', approved: 9, rejected: 2, query: 1 },
+        { day: 'Fri', approved: 11, rejected: 0, query: 2 },
+        { day: 'Sat', approved: 0, rejected: 0, query: 0 },
+        { day: 'Sun', approved: 0, rejected: 0, query: 0 },
+      ];
+    } else if (designationId.includes('tah') || designationId.includes('mro') || designationId.includes('dwo') || designationId.includes('dswo')) {
+      // Taluk / District level - final digital signatures (6 today)
+      baseWeekly = [
+        { day: 'Mon', approved: 4, rejected: 0, query: 1 },
+        { day: 'Tue', approved: 5, rejected: 1, query: 0 },
+        { day: 'Wed', approved: 5, rejected: 0, query: 1 },
+        { day: 'Thu', approved: 6, rejected: 1, query: 0 },
+        { day: 'Fri', approved: 6, rejected: 0, query: 1 },
+        { day: 'Sat', approved: 0, rejected: 0, query: 0 },
+        { day: 'Sun', approved: 0, rejected: 0, query: 0 },
+      ];
+    } else {
+      // Default / fallback
+      baseWeekly = [
+        { day: 'Mon', approved: 7, rejected: 1, query: 2 },
+        { day: 'Tue', approved: 8, rejected: 1, query: 1 },
+        { day: 'Wed', approved: 9, rejected: 0, query: 2 },
+        { day: 'Thu', approved: 6, rejected: 2, query: 1 },
+        { day: 'Fri', approved: 8, rejected: 0, query: 1 },
+        { day: 'Sat', approved: 0, rejected: 0, query: 0 },
+        { day: 'Sun', approved: 0, rejected: 0, query: 0 },
+      ];
+    }
+
+    // Clone so we don't mutate shared references
+    const chart = baseWeekly.map((b) => ({ ...b }));
+
+    // Count real-time approvals by this specific officer in application timelines today
+    const liveApprovals = (db.applications || []).filter((a) => {
+      return a.timeline?.some(
+        (t) =>
+          t.action?.toLowerCase().includes('approv') &&
+          (t.date || '').slice(0, 10) === todayStr &&
+          (t.actor === officer?.name ||
+            (officer?.title && t.actor?.includes(officer.title)) ||
+            (t as any).officerId === officerId)
       );
     }).length;
 
-    const chartItem = db.officerWeekChart.find(c => c.day === currentDayName);
-    if (chartItem) {
-      chartItem.approved = Math.max(chartItem.approved || 0, appsApprovedToday);
+    const todayItem = chart.find((c) => c.day === currentDayName);
+    if (todayItem) {
+      todayItem.approved = Math.max(todayItem.approved, todayItem.approved + liveApprovals);
     }
 
-    return db.officerWeekChart;
+    return chart;
   }
 
   // ── Supervisor Dashboard Data ──

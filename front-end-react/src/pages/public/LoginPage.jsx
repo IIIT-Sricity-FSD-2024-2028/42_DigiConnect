@@ -11,7 +11,9 @@ import { apiLogin, apiGetUsers, apiUpdateProfile } from '../../api/authApi';
 // ── Demo credentials list (rendered via .map for the quick-fill box) ──
 const DEMO_CREDENTIALS = [
   { role: 'citizen', email: 'ravi.ap@gmail.com', label: 'Citizen', color: '#0284c7' },
-  { role: 'officer', email: 'suresh.vro@ap.gov.in', label: 'Officer', color: '#16a34a' },
+  { role: 'officer', email: 'suresh.vro@ap.gov.in', label: 'Officer (VRO)', color: '#16a34a' },
+  { role: 'officer', email: 'jagadeesh.ri@ap.gov.in', label: 'Officer (RI)', color: '#059669' },
+  { role: 'officer', email: 'prabhakar.tah@ap.gov.in', label: 'Officer (MRO)', color: '#047857' },
   { role: 'department_head', email: 'head.rev@ap.gov.in', label: 'Dept Head', color: '#9333ea' },
   { role: 'state_admin', email: 'admin@ap.gov.in', label: 'State Admin', color: '#d97706' },
   { role: 'central_admin', email: 'superuser@gov.in', label: 'Central Admin', color: '#dc2626' },
@@ -387,7 +389,7 @@ export default function LoginPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '0.75rem' }}>
                 {DEMO_CREDENTIALS.map((demo) => (
                   <button
-                    key={demo.role}
+                    key={demo.email}
                     type="button"
                     className="btn btn-sm"
                     style={{

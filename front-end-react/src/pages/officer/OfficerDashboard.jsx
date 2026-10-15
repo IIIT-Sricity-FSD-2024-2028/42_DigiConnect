@@ -29,6 +29,22 @@ import {
   apiCreateNotification,
 } from '../../api/officerApi';
 
+function getJurisdictionDisplay(nodeId) {
+  const map = {
+    node_cg_vil: 'Chandragiri Village (Rural Tier 5)',
+    node_w14: 'Ward 14 (Urban Municipal Tier 5)',
+    node_cg_mdl: 'Chandragiri Mandal (Rural Tier 4)',
+    node_tpt: 'Tirupati District / Taluk (Tier 2/3)',
+    node_ap: 'Andhra Pradesh State (Tier 1)',
+    node_bilikere_vil: 'Bilikere Village (Rural Tier 5)',
+    node_hunsur_taluk: 'Hunsur Taluk (Tier 4)',
+    node_mys: 'Mysuru District (Tier 2)',
+    node_nedumangad_vil: 'Nedumangad Village (Tier 5)',
+    node_tvm: 'Thiruvananthapuram (Tier 2)',
+  };
+  return map[nodeId] || nodeId || 'Assigned Hierarchy Scope';
+}
+
 export default function OfficerDashboard() {
   // [Context] Access authenticated officer details
   const { user } = useAuth();
@@ -210,6 +226,98 @@ export default function OfficerDashboard() {
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {/* ── Toast Notification — [Component + Props + Callbacks] ── */}
       <Toast toast={toast} onClose={hideToast} />
+
+      {/* ── Officer Identity Badge & Jurisdiction Scope Header ── */}
+      <div
+        className="card"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+          border: '1px solid #bbf7d0',
+          borderRadius: 'var(--radius-lg, 12px)',
+          padding: '16px 20px',
+          marginBottom: 'var(--space-lg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: '1.35rem',
+              boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+              flexShrink: 0,
+            }}
+          >
+            🏛️
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--navy-900, #0f172a)', margin: 0 }}>
+                {user?.name || 'Department Field Officer'}
+              </h2>
+              <span
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: '999px',
+                  backgroundColor: '#dcfce7',
+                  color: '#15803d',
+                  border: '1px solid #86efac',
+                }}
+              >
+                {user?.title || 'Field Verification Officer'}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  backgroundColor: '#f1f5f9',
+                  color: '#475569',
+                }}
+              >
+                {user?.id || 'OFFICER'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: '#475569', marginTop: '4px' }}>
+              <span>🏢 {user?.dept || 'Revenue Department'}</span>
+              &nbsp;·&nbsp;
+              <span>📍 Assigned Jurisdiction: <strong>{getJurisdictionDisplay(user?.assignedNodeId || user?.jurisdiction)}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              padding: '6px 12px',
+              borderRadius: '8px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              color: '#334155',
+            }}
+          >
+            Tier Workflow Authority: Active
+          </span>
+        </div>
+      </div>
 
       {/* ── Breach Alert Banner ── */}
       {stats.breachCount > 0 && (
