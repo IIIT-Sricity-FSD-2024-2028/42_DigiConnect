@@ -236,11 +236,51 @@ function extractJurisdictionsFromTree(treeNodes, areaType = 'RURAL') {
   return { districts, tier4Map, leavesMap };
 }
 
+/**
+ * Resolves the authenticated citizen's state jurisdiction
+ */
+function getCitizenStateId(user) {
+  if (!user) return 'state_ap';
+  if (user.stateId) return user.stateId.toLowerCase();
+
+  const stateStr = (user.state || user.stateName || '').toLowerCase();
+  if (stateStr.includes('andhra') || stateStr === 'ap') return 'state_ap';
+  if (stateStr.includes('karn') || stateStr === 'ka') return 'state_ka';
+  if (stateStr.includes('keral') || stateStr === 'kl') return 'state_kl';
+  if (stateStr.includes('tamil') || stateStr === 'tn') return 'state_tn';
+
+  const idStr = (user.id || '').toUpperCase();
+  if (idStr.includes('-AP-') || idStr.includes('_AP_')) return 'state_ap';
+  if (idStr.includes('-KA-') || idStr.includes('_KA_')) return 'state_ka';
+  if (idStr.includes('-KL-') || idStr.includes('_KL_')) return 'state_kl';
+  if (idStr.includes('-TN-') || idStr.includes('_TN_')) return 'state_tn';
+
+  const juris = (user.jurisdiction || user.assignedNodeId || '').toLowerCase();
+  if (juris.includes('_ap') || juris.includes('_cg_') || juris.includes('_tpt')) return 'state_ap';
+  if (juris.includes('_ka') || juris.includes('_mys') || juris.includes('_bbmp')) return 'state_ka';
+  if (juris.includes('_kl') || juris.includes('_tvm') || juris.includes('_ned_')) return 'state_kl';
+  if (juris.includes('_tn') || juris.includes('_madurai') || juris.includes('_gcc')) return 'state_tn';
+
+  return 'state_ap';
+}
+
+function getStateDisplayName(stateId) {
+  const s = (stateId || '').toLowerCase();
+  if (s === 'state_ap') return 'Andhra Pradesh';
+  if (s === 'state_ka') return 'Karnataka';
+  if (s === 'state_kl') return 'Kerala';
+  if (s === 'state_tn') return 'Tamil Nadu';
+  return 'All Jurisdictions';
+}
+
 export default function ApplyServicePage() {
   // ── 1. Context & Router ──
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Active Citizen State Jurisdiction
+  const citizenStateId = getCitizenStateId(user);
 
   // ── 2. State ──
   // Backend services catalog & loading/error
@@ -256,7 +296,7 @@ export default function ApplyServicePage() {
   const [selectedService, setSelectedService] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Step 1: Personal & Address details form state
+  // Step 1: Personal & Address details form state (manual entry, no auto-fill)
   const [applicantInfo, setApplicantInfo] = useState({
     firstName: '',
     lastName: '',
@@ -267,13 +307,13 @@ export default function ApplyServicePage() {
     mobile: '',
     email: '',
     street: '',
-    pincode: '517101',
+    pincode: '',
     areaType: 'RURAL',
-    stateId: 'state_ap',
-    district: 'node_tpt',
-    subDivision: 'node_tpt_sub',
-    tier4: 'node_cg_man',
-    leafNode: 'node_cg_vil',
+    stateId: citizenStateId || 'state_ap',
+    district: '',
+    subDivision: '',
+    tier4: '',
+    leafNode: '',
   });
 
   // Step 1: Dynamic service-specific fields state
@@ -333,20 +373,13 @@ export default function ApplyServicePage() {
     }
   }, [searchParams]);
 
-  // Autofill applicant details from authenticated user session
+  // Synchronize stateId jurisdiction without auto-filling citizen personal details
   useEffect(() => {
     if (user) {
-      const parts = (user.name || '').trim().split(' ');
+      const detectedStateId = getCitizenStateId(user);
       setApplicantInfo((prev) => ({
         ...prev,
-        firstName: parts[0] || '',
-        lastName: parts.slice(1).join(' ') || '',
-        email: user.email || '',
-        mobile: user.phone || user.mobile || '',
-        aadhaar: user.aadhaar || '',
-        dob: user.dob || '',
-        gender: user.gender || 'Male',
-        stateId: user.stateId || 'state_ap',
+        stateId: detectedStateId || prev.stateId || 'state_ap',
       }));
     }
   }, [user]);
@@ -588,9 +621,23 @@ export default function ApplyServicePage() {
     }
   };
 
-  // ── 9. Filtered Services for Step 0 ──
+  // ── 9. Filtered Services for Step 0 (Filtered by Citizen Jurisdiction) ──
   const filteredServices = services
     .filter((s) => s.status === 'Active' || s.status === 'ACTIVE' || !s.status)
+    // Filter strictly by the citizen's jurisdiction (e.g. AP citizen sees only AP services)
+    .filter((s) => {
+      if (!citizenStateId || citizenStateId === 'all') return true;
+      const sState = (s.stateId || '').toLowerCase();
+      if (sState === 'central' || sState === 'all' || sState === 'national') return true;
+      if (sState === citizenStateId) return true;
+
+      // Suffix check for department, code or service ID (e.g., _ap, _ka, _kl, _tn)
+      const suffix = citizenStateId.replace('state_', '');
+      if ((s.departmentId || '').toLowerCase().endsWith(`_${suffix}`)) return true;
+      if ((s.code || '').toLowerCase().endsWith(`_${suffix}`)) return true;
+      if ((s.id || '').toLowerCase().endsWith(`_${suffix}`)) return true;
+      return false;
+    })
     .filter((s) => {
       if (selectedCategory === 'all') return true;
       const cat = (s.cat || s.category || '').toLowerCase();
@@ -716,11 +763,33 @@ export default function ApplyServicePage() {
         {/* Page Header */}
         <div className="page-header" style={{ marginBottom: 'var(--space-xl)' }}>
           <div>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--navy-50)',
+                border: '1px solid var(--navy-200)',
+                borderRadius: 'var(--radius-full)',
+                padding: '4px 14px',
+                marginBottom: '10px',
+                fontSize: '0.8125rem',
+                color: 'var(--navy-800)',
+                fontWeight: 600,
+              }}
+            >
+              <span>📍 Jurisdiction:</span>
+              <strong style={{ color: 'var(--navy-900)' }}>{getStateDisplayName(citizenStateId)}</strong>
+              {user?.district ? ` (${user.district})` : ''}
+              <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                Active State Services Only
+              </span>
+            </div>
             <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--navy-900)', margin: 0 }}>
               Choose a Service
             </h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-              Select the government service or certificate you would like to apply for.
+              Showing verified government services available under <strong>{getStateDisplayName(citizenStateId)}</strong> jurisdiction.
             </p>
           </div>
         </div>
@@ -768,7 +837,7 @@ export default function ApplyServicePage() {
           </div>
         ) : filteredServices.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
-            No services found matching your search.
+            No services found for {getStateDisplayName(citizenStateId)} matching your criteria.
           </div>
         ) : (
           /* Grid of Service Cards using Member 4's ServiceCard component */
