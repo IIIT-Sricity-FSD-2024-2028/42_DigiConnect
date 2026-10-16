@@ -234,7 +234,8 @@ export default function GrievanceDetailPage() {
           const appRes = await apiGetLinkedApplication(grvData.relatedAppId);
           const appData = appRes?.data || appRes;
           setLinkedApp(appData && appData.id ? appData : null);
-        } catch {
+        } catch (linkErr) {
+          console.warn('Linked application not found or unavailable:', linkErr.message);
           setLinkedApp(null);
         }
       } else {
@@ -303,14 +304,16 @@ export default function GrievanceDetailPage() {
   // ── Step 1: Confirm Review ──
   const isReviewComplete = Object.values(reviewChecks).every(Boolean);
   const handleConfirmReview = async () => {
-    setCompletedSteps((prev) => new Set([...prev, 1]));
     try {
       await apiUpdateGrievanceStatus(grievance.id, {
         remarks: 'Review Phase Completed — Citizen grounds and documents verified.',
       });
-    } catch {}
-    setActiveTab('categorize');
-    showToast('Review completed. Proceeding to Categorize.', 'info');
+      setCompletedSteps((prev) => new Set([...prev, 1]));
+      setActiveTab('categorize');
+      showToast('Review completed. Proceeding to Categorize.', 'info');
+    } catch (err) {
+      showToast(err.message || 'Failed to update review status. Please try again.', 'error');
+    }
   };
 
   // ── Step 2: Confirm Categorize ──
@@ -319,7 +322,6 @@ export default function GrievanceDetailPage() {
       showToast('Please select a category', 'warning');
       return;
     }
-    setCompletedSteps((prev) => new Set([...prev, 2]));
     try {
       await apiUpdateGrievanceStatus(grievance.id, {
         status: 'investigating',
@@ -327,10 +329,13 @@ export default function GrievanceDetailPage() {
         priority: selectedPriority,
         remarks: `Categorized as ${getCatLabel(selectedCat)} with ${selectedPriority} priority. ${catRemarks || ''}`,
       });
-    } catch {}
-    setActiveTab('investigate');
-    showToast('Categorization saved. Status → UNDER_INVESTIGATION.', 'success');
-    loadGrievance();
+      setCompletedSteps((prev) => new Set([...prev, 2]));
+      setActiveTab('investigate');
+      showToast('Categorization saved. Status → UNDER_INVESTIGATION.', 'success');
+      loadGrievance();
+    } catch (err) {
+      showToast(err.message || 'Failed to update categorization. Please try again.', 'error');
+    }
   };
 
   // ── Step 3: Confirm Investigation ──
@@ -340,14 +345,16 @@ export default function GrievanceDetailPage() {
       showToast('Complete at least 3 checklist items before proceeding to resolution.', 'warning');
       return;
     }
-    setCompletedSteps((prev) => new Set([...prev, 3]));
     try {
       await apiUpdateGrievanceStatus(grievance.id, {
         remarks: 'Investigation Phase Completed — Findings compiled and verified.',
       });
-    } catch {}
-    setActiveTab('resolve');
-    showToast('Investigation complete. Choose an appellate resolution outcome.', 'success');
+      setCompletedSteps((prev) => new Set([...prev, 3]));
+      setActiveTab('resolve');
+      showToast('Investigation complete. Choose an appellate resolution outcome.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to update investigation status. Please try again.', 'error');
+    }
   };
 
   // ── Step 4: Final Submit Resolution ──

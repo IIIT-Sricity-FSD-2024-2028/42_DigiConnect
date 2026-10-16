@@ -26,14 +26,16 @@ export default function TrackApplicationPage() {
   const [queryNote, setQueryNote] = useState('');
   const [queryFiles, setQueryFiles] = useState([]);
   const [querySuccessMsg, setQuerySuccessMsg] = useState('');
+  const [queryErrorMsg, setQueryErrorMsg] = useState('');
+  const [isSubmittingQuery, setIsSubmittingQuery] = useState(false);
   const queryFileInputRef = useRef(null);
 
   // Toast / notification message
   const [toastMsg, setToastMsg] = useState(null);
 
-  const showToast = (text) => {
-    setToastMsg(text);
-    setTimeout(() => setToastMsg(null), 3500);
+  const showToast = (text, type = 'info') => {
+    setToastMsg({ text, type });
+    setTimeout(() => setToastMsg(null), 4000);
   };
 
   const loadApplication = async (idToLoad) => {
@@ -181,6 +183,8 @@ export default function TrackApplicationPage() {
     e.preventDefault();
     if (!app?.id) return;
     try {
+      setIsSubmittingQuery(true);
+      setQueryErrorMsg('');
       setQuerySuccessMsg('Submitting response and documents to officer...');
       const res = await apiRespondToQuery(app.id, queryNote, queryFiles);
       const updated = res?.data || res;
@@ -192,15 +196,21 @@ export default function TrackApplicationPage() {
       setQuerySuccessMsg('Documents and response submitted successfully.');
       setTimeout(() => {
         setQuerySuccessMsg('');
+        setQueryErrorMsg('');
         setQueryModalOpen(false);
         setQueryFiles([]);
         setQueryNote('');
-        showToast('Query response submitted to officer. Review resumed.');
+        showToast('Query response submitted to officer. Review resumed.', 'success');
       }, 900);
     } catch (err) {
-      console.warn('Query response API error:', err.message);
-      showToast('Query response submitted to officer.');
-      setQueryModalOpen(false);
+      console.error('Query response API error:', err);
+      const errorText = 'Failed to submit query response: ' + (err.message || 'Server error. Please try again.');
+      setQuerySuccessMsg('');
+      setQueryErrorMsg(errorText);
+      showToast(errorText, 'error');
+      // Do NOT close modal or clear files/note — keep open so citizen can retry
+    } finally {
+      setIsSubmittingQuery(false);
     }
   };
 
@@ -214,7 +224,7 @@ export default function TrackApplicationPage() {
             position: 'fixed',
             top: '20px',
             right: '20px',
-            background: 'var(--navy-900)',
+            background: typeof toastMsg === 'object' && toastMsg.type === 'error' ? '#dc2626' : typeof toastMsg === 'object' && toastMsg.type === 'success' ? '#16a34a' : 'var(--navy-900)',
             color: '#fff',
             padding: '12px 20px',
             borderRadius: 'var(--radius-md)',
@@ -222,9 +232,13 @@ export default function TrackApplicationPage() {
             zIndex: 2000,
             fontSize: '0.875rem',
             fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}
         >
-          {toastMsg}
+          {typeof toastMsg === 'object' && toastMsg.type === 'error' ? '⚠️ ' : ''}
+          {typeof toastMsg === 'object' ? toastMsg.text : toastMsg}
         </div>
       )}
 
@@ -521,7 +535,11 @@ export default function TrackApplicationPage() {
                       <button
                         type="button"
                         className="btn btn-accent btn-sm"
-                        onClick={() => setQueryModalOpen(true)}
+                        onClick={() => {
+                          setQueryErrorMsg('');
+                          setQuerySuccessMsg('');
+                          setQueryModalOpen(true);
+                        }}
                       >
                         Upload Documents &amp; Respond
                       </button>
@@ -743,6 +761,27 @@ export default function TrackApplicationPage() {
                   </div>
                 )}
 
+                {queryErrorMsg && (
+                  <div
+                    style={{
+                      marginBottom: 'var(--space-md)',
+                      padding: '10px 14px',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: 'var(--radius-sm)',
+                      color: '#b91c1c',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span>⚠️</span>
+                    <span>{queryErrorMsg}</span>
+                  </div>
+                )}
+
                 <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
                   <label className="form-label" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
                     Upload Requested Document(s) <span style={{ color: 'var(--red-500)' }}>*</span>
@@ -800,8 +839,8 @@ export default function TrackApplicationPage() {
                 <button type="button" className="btn btn-outline" onClick={() => setQueryModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Submit Response
+                <button type="submit" className="btn btn-primary" disabled={isSubmittingQuery}>
+                  {isSubmittingQuery ? 'Submitting...' : 'Submit Response'}
                 </button>
               </div>
             </form>
