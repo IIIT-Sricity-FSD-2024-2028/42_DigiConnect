@@ -65,19 +65,39 @@ export class ApplicationsController {
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiBody({ schema: { type: 'object', properties: { serviceId: { type: 'string' }, citizenId: { type: 'string' }, amount: { type: 'number' } } } })
   @ApiResponse({ status: 200, description: 'Payment successful' })
-  async simulatePayment(@Body() body: { serviceId: string; citizenId: string; amount: number }) {
+  async simulatePayment(
+    @Body() body: { serviceId: string; citizenId: string; amount: number; stateId?: string },
+    @Headers('x-state-id') headerStateId?: string,
+  ) {
     // Simulate an async 2-second delay to mimic bank gateway handshake
     await new Promise(resolve => setTimeout(resolve, 2000));
-    let stateCode = 'AP';
-    const citizen = db.users.find(u => u.id === body.citizenId);
-    const service = db.services.find(s => s.id === body.serviceId);
-    if (citizen?.stateId) {
-      stateCode = citizen.stateId.replace('state_', '').toUpperCase();
-    } else if (citizen?.state) {
-      stateCode = citizen.state.toUpperCase();
-    } else if (service?.stateId) {
-      stateCode = service.stateId.replace('state_', '').toUpperCase();
+    
+    // Find service in static or dynamic list
+    let service: any = db.services.find(s => String(s.id) === String(body.serviceId));
+    if (!service && (db as any).dynamicServices) {
+      service = (db as any).dynamicServices.find((s: any) => String(s.id) === String(body.serviceId));
     }
+
+    const citizen = db.users.find(u => u.id === body.citizenId);
+
+    // Resolve state code: Service -> Citizen -> Request StateId/Header -> Neutral Code
+    let stateCode = '';
+    if (service?.stateId) {
+      stateCode = service.stateId.replace(/^state_/, '').toUpperCase();
+    } else if (body.stateId) {
+      stateCode = body.stateId.replace(/^state_/, '').toUpperCase();
+    } else if (headerStateId) {
+      stateCode = headerStateId.replace(/^state_/, '').toUpperCase();
+    } else if (citizen?.stateId) {
+      stateCode = citizen.stateId.replace(/^state_/, '').toUpperCase();
+    } else if (citizen?.state) {
+      stateCode = citizen.state.substring(0, 2).toUpperCase();
+    }
+
+    if (!stateCode || stateCode.length < 2) {
+      stateCode = 'GOV';
+    }
+
     const rand = Math.floor(1000 + Math.random() * 9000);
     const transactionId = `TXN-${stateCode}-REV-${rand}`;
     return {

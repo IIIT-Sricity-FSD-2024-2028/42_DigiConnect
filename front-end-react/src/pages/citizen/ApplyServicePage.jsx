@@ -631,7 +631,8 @@ export default function ApplyServicePage() {
       let transactionId = 'TXN-EXEMPT-000';
       if (feeAmount > 0) {
         try {
-          const payRes = await apiSimulatePayment(selectedService.id, user?.id || 'CIT-1001', feeAmount);
+          const paymentStateId = applicantInfo.stateId || selectedService.stateId || user?.stateId;
+          const payRes = await apiSimulatePayment(selectedService.id, user?.id || 'CIT-1001', feeAmount, paymentStateId);
           transactionId = payRes?.transactionId || `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
         } catch (payErr) {
           console.warn('Payment simulation fallback:', payErr.message);
