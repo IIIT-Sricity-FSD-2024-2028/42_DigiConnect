@@ -69,6 +69,7 @@ export default function OfficerDashboard() {
   const [queries, setQueries] = useState([]);
   const [slaRisks, setSlaRisks] = useState([]);
   const [weekChart, setWeekChart] = useState(null); // null until API responds
+  const [approvedTodayCount, setApprovedTodayCount] = useState(null);
   const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
   const [allServices, setAllServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,89 +86,92 @@ export default function OfficerDashboard() {
     } catch (e) {}
   }, [user]);
 
-  // ── [Hooks + API calls] Fetch Officer Data on Mount ──
-  useEffect(() => {
-    let isMounted = true;
+  // ── [Hooks + API calls] Fetch Officer Data Function ──
+  const loadDashboardData = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // [API calls] Fetch parallel datasets for the officer dashboard
+      const [queueRes, queriesRes, slaRes, chartRes, nodesRes, servicesRes] = await Promise.allSettled([
+        apiGetOfficerQueue(),
+        apiGetOfficerQueries(),
+        apiGetOfficerSlaRisks(),
+        apiGetOfficerWeekChart(),
+        apiGetStateJurisdictionNodes(user?.stateId),
+        apiGetServices(),
+      ]);
 
-    async function loadDashboardData() {
-      setLoading(true);
-      setError(null);
-      try {
-        // [API calls] Fetch parallel datasets for the officer dashboard
-        const [queueRes, queriesRes, slaRes, chartRes, nodesRes, servicesRes] = await Promise.allSettled([
-          apiGetOfficerQueue(),
-          apiGetOfficerQueries(),
-          apiGetOfficerSlaRisks(),
-          apiGetOfficerWeekChart(),
-          apiGetStateJurisdictionNodes(user?.stateId),
-          apiGetServices(),
-        ]);
+      if (nodesRes.status === 'fulfilled' && nodesRes.value?.data) {
+        setJurisdictionNodes(nodesRes.value.data);
+      } else if (nodesRes.status === 'fulfilled' && Array.isArray(nodesRes.value)) {
+        setJurisdictionNodes(nodesRes.value);
+      }
 
-        if (!isMounted) return;
+      // Populate queue
+      if (queueRes.status === 'fulfilled' && queueRes.value?.data) {
+        setQueue(queueRes.value.data);
+      } else if (queueRes.status === 'fulfilled' && Array.isArray(queueRes.value)) {
+        setQueue(queueRes.value);
+      }
 
-        if (nodesRes.status === 'fulfilled' && nodesRes.value?.data) {
-          setJurisdictionNodes(nodesRes.value.data);
-        } else if (nodesRes.status === 'fulfilled' && Array.isArray(nodesRes.value)) {
-          setJurisdictionNodes(nodesRes.value);
+      // Populate queries
+      if (queriesRes.status === 'fulfilled' && queriesRes.value?.data) {
+        setQueries(queriesRes.value.data);
+      } else if (queriesRes.status === 'fulfilled' && Array.isArray(queriesRes.value)) {
+        setQueries(queriesRes.value);
+      }
+
+      // Populate SLA risks
+      if (slaRes.status === 'fulfilled' && slaRes.value?.data) {
+        setSlaRisks(slaRes.value.data);
+      }
+
+      // Populate weekly chart & today's approved count
+      if (chartRes.status === 'fulfilled') {
+        const resVal = chartRes.value;
+        const raw = resVal?.data || resVal;
+        if (resVal?.approvedToday !== undefined && resVal.approvedToday !== null) {
+          setApprovedTodayCount(resVal.approvedToday);
         }
-
-        // Populate queue
-        if (queueRes.status === 'fulfilled' && queueRes.value?.data) {
-          setQueue(queueRes.value.data);
-        } else if (queueRes.status === 'fulfilled' && Array.isArray(queueRes.value)) {
-          setQueue(queueRes.value);
-        }
-
-        // Populate queries
-        if (queriesRes.status === 'fulfilled' && queriesRes.value?.data) {
-          setQueries(queriesRes.value.data);
-        } else if (queriesRes.status === 'fulfilled' && Array.isArray(queriesRes.value)) {
-          setQueries(queriesRes.value);
-        }
-
-        // Populate SLA risks
-        if (slaRes.status === 'fulfilled' && slaRes.value?.data) {
-          setSlaRisks(slaRes.value.data);
-        }
-
-        // Populate weekly chart — normalize API shape
-        // Backend returns: [{ day: 'Mon', approved: 8, rejected: 1, query: 2 }, ...]
-        // We need: { days: ['Mon',...], vals: [8,...] }
-        if (chartRes.status === 'fulfilled') {
-          const raw = chartRes.value?.data || chartRes.value;
-          if (Array.isArray(raw) && raw.length > 0) {
-            setWeekChart({
-              days: raw.map(d => d.day),
-              vals: raw.map(d => d.approved || 0),
-            });
-          } else if (raw?.days && raw?.vals) {
-            // Already in the right shape
-            setWeekChart(raw);
-          }
-        }
-
-        // Populate catalog services
-        if (servicesRes.status === 'fulfilled') {
-          const sData = servicesRes.value?.data || servicesRes.value;
-          setAllServices(Array.isArray(sData) ? sData : []);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message || 'Failed to load officer dashboard');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+        if (Array.isArray(raw) && raw.length > 0) {
+          setWeekChart({
+            days: raw.map(d => d.day),
+            vals: raw.map(d => d.approved || 0),
+          });
+        } else if (raw?.days && raw?.vals) {
+          setWeekChart(raw);
         }
       }
+
+      // Populate catalog services
+      if (servicesRes.status === 'fulfilled') {
+        const sData = servicesRes.value?.data || servicesRes.value;
+        setAllServices(Array.isArray(sData) ? sData : []);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load officer dashboard');
+    } finally {
+      setLoading(false);
     }
+  }, [user]);
 
+  // Load dashboard data on mount and whenever officer changes
+  useEffect(() => {
     loadDashboardData();
+  }, [loadDashboardData]);
 
-    return () => {
-      isMounted = false;
+  // Automatically refresh dashboard data when approvals occur or window gets focus
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadDashboardData();
     };
-  }, []);
+    window.addEventListener('digiconnect:application-updated', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
+    return () => {
+      window.removeEventListener('digiconnect:application-updated', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
+  }, [loadDashboardData]);
 
   // ── [Hooks] Computed Stats Derived from Queue, Chart, and Session Actions ──
   const stats = useMemo(() => {
@@ -184,11 +188,12 @@ export default function OfficerDashboard() {
     const atRiskCount = atRiskItems.length;
     const queriesCount = queries.length;
 
-    // Read today's approved count from the chart's today bar (matching current day of the week)
+    // Read today's approved count from server or chart's today bar
     const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentDayName = DAYS_OF_WEEK[new Date().getDay()];
     const todayIdx = weekChart?.days ? weekChart.days.indexOf(currentDayName) : -1;
-    const approvedToday = todayIdx !== -1 ? (weekChart.vals?.[todayIdx] || 0) : 0;
+    const chartTodayApproved = todayIdx !== -1 ? (weekChart.vals?.[todayIdx] || 0) : 0;
+    const approvedToday = approvedTodayCount !== null ? approvedTodayCount : chartTodayApproved;
 
     return {
       pendingCount,
@@ -197,7 +202,7 @@ export default function OfficerDashboard() {
       queriesCount,
       approvedToday,
     };
-  }, [queue, queries, weekChart]);
+  }, [queue, queries, weekChart, approvedTodayCount]);
 
   // Compute all services belonging to this officer's department
   const departmentServices = useMemo(() => {

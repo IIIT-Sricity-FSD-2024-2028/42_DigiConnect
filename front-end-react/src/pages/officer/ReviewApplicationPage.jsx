@@ -225,14 +225,17 @@ export default function ReviewApplicationPage() {
           officerRemarks || 'Verified and approved by field officer.'
         );
         setSessionApprovals(updatedApprovals);
+        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'approve', appId: currentApp.id } }));
         // [Feedback alert/toast]
         showToast(`Application ${currentApp.id} approved successfully!`, 'success');
       } else if (currentDecision === 'reject') {
         await apiRejectApplication(currentApp.id, rejectReason);
+        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'reject', appId: currentApp.id } }));
         // [Feedback alert/toast]
         showToast(`Application ${currentApp.id} rejected. Citizen notified.`, 'warning');
       } else if (currentDecision === 'query') {
         await apiRaiseQueryApplication(currentApp.id, queryText);
+        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'query', appId: currentApp.id } }));
         // [Feedback alert/toast]
         showToast(`Query sent to ${currentApp.citizen || currentApp.citizenName || 'citizen'} successfully.`, 'info');
       }

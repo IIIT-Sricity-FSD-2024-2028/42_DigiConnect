@@ -19,6 +19,16 @@ export interface TimelineEntry {
   completedDate?: string | null;
   remarks?: string;
   status?: string;
+  officerId?: string;
+  actorId?: string;
+}
+
+export interface ApprovalHistoryEntry {
+  officerId: string;
+  officerName: string;
+  stepNumber: number;
+  date: string;
+  remarks?: string;
 }
 
 export interface Application {
@@ -30,6 +40,7 @@ export interface Application {
   citizenName: string;
   jurisdiction: string;
   parentAppId?: string;
+  departmentId?: string;
   officerId: string;
   officerName: string;
   dept: string;
@@ -44,4 +55,6 @@ export interface Application {
   documents: Document[];
   citizenResponse?: string;
   paymentTransactionId?: string;
+  approvalHistory?: ApprovalHistoryEntry[];
 }
+
