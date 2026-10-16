@@ -186,7 +186,9 @@ export class ApplicationsController {
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiResponse({ status: 200, description: 'Week chart data retrieved' })
   getOfficerWeekChart(@Headers('x-user-id') userId?: string) {
-    return { success: true, data: this.applicationsService.getOfficerWeekChart(userId), message: 'OK' };
+    const data = this.applicationsService.getOfficerWeekChart(userId);
+    const approvedToday = this.applicationsService.getOfficerApprovedTodayCount(userId);
+    return { success: true, data, approvedToday, message: 'OK' };
   }
 
   @Get(':id')

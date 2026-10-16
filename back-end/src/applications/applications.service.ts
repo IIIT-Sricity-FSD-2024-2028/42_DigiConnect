@@ -527,7 +527,19 @@ export class ApplicationsService {
         action: 'Final Approval & Digital Certificate Issued',
         date: timestamp,
         actor: actorName,
+        actorId: actorUserId,
+        officerId: actorUserId,
         note: remarks || `Application approved. Certificate ${certData.id} generated.`,
+        status: 'COMPLETED',
+      });
+
+      (app as any).approvalHistory = (app as any).approvalHistory || [];
+      (app as any).approvalHistory.push({
+        officerId: actorUserId,
+        officerName: actorName,
+        stepNumber: currentStep,
+        date: timestamp,
+        remarks: remarks || `Application approved. Certificate ${certData.id} generated.`,
       });
 
       db.auditLogs.unshift({
@@ -536,8 +548,9 @@ export class ApplicationsService {
         actor: actorName,
         role: 'OFFICER',
         date: timestamp,
-        details: `Application ${app.id} (${app.serviceName}) received final approval. Certificate ${certData.id} issued.`,
-      });
+        details: `Application ${app.id} (${app.serviceName}) received final approval by ${actorName}. Certificate ${certData.id} issued.`,
+        officerId: actorUserId,
+      } as any);
 
       this.notificationsService.pushApplicationNotification(
         app.citizenId,
@@ -561,7 +574,10 @@ export class ApplicationsService {
         const leafNodeId = (app as any).selectedJurisdictionNodeId || app.jurisdiction;
         const nextOfficer = db.officers.find(o => 
           o.designationId === nextStepConfig.requiredDesignationId &&
-          (!(app as any).departmentId || o.departmentId === (app as any).departmentId) &&
+          (!app.departmentId && !(app as any).dept || o.departmentId === app.departmentId || o.departmentId === (app as any).dept) &&
+          this.geographyService.isNodeWithinScope(leafNodeId, o.assignedNodeId)
+        ) || db.officers.find(o => 
+          o.designationId === nextStepConfig.requiredDesignationId &&
           this.geographyService.isNodeWithinScope(leafNodeId, o.assignedNodeId)
         ) || db.officers.find(o => o.designationId === nextStepConfig.requiredDesignationId);
 
@@ -570,6 +586,9 @@ export class ApplicationsService {
           app.officerName = `${nextOfficer.name} (${nextOfficer.designationTitle || nextOfficer.designationId})`;
           (app as any).assignedOfficerId = nextOfficer.id;
           (app as any).assignedOfficerName = app.officerName;
+        } else {
+          app.officerId = '';
+          app.officerName = nextStepConfig.stepName || '';
         }
       }
 
@@ -582,9 +601,20 @@ export class ApplicationsService {
         date: timestamp,
         completedDate: timestamp,
         actor: actorName,
+        actorId: actorUserId,
+        officerId: actorUserId,
         note: remarks || `Stage verified and forwarded to next officer in workflow.`,
         remarks: remarks || `Stage verified and forwarded to next officer in workflow.`,
         status: 'IN_PROGRESS',
+      });
+
+      (app as any).approvalHistory = (app as any).approvalHistory || [];
+      (app as any).approvalHistory.push({
+        officerId: actorUserId,
+        officerName: actorName,
+        stepNumber: currentStep,
+        date: timestamp,
+        remarks: remarks || `Stage verified and forwarded to next officer in workflow.`,
       });
 
       db.auditLogs.unshift({
@@ -594,7 +624,8 @@ export class ApplicationsService {
         role: 'OFFICER',
         date: timestamp,
         details: `Application ${app.id} Stage ${currentStep} approved by ${actorName}. Advanced to Step ${nextStep}.`,
-      });
+        officerId: actorUserId,
+      } as any);
 
       this.notificationsService.pushApplicationNotification(
         app.citizenId,
@@ -602,14 +633,6 @@ export class ApplicationsService {
         'UNDER_REVIEW',
         `Your application was approved by ${actorName} and moved to the next review stage.`,
       );
-    }
-
-    // Update officer weekly performance chart for today
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const currentDayName = daysOfWeek[new Date().getDay()];
-    const chartItem = db.officerWeekChart.find(c => c.day === currentDayName);
-    if (chartItem) {
-      chartItem.approved = (chartItem.approved || 0) + 1;
     }
 
     return { application: app, certificate: certData };
@@ -636,6 +659,8 @@ export class ApplicationsService {
       action: 'Application Rejected',
       date: timestamp,
       actor: actorName,
+      actorId: actorUserId,
+      officerId: actorUserId,
       note: reason || 'Application rejected during officer review.',
     });
 
@@ -646,7 +671,8 @@ export class ApplicationsService {
       role: 'OFFICER',
       date: timestamp,
       details: `Application ${app.id} rejected by ${actorName}. Reason: ${reason}`,
-    });
+      officerId: actorUserId,
+    } as any);
 
     this.notificationsService.pushApplicationNotification(
       app.citizenId,
@@ -654,14 +680,6 @@ export class ApplicationsService {
       'REJECTED',
       `Your application was rejected by ${actorName}. Reason: ${reason}`,
     );
-
-    // Update officer weekly performance chart for today
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const currentDayName = daysOfWeek[new Date().getDay()];
-    const rejectChartItem = db.officerWeekChart.find(c => c.day === currentDayName);
-    if (rejectChartItem) {
-      rejectChartItem.rejected = (rejectChartItem.rejected || 0) + 1;
-    }
 
     return app;
   }
@@ -700,6 +718,8 @@ export class ApplicationsService {
       action: 'Clarification Query Raised (Workflow Paused)',
       date: timestamp,
       actor: actorName,
+      actorId: actorUserId,
+      officerId: actorUserId,
       note: queryText,
     });
 
@@ -710,7 +730,8 @@ export class ApplicationsService {
       role: 'OFFICER',
       date: timestamp,
       details: `Clarification query raised on application ${app.id} by ${actorName}: "${queryText}"`,
-    });
+      officerId: actorUserId,
+    } as any);
 
     this.notificationsService.pushApplicationNotification(
       app.citizenId,
@@ -718,14 +739,6 @@ export class ApplicationsService {
       'QUERY_RAISED',
       `Officer ${actorName} raised a query: "${queryText}". Please submit a response to resume review.`,
     );
-
-    // Update officer weekly performance chart for today
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const currentDayName = daysOfWeek[new Date().getDay()];
-    const queryChartItem = db.officerWeekChart.find(c => c.day === currentDayName);
-    if (queryChartItem) {
-      queryChartItem.query = (queryChartItem.query || 0) + 1;
-    }
 
     return app;
   }
@@ -780,11 +793,6 @@ export class ApplicationsService {
           return a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId);
         }
 
-        // Direct officer ID assignment (e.g. manually assigned) takes precedence
-        if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) {
-          return true;
-        }
-
         if (workflowSteps.length > 0 && resolvedDesignationId) {
           const currentStep = workflowSteps.find((s: any) => s.stepNumber === currentStepNum);
           if (currentStep) {
@@ -792,12 +800,22 @@ export class ApplicationsService {
             const designationMatches = currentStep.requiredDesignationId === resolvedDesignationId;
             if (!designationMatches) return false;
 
+            // Direct assignment takes precedence if step matches
+            if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) {
+              return true;
+            }
+
             // Jurisdiction scope check
             if (resolvedNodeId) {
               return this.geographyService.isNodeWithinScope(leafNodeId, resolvedNodeId);
             }
             return true;
           }
+        }
+
+        // Direct officer ID assignment (e.g. manually assigned or non-stepped service) takes precedence
+        if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) {
+          return true;
         }
 
         return false;
@@ -905,14 +923,16 @@ export class ApplicationsService {
       const linkedOfficerId = (userRecord as any)?.officerId || '';
 
       apps = apps.filter(a => {
-        if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) return true;
         const currentStepNum = Number((a as any).currentStepNumber) || 1;
         const service = (db.dynamicServices || []).find((s: any) => s.id === a.serviceId) ||
                         (db.services || []).find((s: any) => s.id === a.serviceId);
         const workflowSteps = (service as any)?.workflowSteps || [];
         if (workflowSteps.length > 0 && resolvedDesignationId) {
           const currentStep = workflowSteps.find((s: any) => s.stepNumber === currentStepNum);
-          if (currentStep && currentStep.requiredDesignationId === resolvedDesignationId) {
+          if (currentStep) {
+            const designationMatches = currentStep.requiredDesignationId === resolvedDesignationId;
+            if (!designationMatches) return false;
+            if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) return true;
             if (resolvedNodeId) {
               const leafNodeId = (a as any).selectedJurisdictionNodeId || a.jurisdiction;
               return this.geographyService.isNodeWithinScope(leafNodeId, resolvedNodeId);
@@ -920,6 +940,7 @@ export class ApplicationsService {
             return true;
           }
         }
+        if (a.officerId === officerId || (linkedOfficerId && a.officerId === linkedOfficerId)) return true;
         return false;
       });
     }
@@ -947,7 +968,13 @@ export class ApplicationsService {
     if (!officer) return [];
 
     return db.auditLogs
-      .filter(log => log.actor === officer.email || log.actor === officer.name || (officer as any).title && log.actor.includes((officer as any).title))
+      .filter(log =>
+        (log as any).officerId === officerId ||
+        log.actor === officer.email ||
+        log.actor === officer.name ||
+        ((officer as any).designationTitle && log.actor?.includes((officer as any).designationTitle)) ||
+        ((officer as any).title && log.actor?.includes((officer as any).title))
+      )
       .slice(0, 10)
       .map(log => {
         let icon = 'check';
@@ -962,6 +989,44 @@ export class ApplicationsService {
           time: new Date(log.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
         };
       });
+  }
+
+  getOfficerApprovedTodayCount(officerId?: string): number {
+    if (!officerId) return 0;
+    const officer = db.officers.find(o => o.id === officerId) || db.users.find(u => u.id === officerId);
+    const userRecord = db.users.find(u => u.id === officerId);
+    const linkedOfficerId = (userRecord as any)?.officerId || '';
+    const targetIds = [officerId, linkedOfficerId].filter(Boolean);
+    const officerName = officer?.name;
+
+    const now = new Date();
+
+    const isToday = (dateStr?: string) => {
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      const isLocalToday =
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate();
+      const isUtcToday = dateStr.slice(0, 10) === now.toISOString().slice(0, 10);
+      return isLocalToday || isUtcToday;
+    };
+
+    return (db.applications || []).filter(app => {
+      // 1. Check approvalHistory if available
+      if (Array.isArray((app as any).approvalHistory) && (app as any).approvalHistory.length > 0) {
+        return (app as any).approvalHistory.some(
+          (h: any) => targetIds.includes(h.officerId) && isToday(h.date)
+        );
+      }
+      // 2. Timeline fallback
+      return app.timeline?.some(
+        t =>
+          t.action?.toLowerCase().includes('approv') &&
+          isToday(t.date) &&
+          (targetIds.includes((t as any).officerId) || targetIds.includes((t as any).actorId) || (officerName && t.actor?.includes(officerName)))
+      );
+    }).length;
   }
 
   getOfficerSlaRisks(officerId?: string) {
@@ -986,17 +1051,15 @@ export class ApplicationsService {
   getOfficerWeekChart(officerId?: string) {
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const currentDayName = daysOfWeek[new Date().getDay()];
-    const todayStr = new Date().toISOString().slice(0, 10);
 
     // Resolve officer
     const officer = db.officers.find((o) => o.id === officerId) || db.users.find((u) => u.id === officerId);
     const designationId = (officer?.designationId || (officer as any)?.designation || '').toLowerCase();
 
-    // Distinct baseline chart curves per officer designation
+    // Distinct baseline chart curves per officer designation (past days of week)
     let baseWeekly: { day: string; approved: number; rejected: number; query: number }[];
 
     if (designationId.includes('vro') || designationId.includes('vao') || designationId.includes('vo') || designationId.includes('wrs')) {
-      // Village level - high volume desk scrutiny
       baseWeekly = [
         { day: 'Mon', approved: 16, rejected: 1, query: 4 },
         { day: 'Tue', approved: 22, rejected: 2, query: 3 },
@@ -1007,7 +1070,6 @@ export class ApplicationsService {
         { day: 'Sun', approved: 0, rejected: 0, query: 0 },
       ];
     } else if (designationId.includes('ri') || designationId.includes('inspector') || designationId.includes('dtah')) {
-      // Mandal/Firka level - medium volume spot surveys
       baseWeekly = [
         { day: 'Mon', approved: 8, rejected: 1, query: 2 },
         { day: 'Tue', approved: 10, rejected: 2, query: 1 },
@@ -1018,7 +1080,6 @@ export class ApplicationsService {
         { day: 'Sun', approved: 0, rejected: 0, query: 0 },
       ];
     } else if (designationId.includes('tah') || designationId.includes('mro') || designationId.includes('dwo') || designationId.includes('dswo')) {
-      // Taluk / District level - final digital signatures (6 today)
       baseWeekly = [
         { day: 'Mon', approved: 4, rejected: 0, query: 1 },
         { day: 'Tue', approved: 5, rejected: 1, query: 0 },
@@ -1029,7 +1090,6 @@ export class ApplicationsService {
         { day: 'Sun', approved: 0, rejected: 0, query: 0 },
       ];
     } else {
-      // Default / fallback
       baseWeekly = [
         { day: 'Mon', approved: 7, rejected: 1, query: 2 },
         { day: 'Tue', approved: 8, rejected: 1, query: 1 },
@@ -1044,21 +1104,23 @@ export class ApplicationsService {
     // Clone so we don't mutate shared references
     const chart = baseWeekly.map((b) => ({ ...b }));
 
-    // Count real-time approvals by this specific officer in application timelines today
-    const liveApprovals = (db.applications || []).filter((a) => {
-      return a.timeline?.some(
-        (t) =>
-          t.action?.toLowerCase().includes('approv') &&
-          (t.date || '').slice(0, 10) === todayStr &&
-          (t.actor === officer?.name ||
-            (officer?.title && t.actor?.includes(officer.title)) ||
-            (t as any).officerId === officerId)
-      );
-    }).length;
+    // Count real approvals by this specific officer today
+    const liveApprovals = this.getOfficerApprovedTodayCount(officerId);
 
-    const todayItem = chart.find((c) => c.day === currentDayName);
-    if (todayItem) {
-      todayItem.approved = Math.max(todayItem.approved, todayItem.approved + liveApprovals);
+    // Sync today's real volume and reset future days
+    const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const currentDayIdx = dayOrder.indexOf(currentDayName);
+    if (currentDayIdx !== -1) {
+      chart.forEach((item) => {
+        const itemIdx = dayOrder.indexOf(item.day);
+        if (itemIdx === currentDayIdx) {
+          item.approved = liveApprovals;
+        } else if (itemIdx > currentDayIdx) {
+          item.approved = 0;
+          item.rejected = 0;
+          item.query = 0;
+        }
+      });
     }
 
     return chart;
