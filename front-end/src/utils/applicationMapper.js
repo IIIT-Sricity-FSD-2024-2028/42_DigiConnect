@@ -11,11 +11,25 @@ export function normalizeApplication(app) {
   if (!app) return null;
 
   const id = app.id || app.applicationNumber || app.appId || app.arn || '—';
-  const citizenName =
-    app.citizenName ||
-    app.citizen ||
+  const citizenName = app.citizenName || app.citizen || 'Citizen';
+
+  const applicantFirstName =
+    app.applicantFirstName ||
+    app.firstName ||
+    app.formData?.firstName ||
+    '';
+  const applicantLastName =
+    app.applicantLastName ||
+    app.lastName ||
+    app.formData?.lastName ||
+    '';
+  const combinedApplicantName = `${applicantFirstName} ${applicantLastName}`.trim();
+
+  const applicantName =
     app.applicantName ||
-    (app.formData?.firstName ? `${app.formData.firstName} ${app.formData.lastName || ''}`.trim() : 'Citizen');
+    (combinedApplicantName ? combinedApplicantName : null) ||
+    app.formData?.applicant_name ||
+    citizenName;
 
   const serviceName = app.serviceName || app.service || 'Government Service';
   const officerName = app.officerName || app.officer || app.assignedOfficerName || 'Unassigned';
@@ -38,6 +52,9 @@ export function normalizeApplication(app) {
     arn: id,
     citizenName,
     citizen: citizenName,
+    applicantName,
+    applicantFirstName: applicantFirstName || undefined,
+    applicantLastName: applicantLastName || undefined,
     serviceName,
     service: serviceName,
     officerName,

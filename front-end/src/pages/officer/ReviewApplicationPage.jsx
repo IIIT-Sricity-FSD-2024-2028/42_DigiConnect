@@ -293,7 +293,8 @@ export default function ReviewApplicationPage() {
   // Applicant metadata fields list
   const applicantFields = currentApp
     ? [
-        { label: 'Full Name', value: currentApp.citizen || currentApp.citizenName || '—' },
+        { label: 'Applicant Name', value: currentApp.applicantName || currentApp.citizen || currentApp.citizenName || '—' },
+        { label: 'Citizen Account', value: currentApp.citizenName || currentApp.citizen || '—' },
         { label: 'Aadhaar Number', value: currentApp.aadhaar || (currentApp.formData?.aadhaar_number ? `XXXX-XXXX-${String(currentApp.formData.aadhaar_number).slice(-4)}` : '—') },
         { label: 'Mobile Phone', value: currentApp.phone || currentApp.citizenPhone || currentApp.formData?.phone || '—' },
         { label: 'Date of Birth', value: currentApp.dob || currentApp.formData?.dob || '—' },
@@ -426,7 +427,7 @@ export default function ReviewApplicationPage() {
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                <strong>{currentApp.citizen || currentApp.citizenName}</strong>
+                <strong>{currentApp.applicantName || currentApp.citizen || currentApp.citizenName}</strong>
               </div>
               <div className="hero-meta-item">
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

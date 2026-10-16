@@ -29,6 +29,9 @@ export const apiRaiseGrievance = (data) => {
   });
 };
 
+export const apiGetGrievanceEligibility = (appId) =>
+  apiFetch(`/grievances/eligibility/${appId}`);
+
 export const apiGetStates = () => apiFetch('/central/states').catch(() => null);
 
 export const apiGetGeographyTree = (stateId = 'state_ap') =>

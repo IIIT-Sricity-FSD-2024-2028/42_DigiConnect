@@ -43,5 +43,25 @@ export class CreateApplicationDto {
 
   @IsOptional()
   formData?: any; // Allow dynamic form data
+
+  @IsOptional()
+  @IsString()
+  applicantFirstName?: string;
+
+  @IsOptional()
+  @IsString()
+  applicantLastName?: string;
+
+  @IsOptional()
+  @IsString()
+  applicantName?: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 }
 

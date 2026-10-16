@@ -599,6 +599,9 @@ export default function ApplyServicePage() {
 
       // Check if actual File instances were uploaded to send via FormData
       const hasRealFiles = Object.values(uploadedFiles).some((f) => f instanceof File);
+      const appFirstName = (applicantInfo.firstName || '').trim();
+      const appLastName = (applicantInfo.lastName || '').trim();
+      const appFullName = `${appFirstName} ${appLastName}`.trim();
 
       let payload;
       if (hasRealFiles) {
@@ -610,6 +613,11 @@ export default function ApplyServicePage() {
         fd.append('paymentMethod', paymentMethod);
         fd.append('paymentTransactionId', transactionId);
         fd.append('selectedJurisdictionNodeId', resolvedJurisdictionNodeId);
+        if (appFirstName) fd.append('applicantFirstName', appFirstName);
+        if (appLastName) fd.append('applicantLastName', appLastName);
+        if (appFullName) fd.append('applicantName', appFullName);
+        if (appFirstName) fd.append('firstName', appFirstName);
+        if (appLastName) fd.append('lastName', appLastName);
         fd.append(
           'formData',
           JSON.stringify({
@@ -636,6 +644,11 @@ export default function ApplyServicePage() {
           paymentMethod: paymentMethod,
           paymentTransactionId: transactionId,
           selectedJurisdictionNodeId: resolvedJurisdictionNodeId,
+          applicantFirstName: appFirstName,
+          applicantLastName: appLastName,
+          applicantName: appFullName,
+          firstName: appFirstName,
+          lastName: appLastName,
           formData: {
             ...applicantInfo,
             ...dynamicAnswers,

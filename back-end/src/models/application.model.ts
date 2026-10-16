@@ -56,5 +56,9 @@ export interface Application {
   citizenResponse?: string;
   paymentTransactionId?: string;
   approvalHistory?: ApprovalHistoryEntry[];
+  applicantFirstName?: string;
+  applicantLastName?: string;
+  applicantName?: string;
+  formData?: any;
 }
 

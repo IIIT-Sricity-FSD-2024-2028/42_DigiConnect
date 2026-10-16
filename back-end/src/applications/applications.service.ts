@@ -128,6 +128,27 @@ export class ApplicationsService {
       else if (s.includes('tamil') || s === 'tn') stateCode = 'TN';
     }
 
+    const applicantFirstName = (
+      createApplicationDto.applicantFirstName ||
+      createApplicationDto.firstName ||
+      createApplicationDto.formData?.firstName ||
+      (createApplicationDto as any).firstName ||
+      ''
+    ).trim();
+
+    const applicantLastName = (
+      createApplicationDto.applicantLastName ||
+      createApplicationDto.lastName ||
+      createApplicationDto.formData?.lastName ||
+      (createApplicationDto as any).lastName ||
+      ''
+    ).trim();
+
+    const computedApplicantName = `${applicantFirstName} ${applicantLastName}`.trim();
+    const applicantName =
+      (createApplicationDto.applicantName && createApplicationDto.applicantName.trim()) ||
+      (computedApplicantName ? computedApplicantName : citizen ? citizen.name : 'Unknown Citizen');
+
     const newApp: Application = {
       id: generateId('APP', stateCode),
       serviceId: createApplicationDto.serviceId,
@@ -135,6 +156,9 @@ export class ApplicationsService {
       serviceType: service ? ((service as any).category || (service as any).cat || 'certificate').toLowerCase() : 'certificate',
       citizenId: createApplicationDto.citizenId,
       citizenName: citizen ? citizen.name : 'Unknown Citizen',
+      applicantFirstName: applicantFirstName || undefined,
+      applicantLastName: applicantLastName || undefined,
+      applicantName: applicantName,
       jurisdiction: selectedNodeId || jurisdictionPath,
       officerId: officer ? officer.id : 'UNASSIGNED',
       officerName: assignedOffName,
@@ -152,7 +176,7 @@ export class ApplicationsService {
         stepName: 'Application Submitted',
         date: nowIso, 
         completedDate: nowIso,
-        actor: citizen ? citizen.name : 'Citizen', 
+        actor: applicantName || (citizen ? citizen.name : 'Citizen'), 
         note: 'Application received online',
         remarks: 'Application received online',
         status: 'COMPLETED'
@@ -161,6 +185,7 @@ export class ApplicationsService {
         ...d,
         date: d.date || nowIso,
       })),
+      formData: createApplicationDto.formData || {},
       ...(createApplicationDto.formData || {}),
     };
 
@@ -212,7 +237,8 @@ export class ApplicationsService {
     let apps = db.applications;
     if (officerId) apps = apps.filter(a => a.officerId === officerId);
     if (status) apps = apps.filter(a => a.status === status);
-    return paginate(apps, page, limit);
+    const enriched = apps.map(a => this.enrichWithWorkflowStages(a));
+    return paginate(enriched, page, limit);
   }
 
   findById(id: string): Application {
@@ -262,8 +288,29 @@ export class ApplicationsService {
       };
     });
 
+    const applicantFirstName =
+      app.applicantFirstName ||
+      (app as any).firstName ||
+      (app as any).formData?.firstName ||
+      '';
+    const applicantLastName =
+      app.applicantLastName ||
+      (app as any).lastName ||
+      (app as any).formData?.lastName ||
+      '';
+    const combinedApplicantName = `${applicantFirstName} ${applicantLastName}`.trim();
+    const applicantName =
+      app.applicantName ||
+      (combinedApplicantName ? combinedApplicantName : null) ||
+      (app as any).formData?.applicant_name ||
+      app.citizenName ||
+      'Citizen';
+
     return {
       ...app,
+      applicantFirstName: applicantFirstName || undefined,
+      applicantLastName: applicantLastName || undefined,
+      applicantName,
       workflowStages,
       workflowOfficersSummary: workflowStages.length > 0 
         ? workflowStages.map((s: any) => s.officerName).join(' ➔ ')

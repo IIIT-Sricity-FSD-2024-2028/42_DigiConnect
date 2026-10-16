@@ -16,6 +16,10 @@ import FormStepper from '../../components/citizen/FormStepper';
 import FileUploadDropzone from '../../components/citizen/FileUploadDropzone';
 import useToast from '../../hooks/useToast';
 import Toast from '../../components/common/Toast';
+import {
+  evaluateCategoryEligibility,
+  evaluateAllGrievanceEligibility,
+} from '../../utils/grievanceEligibility';
 
 const CATEGORIES = [
   {
@@ -145,6 +149,22 @@ export default function RaiseGrievancePage() {
         if (isMounted) {
           const list = Array.isArray(res) ? res : res?.data || res?.items || [];
           setMyApplications(list);
+
+          const prefillAppId = searchParams.get('appId');
+          if (!prefillAppId && list.length > 0) {
+            setFormData((prev) => {
+              if (!prev.relatedAppId) {
+                const first = list[0];
+                return {
+                  ...prev,
+                  relatedAppId: first.id,
+                  department: first.dept || first.departmentName || first.department || prev.department,
+                  officerNames: first.officerName || first.assignedOfficerName || prev.officerNames,
+                };
+              }
+              return prev;
+            });
+          }
         }
       })
       .catch((err) => {
@@ -154,7 +174,33 @@ export default function RaiseGrievancePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [searchParams]);
+
+  // Resolve selected application object from active application list
+  const selectedApp = useMemo(() => {
+    const rawId = (formData.relatedAppId || '').trim().toUpperCase();
+    if (!rawId) return null;
+    return (
+      myApplications.find(
+        (a) => (a.id || a.applicationNumber || '').toUpperCase() === rawId
+      ) || null
+    );
+  }, [myApplications, formData.relatedAppId]);
+
+  // Compute real-time eligibility map for all 6 grievance categories
+  const eligibilityMap = useMemo(() => {
+    return evaluateAllGrievanceEligibility(selectedApp);
+  }, [selectedApp]);
+
+  // If application change causes currently selected category to become ineligible, reset selection
+  useEffect(() => {
+    if (category && selectedApp) {
+      const currentElig = evaluateCategoryEligibility(category, selectedApp);
+      if (!currentElig.isEligible) {
+        setCategory('');
+      }
+    }
+  }, [selectedApp, category]);
 
   // Compute dynamic department choices from citizen applications & state departments
   const departmentOptions = useMemo(() => {
@@ -221,14 +267,7 @@ export default function RaiseGrievancePage() {
       return next;
     });
 
-    if (matchedApp && (matchedApp.status === 'approved' || matchedApp.status === 'completed')) {
-      setFormErrors((prev) => ({
-        ...prev,
-        relatedAppId: 'This application is already approved. Grievances cannot be filed for approved applications.',
-      }));
-    } else {
-      setFormErrors((prev) => ({ ...prev, relatedAppId: '' }));
-    }
+    setFormErrors((prev) => ({ ...prev, relatedAppId: '' }));
   };
 
   // ── Controlled Input Change Handler ──
@@ -262,10 +301,23 @@ export default function RaiseGrievancePage() {
 
   // ── Step Navigation & Validation ──
   const handleNextFromStep1 = () => {
+    if (!formData.relatedAppId.trim()) {
+      setFormErrors({ relatedAppId: 'Please select an application to evaluate category eligibility.' });
+      showToast('Please select an application to continue.', 'warning');
+      return;
+    }
     if (!category) {
-      setFormErrors({ category: 'Please select a grievance category to continue.' });
+      setFormErrors({ category: 'Please select an eligible grievance category to continue.' });
       showToast('Please select a grievance category to continue.', 'warning');
       return;
+    }
+    if (selectedApp) {
+      const elig = evaluateCategoryEligibility(category, selectedApp);
+      if (!elig.isEligible) {
+        setFormErrors({ category: elig.reason });
+        showToast(elig.reason, 'error');
+        return;
+      }
     }
     setFormErrors({});
     setCurrentStep(2);
@@ -284,18 +336,19 @@ export default function RaiseGrievancePage() {
       errors.description = 'Please describe the issue in detail.';
     }
 
-    if (formData.relatedAppId.trim()) {
+    if (!formData.relatedAppId.trim()) {
+      errors.relatedAppId = 'Please select a related application.';
+    } else {
       const appId = formData.relatedAppId.trim();
-      if (!/^APP-[A-Z0-9-]+$/i.test(appId)) {
-        errors.relatedAppId = 'Invalid Application ID format (e.g. APP-AP-1001).';
-      } else if (myApplications && myApplications.length > 0) {
-        const found = myApplications.find(
-          (a) => (a.id || a.applicationNumber || '').toUpperCase() === appId.toUpperCase()
-        );
-        if (!found) {
-          errors.relatedAppId = 'Application ID not found in your records.';
-        } else if (found.status === 'approved' || found.status === 'completed') {
-          errors.relatedAppId = 'This application is already approved. Cannot raise grievance.';
+      const found = myApplications.find(
+        (a) => (a.id || a.applicationNumber || '').toUpperCase() === appId.toUpperCase()
+      );
+      if (!found) {
+        errors.relatedAppId = 'Application ID not found in your records.';
+      } else {
+        const elig = evaluateCategoryEligibility(category, found);
+        if (!elig.isEligible) {
+          errors.relatedAppId = `Category '${selectedCategoryObj?.label || category}' is not eligible for this application: ${elig.reason}`;
         }
       }
     }
@@ -326,6 +379,28 @@ export default function RaiseGrievancePage() {
       return;
     }
 
+    if (!formData.relatedAppId.trim()) {
+      showToast('A related application is required to submit a grievance.', 'warning');
+      setErrorBanner('Please link your grievance to an active application.');
+      return;
+    }
+
+    const matchedApp = myApplications.find(
+      (a) => (a.id || a.applicationNumber || '').toUpperCase() === formData.relatedAppId.trim().toUpperCase()
+    );
+    if (!matchedApp) {
+      showToast('The specified application could not be found in your records.', 'error');
+      setErrorBanner('Please select a valid application from your records.');
+      return;
+    }
+
+    const elig = evaluateCategoryEligibility(category, matchedApp);
+    if (!elig.isEligible) {
+      showToast(elig.reason, 'error');
+      setErrorBanner(`Ineligible Category: ${elig.reason}`);
+      return;
+    }
+
     setSubmitting(true);
     setErrorBanner('');
 
@@ -339,9 +414,7 @@ export default function RaiseGrievancePage() {
         payload.append('category', category || 'delay');
         payload.append('subject', formData.title.trim());
         payload.append('description', formData.description.trim());
-        if (formData.relatedAppId.trim()) {
-          payload.append('relatedAppId', formData.relatedAppId.trim());
-        }
+        payload.append('relatedAppId', formData.relatedAppId.trim());
         payload.append('priority', formData.priority || 'normal');
         payload.append('evidence', evidenceFile);
       } else {
@@ -350,7 +423,7 @@ export default function RaiseGrievancePage() {
           category: category || 'delay',
           subject: formData.title.trim(),
           description: formData.description.trim(),
-          relatedAppId: formData.relatedAppId.trim() || undefined,
+          relatedAppId: formData.relatedAppId.trim(),
           priority: formData.priority || 'normal',
         };
       }
@@ -465,50 +538,167 @@ export default function RaiseGrievancePage() {
                     </span>
                   </div>
                   <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-                    Select the category that best describes your complaint.
+                    Select your application and choose an eligible grievance category.
                   </p>
+                </div>
+
+                {/* ── Application Selector for Step 1 Eligibility Verification ── */}
+                <div
+                  style={{
+                    marginBottom: 'var(--space-lg)',
+                    padding: '16px',
+                    background: 'var(--navy-50, #f8fafc)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--slate-200)',
+                  }}
+                >
+                  <label
+                    htmlFor="step1RelatedAppSelect"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      color: 'var(--navy-900)',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Select Related Application <span style={{ color: 'var(--red-600)' }}>*</span>
+                  </label>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
+                    Category eligibility is verified based on your application's status, SLA deadline, and workflow progress.
+                  </div>
+                  {myApplications.length === 0 ? (
+                    <div style={{ padding: '10px', background: '#fff', borderRadius: '6px', border: '1px solid var(--slate-200)', fontSize: '0.85rem', color: 'var(--slate-600)' }}>
+                      No submitted applications found. You must have a submitted application to file a grievance.
+                    </div>
+                  ) : (
+                    <select
+                      id="step1RelatedAppSelect"
+                      className="form-input"
+                      value={formData.relatedAppId}
+                      onChange={(e) => handleRelatedAppChange(e.target.value)}
+                      style={{ background: '#fff', fontWeight: 600, color: 'var(--navy-900)' }}
+                    >
+                      <option value="">-- Choose an application to verify eligibility --</option>
+                      {myApplications.map((app) => (
+                        <option key={app.id} value={app.id}>
+                          {app.id} — {app.serviceName || 'Service'} ({app.status})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {formErrors.relatedAppId && (
+                    <div style={{ color: 'var(--red-600)', fontSize: '0.8rem', marginTop: '6px' }}>
+                      {formErrors.relatedAppId}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-md)' }}>
                   {CATEGORIES.map((cat) => {
                     const isSelected = category === cat.id;
+                    const elig = eligibilityMap[cat.id] || {
+                      isEligible: false,
+                      reason: selectedApp ? 'Eligibility check pending' : 'Select an application above to check eligibility.'
+                    };
+                    const isEligible = Boolean(selectedApp && elig.isEligible);
+
                     return (
                       <div
                         key={cat.id}
                         onClick={() => {
+                          if (!selectedApp) {
+                            showToast('Please select an application first to evaluate category eligibility.', 'warning');
+                            return;
+                          }
+                          if (!isEligible) {
+                            showToast(elig.reason || 'This category is not currently eligible.', 'warning');
+                            return;
+                          }
                           setCategory(cat.id);
                           setFormErrors((prev) => ({ ...prev, category: '' }));
                         }}
                         style={{
                           padding: 'var(--space-lg)',
-                          border: isSelected ? '2px solid var(--navy-600)' : '2px solid var(--color-border)',
+                          border: isSelected
+                            ? '2px solid var(--navy-600)'
+                            : isEligible
+                            ? '2px solid var(--color-border)'
+                            : '1.5px dashed var(--slate-300)',
                           borderRadius: 'var(--radius-lg)',
-                          background: isSelected ? 'var(--navy-50, #f0f4f8)' : 'transparent',
-                          cursor: 'pointer',
+                          background: isSelected
+                            ? 'var(--navy-50, #f0f4f8)'
+                            : isEligible
+                            ? '#fff'
+                            : 'var(--slate-50, #f8fafc)',
+                          cursor: isEligible ? 'pointer' : 'not-allowed',
+                          opacity: isEligible ? 1 : 0.65,
                           transition: 'all 0.15s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          position: 'relative',
                         }}
                       >
-                        <div
-                          style={{
-                            width: '44px',
-                            height: '44px',
-                            background: cat.colorBg,
-                            color: cat.iconColor,
-                            borderRadius: 'var(--radius-md)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: 'var(--space-sm)',
-                          }}
-                        >
-                          {cat.icon}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-sm)' }}>
+                            <div
+                              style={{
+                                width: '44px',
+                                height: '44px',
+                                background: cat.colorBg,
+                                color: cat.iconColor,
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {cat.icon}
+                            </div>
+                            <span
+                              className={`badge ${
+                                isEligible
+                                  ? isSelected
+                                    ? 'badge-primary'
+                                    : 'badge-success'
+                                  : 'badge-slate'
+                              }`}
+                              style={{ fontSize: '0.65rem', padding: '2px 7px' }}
+                            >
+                              {isEligible ? (isSelected ? 'Selected' : 'Eligible') : 'Unavailable'}
+                            </span>
+                          </div>
+                          <div style={{ fontWeight: 700, color: isEligible ? 'var(--navy-900)' : 'var(--slate-600)', marginBottom: '4px' }}>
+                            {cat.label}
+                          </div>
+                          <div style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
+                            {cat.desc}
+                          </div>
                         </div>
-                        <div style={{ fontWeight: 700, color: 'var(--navy-900)', marginBottom: '4px' }}>
-                          {cat.label}
-                        </div>
-                        <div style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: '1.4' }}>
-                          {cat.desc}
-                        </div>
+
+                        {!isEligible && (
+                          <div
+                            style={{
+                              marginTop: '12px',
+                              padding: '6px 8px',
+                              background: 'var(--amber-50, #fffbeb)',
+                              border: '1px solid var(--amber-200, #fde68a)',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              color: 'var(--amber-900, #78350f)',
+                              lineHeight: '1.35',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '5px',
+                            }}
+                          >
+                            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: '1px' }}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>{elig.reason}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

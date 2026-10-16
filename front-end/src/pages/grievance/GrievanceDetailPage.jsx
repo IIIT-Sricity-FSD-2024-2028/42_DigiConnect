@@ -120,7 +120,7 @@ function getStatusBadgeMeta(status = '') {
     open: { label: 'New', cls: 'badge-info', srs: 'NEW_GRIEVANCE' },
     submitted: { label: 'New', cls: 'badge-info', srs: 'NEW_GRIEVANCE' },
     investigating: { label: 'Investigating', cls: 'badge-warning', srs: 'UNDER_INVESTIGATION' },
-    'under-review': { label: 'Investigating', cls: 'badge-warning', srs: 'UNDER_INVESTIGATION' },
+    'under-review': { label: 'Under Review', cls: 'badge-warning', srs: 'UNDER_REVIEW' },
     escalated: { label: 'Escalated', cls: 'badge-purple', srs: 'GRIEVANCE_ESCALATED' },
     resolved: { label: 'Resolved', cls: 'badge-success', srs: 'GRIEVANCE_RESOLVED' },
     rejected: { label: 'Rejected', cls: 'badge-neutral', srs: 'GRIEVANCE_REJECTED' },
@@ -175,6 +175,7 @@ export default function GrievanceDetailPage() {
   const [appHistoryModalOpen, setAppHistoryModalOpen] = useState(false);
   const [confirmResModalOpen, setConfirmResModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingStep, setSavingStep] = useState(false);
 
   const showToast = (msg, type = 'info') => {
     setToastMessage({ msg, type });
@@ -215,16 +216,25 @@ export default function GrievanceDetailPage() {
       // Pre-fill completed steps based on existing status
       const statusLower = (grvData.status || '').toLowerCase().replace(/_/g, '-');
       const cSteps = new Set();
-      if (['investigating', 'under-review', 'in-progress'].includes(statusLower)) {
+      if (['under-review'].includes(statusLower)) {
+        cSteps.add(1);
+        setActiveTab('categorize');
+        setReviewChecks({ chk1: true, chk2: true, chk3: true, chk4: true });
+      } else if (['investigating', 'in-progress'].includes(statusLower)) {
         cSteps.add(1);
         cSteps.add(2);
         setActiveTab('investigate');
         setReviewChecks({ chk1: true, chk2: true, chk3: true, chk4: true });
-      } else if (['resolved', 'rejected', 'escalated'].includes(statusLower)) {
+      } else if (['resolved', 'rejected', 'escalated', 'dismissed', 'escalated-resolved'].includes(statusLower)) {
         cSteps.add(1);
         cSteps.add(2);
         cSteps.add(3);
+        cSteps.add(4);
         setActiveTab('resolve');
+        setReviewChecks({ chk1: true, chk2: true, chk3: true, chk4: true });
+        setInvChecks([true, true, true, true, true, true]);
+      } else {
+        setActiveTab('review');
       }
       setCompletedSteps(cSteps);
 
@@ -258,9 +268,13 @@ export default function GrievanceDetailPage() {
     try {
       const count = (grievance.reminders || 0) + 1;
       const suffix = count === 1 ? '1st' : count === 2 ? '2nd' : `${count}th`;
-      await apiUpdateGrievanceStatus(grievance.id, {
+      const res = await apiUpdateGrievanceStatus(grievance.id, {
         remarks: `Officer Reminded (${suffix}) — Priority expedited notice sent to assigned field officer.`,
       });
+      const updated = res?.data || res;
+      if (updated && updated.id) {
+        setGrievance(updated);
+      }
 
       // Dispatch real push notification to the assigned officer
       try {
@@ -277,7 +291,6 @@ export default function GrievanceDetailPage() {
       }
 
       showToast(`Officer Reminded (${suffix}) successfully!`, 'success');
-      loadGrievance();
     } catch (err) {
       showToast(err.message || 'Failed to send reminder to officer', 'error');
     }
@@ -304,15 +317,24 @@ export default function GrievanceDetailPage() {
   // ── Step 1: Confirm Review ──
   const isReviewComplete = Object.values(reviewChecks).every(Boolean);
   const handleConfirmReview = async () => {
+    if (!isReviewComplete || savingStep) return;
     try {
-      await apiUpdateGrievanceStatus(grievance.id, {
+      setSavingStep(true);
+      const res = await apiUpdateGrievanceStatus(grievance.id, {
+        status: 'UNDER_REVIEW',
         remarks: 'Review Phase Completed — Citizen grounds and documents verified.',
       });
+      const updated = res?.data || res;
+      if (updated && updated.id) {
+        setGrievance(updated);
+      }
       setCompletedSteps((prev) => new Set([...prev, 1]));
       setActiveTab('categorize');
       showToast('Review completed. Proceeding to Categorize.', 'info');
     } catch (err) {
       showToast(err.message || 'Failed to update review status. Please try again.', 'error');
+    } finally {
+      setSavingStep(false);
     }
   };
 
@@ -322,19 +344,28 @@ export default function GrievanceDetailPage() {
       showToast('Please select a category', 'warning');
       return;
     }
+    if (savingStep) return;
     try {
-      await apiUpdateGrievanceStatus(grievance.id, {
+      setSavingStep(true);
+      const res = await apiUpdateGrievanceStatus(grievance.id, {
         status: 'investigating',
         category: selectedCat,
         priority: selectedPriority,
-        remarks: `Categorized as ${getCatLabel(selectedCat)} with ${selectedPriority} priority. ${catRemarks || ''}`,
+        remarks: `Categorized as ${getCatLabel(selectedCat)} with ${selectedPriority} priority. ${catRemarks || ''}`.trim(),
       });
+      const updated = res?.data || res;
+      if (updated && updated.id) {
+        setGrievance(updated);
+        if (updated.category) setSelectedCat(updated.category);
+        if (updated.priority) setSelectedPriority(updated.priority.toLowerCase());
+      }
       setCompletedSteps((prev) => new Set([...prev, 2]));
       setActiveTab('investigate');
       showToast('Categorization saved. Status → UNDER_INVESTIGATION.', 'success');
-      loadGrievance();
     } catch (err) {
       showToast(err.message || 'Failed to update categorization. Please try again.', 'error');
+    } finally {
+      setSavingStep(false);
     }
   };
 
@@ -345,15 +376,24 @@ export default function GrievanceDetailPage() {
       showToast('Complete at least 3 checklist items before proceeding to resolution.', 'warning');
       return;
     }
+    if (savingStep) return;
     try {
-      await apiUpdateGrievanceStatus(grievance.id, {
+      setSavingStep(true);
+      const res = await apiUpdateGrievanceStatus(grievance.id, {
+        status: 'investigating',
         remarks: 'Investigation Phase Completed — Findings compiled and verified.',
       });
+      const updated = res?.data || res;
+      if (updated && updated.id) {
+        setGrievance(updated);
+      }
       setCompletedSteps((prev) => new Set([...prev, 3]));
       setActiveTab('resolve');
       showToast('Investigation complete. Choose an appellate resolution outcome.', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update investigation status. Please try again.', 'error');
+    } finally {
+      setSavingStep(false);
     }
   };
 
@@ -380,13 +420,18 @@ export default function GrievanceDetailPage() {
         apiAction = 'UPHOLD_REJECTION';
       }
 
-      await apiResolveGrievance(grievance.id, {
+      const res = await apiResolveGrievance(grievance.id, {
         action: apiAction,
         remarks: finalRemarks,
       });
 
+      const resData = res?.data || res;
+      const updatedGrv = resData?.grievance || resData;
+      if (updatedGrv && updatedGrv.id) {
+        setGrievance(updatedGrv);
+      }
+      setCompletedSteps((prev) => new Set([...prev, 1, 2, 3, 4]));
       showToast(`Grievance decision recorded (${selectedResType.toUpperCase()})!`, 'success');
-      await loadGrievance();
     } catch (err) {
       showToast(err.message || 'Failed to submit resolution decision', 'error');
     } finally {
@@ -434,6 +479,21 @@ export default function GrievanceDetailPage() {
     ...(grievance.evidence || []),
     ...evidenceAttachments,
   ];
+
+  const handleTabClick = (tab) => {
+    if (tab.num === 1) {
+      setActiveTab('review');
+      return;
+    }
+    const prevStep = tab.num - 1;
+    const canNavigate = isTerminal || completedSteps.has(tab.num) || completedSteps.has(prevStep);
+    if (canNavigate) {
+      setActiveTab(tab.id);
+    } else {
+      const stepNames = { 1: 'Review', 2: 'Categorize', 3: 'Investigate', 4: 'Resolution' };
+      showToast(`Please complete Step ${prevStep} (${stepNames[prevStep]}) before proceeding to Step ${tab.num} (${tab.label}).`, 'warning');
+    }
+  };
 
   return (
     <div className="grievance-detail-container" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
@@ -645,7 +705,7 @@ export default function GrievanceDetailPage() {
                 key={tab.id}
                 type="button"
                 className={`detail-tab-btn ${isActive ? 'active' : ''} ${isDone ? 'completed' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab)}
               >
                 <span className="step-num">{tab.num}</span>
                 <span>{tab.label}</span>
@@ -874,11 +934,11 @@ export default function GrievanceDetailPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={!isReviewComplete}
+                  disabled={!isReviewComplete || savingStep}
                   onClick={handleConfirmReview}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <span>Proceed to Categorize</span>
+                  <span>{savingStep ? 'Saving...' : 'Proceed to Categorize'}</span>
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <polyline points="9,18 15,12 9,6" />
                   </svg>
@@ -1045,10 +1105,11 @@ export default function GrievanceDetailPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
+                  disabled={savingStep}
                   onClick={handleConfirmCategorize}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <span>Confirm &amp; Begin Investigation</span>
+                  <span>{savingStep ? 'Saving...' : 'Confirm & Begin Investigation'}</span>
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <polyline points="9,18 15,12 9,6" />
                   </svg>
@@ -1183,10 +1244,11 @@ export default function GrievanceDetailPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
+                  disabled={invDoneCount < 3 || savingStep}
                   onClick={handleConfirmInvestigation}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <span>Investigation Complete</span>
+                  <span>{savingStep ? 'Saving...' : 'Investigation Complete'}</span>
                   <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <polyline points="9,18 15,12 9,6" />
                   </svg>

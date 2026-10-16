@@ -4,6 +4,7 @@ import { apiTrackApplication, apiRespondToQuery } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
+import { normalizeApplication } from '../../utils/applicationMapper';
 
 export default function TrackApplicationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,7 +49,7 @@ export default function TrackApplicationPage() {
       const res = await apiTrackApplication(cleanId);
       const data = res?.data || res;
       if (data && data.id) {
-        setApp(data);
+        setApp(normalizeApplication(data));
         lastLoadedIdRef.current = cleanId;
       } else {
         throw new Error('Application not found. Please verify the Application ID.');
@@ -148,19 +149,19 @@ export default function TrackApplicationPage() {
   // Workflow Stages
   const stages = app?.workflowStages && app.workflowStages.length > 0
     ? [
-        { label: 'Application Submitted', step: 0, officerName: app.citizenName || 'Citizen', officerRole: 'Citizen' },
-        ...app.workflowStages.map((ws, i) => ({
-          label: ws.stepName || `Stage ${ws.stepNumber || i + 1}`,
-          step: ws.stepNumber || i + 1,
-          officerName: ws.officerName,
-          officerRole: ws.officerRole,
-          status: ws.status,
-          actor: ws.actor,
-        })),
-        { label: 'Certificate Generated', step: app.workflowStages.length + 1, officerName: 'Digital Signature Authority', officerRole: 'Issuance' },
-      ]
+      { label: 'Application Submitted', step: 0, officerName: app.applicantName || app.citizenName || 'Citizen', officerRole: 'Applicant' },
+      ...app.workflowStages.map((ws, i) => ({
+        label: ws.stepName || `Stage ${ws.stepNumber || i + 1}`,
+        step: ws.stepNumber || i + 1,
+        officerName: ws.officerName,
+        officerRole: ws.officerRole,
+        status: ws.status,
+        actor: ws.actor,
+      })),
+      { label: 'Certificate Generated', step: app.workflowStages.length + 1, officerName: 'Digital Signature Authority', officerRole: 'Issuance' },
+    ]
     : app?.workflowSteps && app.workflowSteps.length > 0
-    ? [
+      ? [
         { label: 'Application Submitted', step: 0 },
         ...app.workflowSteps.map((ws, i) => ({
           label: ws.stepName || `Stage ${ws.stepNumber || i + 1}`,
@@ -168,7 +169,7 @@ export default function TrackApplicationPage() {
         })),
         { label: 'Certificate Generated', step: app.workflowSteps.length + 1 },
       ]
-    : [
+      : [
         { label: 'Application Submitted', step: 1 },
         { label: 'Payment Confirmed', step: 2 },
         { label: 'Officer Verified', step: 3 },
@@ -262,7 +263,7 @@ export default function TrackApplicationPage() {
 
   return (
     <div>
-      
+
       {/* ── Toast Notification ── */}
       {toastMsg && (
         <div
@@ -499,9 +500,8 @@ export default function TrackApplicationPage() {
                               Stage {ws.stepNumber}
                             </span>
                             <span
-                              className={`badge ${
-                                isStepDone ? 'badge-success' : ws.status === 'ESCALATED' ? 'badge-danger' : isStepActive ? 'badge-warning' : 'badge-slate'
-                              }`}
+                              className={`badge ${isStepDone ? 'badge-success' : ws.status === 'ESCALATED' ? 'badge-danger' : isStepActive ? 'badge-warning' : 'badge-slate'
+                                }`}
                               style={{ fontSize: '0.65rem', padding: '1px 6px' }}
                             >
                               {ws.status === 'IN_PROGRESS' ? 'Current Review' : ws.status}
@@ -679,54 +679,54 @@ export default function TrackApplicationPage() {
 
                   <div className="table-wrapper" style={{ border: 'none' }}>
                     <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Document</th>
-                        <th>Type</th>
-                        <th>Uploaded On</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(!app.documents || app.documents.length === 0) ? (
+                      <thead>
                         <tr>
-                          <td colSpan="5" style={{ textAlign: 'center', padding: 'var(--space-lg)', color: 'var(--color-text-muted)' }}>
-                            No documents attached.
-                          </td>
+                          <th>Document</th>
+                          <th>Type</th>
+                          <th>Uploaded On</th>
+                          <th>Status</th>
+                          <th>Actions</th>
                         </tr>
-                      ) : (
-                        app.documents.map((doc, idx) => (
-                          <tr key={idx}>
-                            <td style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{doc.name}</td>
-                            <td>
-                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                                {doc.type || 'Document'}
-                              </span>
-                            </td>
-                            <td>{formatDate(doc.date || app.submittedDate)}</td>
-                            <td>
-                              <span className="badge badge-success">
-                                {doc.status === 'verified' ? 'Verified' : 'Uploaded'}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-sm"
-                                style={{ fontSize: '0.75rem' }}
-                                onClick={() => viewDocumentInNewTab(doc, app)}
-                              >
-                                View Proof
-                              </button>
+                      </thead>
+                      <tbody>
+                        {(!app.documents || app.documents.length === 0) ? (
+                          <tr>
+                            <td colSpan="5" style={{ textAlign: 'center', padding: 'var(--space-lg)', color: 'var(--color-text-muted)' }}>
+                              No documents attached.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        ) : (
+                          app.documents.map((doc, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{doc.name}</td>
+                              <td>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                  {doc.type || 'Document'}
+                                </span>
+                              </td>
+                              <td>{formatDate(doc.date || app.submittedDate)}</td>
+                              <td>
+                                <span className="badge badge-success">
+                                  {doc.status === 'verified' ? 'Verified' : 'Uploaded'}
+                                </span>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
+                                  style={{ fontSize: '0.75rem' }}
+                                  onClick={() => viewDocumentInNewTab(doc, app)}
+                                >
+                                  View Proof
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
               )}
 
               {/* Tab 3: Full Details */}
@@ -737,12 +737,12 @@ export default function TrackApplicationPage() {
                     { label: 'Service Name', val: app.serviceName },
                     { label: 'Category', val: (app.serviceType || 'Certificate').toUpperCase() },
                     { label: 'Department', val: app.dept || app.departmentName || '—' },
-                    { label: 'Applicant Name', val: app.citizenName || 'Citizen' },
+                    { label: 'Applicant Name', val: app.applicantName || app.citizenName || 'Citizen' },
                     { label: 'Current Officer', val: app.officerName || app.assignedOfficerName || '—' },
                     ...(Array.isArray(app.workflowStages) && app.workflowStages.length > 0 ? [
-                      { 
-                        label: 'All Pipeline Officers', 
-                        val: app.workflowStages.map((s, i) => `Stage ${i + 1} (${s.stepName}): ${s.officerName} [${s.status}]`).join(' ➔ ') 
+                      {
+                        label: 'All Pipeline Officers',
+                        val: app.workflowStages.map((s, i) => `Stage ${i + 1} (${s.stepName}): ${s.officerName} [${s.status}]`).join(' ➔ ')
                       }
                     ] : []),
                     { label: 'Submitted Date', val: formatDate(app.submittedDate || app.createdAt) },

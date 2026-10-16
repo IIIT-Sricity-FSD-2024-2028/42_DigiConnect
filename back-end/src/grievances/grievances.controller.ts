@@ -68,6 +68,20 @@ export class GrievancesController {
     };
   }
 
+  @Get('eligibility/:appId')
+  @UseGuards(RolesGuard)
+  @Roles(Role.CITIZEN)
+  @ApiOperation({ summary: 'Evaluate grievance categories eligibility for an application' })
+  @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
+  @ApiResponse({ status: 200, description: 'Grievance eligibility evaluated' })
+  getEligibility(@Param('appId') appId: string) {
+    return {
+      success: true,
+      data: this.grievancesService.getEligibility(appId),
+      message: 'OK'
+    };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get grievance by ID' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })

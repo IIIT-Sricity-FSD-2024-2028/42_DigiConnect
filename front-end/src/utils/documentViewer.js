@@ -17,10 +17,13 @@ export function viewDocumentInNewTab(doc, app = {}) {
   const docSize = doc.size || '380 KB';
   const appId = app?.id || 'APP-RECORD';
   const applicantName =
-    app?.citizen ||
-    app?.citizenName ||
     app?.applicantName ||
-    (app?.formData?.firstName ? `${app.formData.firstName} ${app.formData.lastName || ''}`.trim() : 'Applicant');
+    (app?.applicantFirstName ? `${app.applicantFirstName} ${app.applicantLastName || ''}`.trim() : '') ||
+    (app?.formData?.firstName ? `${app.formData.firstName} ${app.formData.lastName || ''}`.trim() : '') ||
+    app?.formData?.applicant_name ||
+    app?.citizenName ||
+    app?.citizen ||
+    'Applicant';
 
   // If a real file was uploaded to the server, open it directly
   if (doc.path) {

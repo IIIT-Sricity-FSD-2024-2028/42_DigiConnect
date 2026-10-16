@@ -71,7 +71,8 @@ export default function MyApplicationsPage() {
       const idMatch = (app.id || '').toLowerCase().includes(q);
       const nameMatch = (app.serviceName || '').toLowerCase().includes(q);
       const deptMatch = (app.dept || app.departmentName || app.department || '').toLowerCase().includes(q);
-      if (!idMatch && !nameMatch && !deptMatch) return false;
+      const applicantMatch = (app.applicantName || '').toLowerCase().includes(q);
+      if (!idMatch && !nameMatch && !deptMatch && !applicantMatch) return false;
     }
 
     return true;
@@ -373,6 +374,12 @@ export default function MyApplicationsPage() {
                         <span style={{ color: 'var(--color-text-muted)' }}>Department:</span>
                         <span style={{ fontWeight: 600, color: 'var(--navy-800)' }}>
                           {app.dept || app.departmentName || app.department || '—'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem' }}>
+                        <span style={{ color: 'var(--color-text-muted)' }}>Applicant:</span>
+                        <span style={{ fontWeight: 600, color: 'var(--navy-800)' }}>
+                          {app.applicantName || app.citizenName || '—'}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.8rem' }}>

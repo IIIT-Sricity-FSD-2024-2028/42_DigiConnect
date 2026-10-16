@@ -10,6 +10,11 @@ import { GrievanceStatus, GrievanceResolutionAction, AppStatus } from '../models
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CertificatesService } from '../certificates/certificates.service';
+import {
+  evaluateCategoryEligibility,
+  evaluateAllGrievanceEligibility,
+  EligibilityResult,
+} from './grievance-eligibility.util';
 
 @Injectable()
 export class GrievancesService {
@@ -19,7 +24,28 @@ export class GrievancesService {
     private readonly certificatesService: CertificatesService,
   ) {}
 
+  getEligibility(appId: string): Record<string, EligibilityResult> {
+    const app = db.applications.find((a) => a.id === appId);
+    if (!app) throw new NotFoundException(`Application '${appId}' not found`);
+    return evaluateAllGrievanceEligibility(app);
+  }
+
   raise(createGrievanceDto: CreateGrievanceDto): Grievance {
+    // Validate related application and enforce category eligibility rules
+    if (!createGrievanceDto.relatedAppId) {
+      throw new BadRequestException('A valid related application ID is required to file a grievance.');
+    }
+
+    const linkedApp = db.applications.find((a) => a.id === createGrievanceDto.relatedAppId);
+    if (!linkedApp) {
+      throw new BadRequestException(`Related application '${createGrievanceDto.relatedAppId}' was not found.`);
+    }
+
+    const eligibility = evaluateCategoryEligibility(createGrievanceDto.category, linkedApp);
+    if (!eligibility.isEligible) {
+      throw new BadRequestException(`Ineligible grievance category: ${eligibility.reason}`);
+    }
+
     let citizen: User | null = null;
     try {
       citizen = this.usersService.findById(createGrievanceDto.citizenId);
@@ -102,33 +128,52 @@ export class GrievancesService {
     if (grievanceIndex === -1) throw new NotFoundException('Grievance not found');
 
     const grievance = db.grievances[grievanceIndex];
-    grievance.status = updateGrievanceDto.status;
+    if (updateGrievanceDto.status) {
+      grievance.status = updateGrievanceDto.status;
+      if (['resolved', 'rejected', 'escalated-resolved'].includes(updateGrievanceDto.status)) {
+        grievance.closedDate = new Date().toISOString();
+        grievance.resolvedBy = actorName;
+      }
+    }
+    if (updateGrievanceDto.category) {
+      grievance.category = updateGrievanceDto.category;
+    }
+    if (updateGrievanceDto.priority) {
+      grievance.priority = updateGrievanceDto.priority;
+    }
     grievance.lastUpdated = new Date().toISOString();
     const note = updateGrievanceDto.resolutionNote || updateGrievanceDto.remarks || '';
     if (note) {
       grievance.remarks = note;
       grievance.resolutionNote = note;
     }
-    if (['resolved', 'rejected', 'escalated-resolved'].includes(updateGrievanceDto.status)) {
-      grievance.closedDate = new Date().toISOString();
-      grievance.resolvedBy = actorName;
-    }
     
-    grievance.history.push({
-      action: `Status updated to ${updateGrievanceDto.status}`,
-      date: new Date().toISOString(),
-      actor: actorName,
-      note: note
-    });
+    if (updateGrievanceDto.status) {
+      grievance.history.push({
+        action: `Status updated to ${updateGrievanceDto.status}`,
+        date: new Date().toISOString(),
+        actor: actorName,
+        note: note
+      });
+    } else {
+      grievance.history.push({
+        action: 'Grievance details updated',
+        date: new Date().toISOString(),
+        actor: actorName,
+        note: note || `Updated category: ${grievance.category}, priority: ${grievance.priority}`
+      });
+    }
 
     db.grievances[grievanceIndex] = grievance;
 
     // Auto-push notification to citizen
-    this.notificationsService.pushGrievanceNotification(
-      grievance.citizenId,
-      grievance.id,
-      updateGrievanceDto.status
-    );
+    if (updateGrievanceDto.status) {
+      this.notificationsService.pushGrievanceNotification(
+        grievance.citizenId,
+        grievance.id,
+        updateGrievanceDto.status
+      );
+    }
 
     return grievance;
   }

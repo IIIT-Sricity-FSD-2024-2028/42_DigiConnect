@@ -91,7 +91,14 @@ export default function ApplicationRow({ app, onWithdraw, onDownloadCert }) {
       </td>
       <td>
         <div style={{ fontWeight: 600, color: 'var(--navy-900)' }}>{app.serviceName || 'Government Service'}</div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{dept}</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+          {dept}
+          {app.applicantName && (
+            <span style={{ marginLeft: '6px', color: 'var(--navy-700)', fontWeight: 500 }}>
+              · {app.applicantName}
+            </span>
+          )}
+        </div>
       </td>
       <td>
         <span className={`service-tag ${typeInfo.className}`}>

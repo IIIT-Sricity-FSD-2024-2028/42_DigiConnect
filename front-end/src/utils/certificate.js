@@ -28,10 +28,13 @@ export function downloadDigitalCertificate(app) {
     app.certificateId ||
     `CERT-${(app.id || 'APP').replace(/[^A-Z0-9]/gi, '').slice(-4)}-${new Date().getFullYear()}`;
   const citizenName =
-    app.citizenName ||
     app.applicantName ||
+    (app.applicantFirstName ? `${app.applicantFirstName} ${app.applicantLastName || ''}`.trim() : '') ||
+    (app.formData?.firstName ? `${app.formData.firstName} ${app.formData.lastName || ''}`.trim() : '') ||
+    app.formData?.applicant_name ||
+    app.citizenName ||
     app.citizen ||
-    (app.formData?.firstName ? `${app.formData.firstName} ${app.formData.lastName || ''}`.trim() : 'Authorized Citizen');
+    'Authorized Citizen';
   const serviceName = app.serviceName || app.service || 'Citizen Statutory Service';
   const dept = app.dept || app.departmentName || app.department || 'Government Administration Department';
   const jurisdiction = app.jurisdiction || app.jurisdictionName || 'State Secretariat / District Authority';
