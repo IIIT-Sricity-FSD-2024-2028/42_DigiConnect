@@ -50,120 +50,13 @@ const DEFAULT_SERVICE_SCHEMAS = {
   ],
 };
 
-// ── Master Geography Datasets & Fallbacks (matching backend master-architecture) ──
+// ── Master Geography Datasets (matching backend master-architecture) ──
 const DEFAULT_STATES = [
   { id: 'state_ap', name: 'Andhra Pradesh' },
   { id: 'state_ka', name: 'Karnataka' },
   { id: 'state_kl', name: 'Kerala' },
   { id: 'state_tn', name: 'Tamil Nadu' },
 ];
-
-const JURISDICTION_FALLBACK_DATA = {
-  state_ap: {
-    name: 'Andhra Pradesh',
-    districts: [{ id: 'node_tpt', name: 'Tirupati District' }],
-    RURAL: {
-      tier4Label: 'Mandal',
-      tier5Label: 'Village / Gram Panchayat',
-      tier4: [{ id: 'node_cg_mdl', name: 'Chandragiri Mandal', districtId: 'node_tpt' }],
-      leaves: {
-        node_cg_mdl: [
-          { id: 'node_cg_vil', name: 'Chandragiri Village' },
-          { id: 'node_pn_vil', name: 'Panakam Village' },
-        ],
-      },
-    },
-    URBAN: {
-      tier4Label: 'Municipal Corporation',
-      tier5Label: 'Urban Ward',
-      tier4: [{ id: 'node_tmc', name: 'Tirupati Municipal Corporation', districtId: 'node_tpt' }],
-      leaves: {
-        node_tmc: [
-          { id: 'node_w14', name: 'Ward 14 - Bhavani Nagar' },
-          { id: 'node_w22', name: 'Ward 22 - Korlagunta' },
-        ],
-      },
-    },
-  },
-  state_ka: {
-    name: 'Karnataka',
-    districts: [{ id: 'node_mys', name: 'Mysuru District' }],
-    RURAL: {
-      tier4Label: 'Taluk',
-      tier5Label: 'Village',
-      tier4: [{ id: 'node_hunsur_taluk', name: 'Hunsur Taluk', districtId: 'node_mys' }],
-      leaves: {
-        node_hunsur_taluk: [
-          { id: 'node_bilikere_vil', name: 'Bilikere Village' },
-          { id: 'node_ratnapuri_vil', name: 'Ratnapuri Village' },
-        ],
-      },
-    },
-    URBAN: {
-      tier4Label: 'City Corporation',
-      tier5Label: 'Urban Ward',
-      tier4: [{ id: 'node_bbmp', name: 'Bruhat Bengaluru Mahanagara Palike (BBMP)', districtId: 'node_mys' }],
-      leaves: {
-        node_bbmp: [
-          { id: 'node_bbmp_w150', name: 'Ward 150 - Bellandur' },
-          { id: 'node_bbmp_w174', name: 'Ward 174 - HSR Layout' },
-        ],
-      },
-    },
-  },
-  state_kl: {
-    name: 'Kerala',
-    districts: [{ id: 'node_tvm', name: 'Thiruvananthapuram District' }],
-    RURAL: {
-      tier4Label: 'Taluk',
-      tier5Label: 'Village',
-      tier4: [{ id: 'node_ned_taluk', name: 'Nedumangad Taluk', districtId: 'node_tvm' }],
-      leaves: {
-        node_ned_taluk: [
-          { id: 'node_vembayam_vil', name: 'Vembayam Village' },
-          { id: 'node_karakulam_vil', name: 'Karakulam Village' },
-        ],
-      },
-    },
-    URBAN: {
-      tier4Label: 'Municipal Corporation',
-      tier5Label: 'Urban Ward',
-      tier4: [{ id: 'node_tvm_corp', name: 'Thiruvananthapuram Municipal Corporation', districtId: 'node_tvm' }],
-      leaves: {
-        node_tvm_corp: [
-          { id: 'node_tvm_w12', name: 'Ward 12 - Palayam' },
-          { id: 'node_tvm_w18', name: 'Ward 18 - Pattom' },
-        ],
-      },
-    },
-  },
-  state_tn: {
-    name: 'Tamil Nadu',
-    districts: [{ id: 'node_madurai', name: 'Madurai District' }],
-    RURAL: {
-      tier4Label: 'Taluk',
-      tier5Label: 'Village',
-      tier4: [{ id: 'node_tpk_taluk', name: 'Thiruparankundram Taluk', districtId: 'node_madurai' }],
-      leaves: {
-        node_tpk_taluk: [
-          { id: 'node_valayankulam_vil', name: 'Valayankulam Village' },
-          { id: 'node_nilaiyur_vil', name: 'Nilaiyur Village' },
-        ],
-      },
-    },
-    URBAN: {
-      tier4Label: 'City Corporation',
-      tier5Label: 'Urban Ward',
-      tier4: [{ id: 'node_gcc', name: 'Greater Chennai Corporation (GCC)', districtId: 'node_madurai' }],
-      leaves: {
-        node_gcc: [
-          { id: 'node_gcc_w50', name: 'Ward 50 - Royapuram' },
-          { id: 'node_gcc_w114', name: 'Ward 114 - T. Nagar' },
-        ],
-      },
-    },
-  },
-};
 
 /**
  * Traverses a backend recursive jurisdiction tree and categorizes nodes by tierLevel.
@@ -392,61 +285,64 @@ export default function ApplyServicePage() {
     }
   }, [user]);
 
-  // ── Dynamic Geography & Cascading Jurisdiction State ──
-  const [geoData, setGeoData] = useState(() => {
-    const fb = JURISDICTION_FALLBACK_DATA['state_ap'];
-    const r = fb.RURAL;
-    return {
-      districts: fb.districts,
-      tier4Map: { [fb.districts[0].id]: r.tier4 },
-      leavesMap: r.leaves,
-    };
+  // ── Master Geography & Dynamic Cascading Jurisdiction State ──
+  const [geographyTree, setGeographyTree] = useState(null);
+  const [isLoadingJurisdictions, setIsLoadingJurisdictions] = useState(true);
+  const [jurisdictionError, setJurisdictionError] = useState(null);
+  const [geoData, setGeoData] = useState({
+    districts: [],
+    tier4Map: {},
+    leavesMap: {},
   });
 
-  // Fetch live geography tree whenever selected state or area type changes
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchTree() {
-      try {
-        const res = await apiGetGeographyTree(applicantInfo.stateId || 'state_ap');
-        const tree = Array.isArray(res) ? res : res?.data || [];
-        if (tree.length > 0 && isMounted) {
-          const parsed = extractJurisdictionsFromTree(tree, applicantInfo.areaType);
-          if (parsed.districts.length > 0) {
-            setGeoData(parsed);
-          }
-        }
-      } catch (err) {
-        console.warn('Could not load geography tree, using fallback hierarchy:', err);
+  // Fetch live geography tree from backend whenever selected state changes
+  const fetchGeographyTree = async (stateIdToFetch) => {
+    const targetState = stateIdToFetch || applicantInfo.stateId || citizenStateId || 'state_ap';
+    try {
+      setIsLoadingJurisdictions(true);
+      setJurisdictionError(null);
+      const res = await apiGetGeographyTree(targetState);
+      const tree = Array.isArray(res) ? res : res?.data || [];
+      if (tree && tree.length > 0) {
+        setGeographyTree(tree);
+        const parsed = extractJurisdictionsFromTree(tree, applicantInfo.areaType);
+        setGeoData(parsed);
+      } else {
+        setGeographyTree([]);
+        setGeoData({ districts: [], tier4Map: {}, leavesMap: {} });
+        setJurisdictionError('No jurisdiction hierarchy found for the selected state.');
       }
+    } catch (err) {
+      console.error('Failed to load jurisdiction hierarchy:', err);
+      setGeographyTree(null);
+      setGeoData({ districts: [], tier4Map: {}, leavesMap: {} });
+      setJurisdictionError(err.message || 'Failed to load jurisdiction hierarchy from server.');
+    } finally {
+      setIsLoadingJurisdictions(false);
     }
+  };
 
-    fetchTree();
-    return () => {
-      isMounted = false;
-    };
-  }, [applicantInfo.stateId, applicantInfo.areaType]);
+  // Fetch tree on mount and whenever applicant stateId changes
+  useEffect(() => {
+    fetchGeographyTree(applicantInfo.stateId);
+  }, [applicantInfo.stateId]);
 
-  const fallback =
-    JURISDICTION_FALLBACK_DATA[applicantInfo.stateId] || JURISDICTION_FALLBACK_DATA['state_ap'];
-  const fallbackArea = fallback[applicantInfo.areaType] || fallback.RURAL;
+  // Re-extract jurisdiction levels whenever applicant areaType changes
+  useEffect(() => {
+    if (geographyTree && geographyTree.length > 0) {
+      const parsed = extractJurisdictionsFromTree(geographyTree, applicantInfo.areaType);
+      setGeoData(parsed);
+    }
+  }, [applicantInfo.areaType, geographyTree]);
 
-  const currentDistricts =
-    geoData.districts && geoData.districts.length > 0 ? geoData.districts : fallback.districts;
+  // Dynamic cascading option lists derived strictly from backend geographyTree
+  const currentDistricts = geoData.districts || [];
+  const activeDistrictId = applicantInfo.district || (currentDistricts.length > 0 ? currentDistricts[0].id : '');
 
-  const activeDistrictId = applicantInfo.district || currentDistricts[0]?.id || 'node_tpt';
+  const currentTier4List = geoData.tier4Map?.[activeDistrictId] || [];
+  const activeTier4Id = applicantInfo.tier4 || (currentTier4List.length > 0 ? currentTier4List[0].id : '');
 
-  const currentTier4List =
-    geoData.tier4Map?.[activeDistrictId] && geoData.tier4Map[activeDistrictId].length > 0
-      ? geoData.tier4Map[activeDistrictId]
-      : fallbackArea.tier4;
-
-  const activeTier4Id = applicantInfo.tier4 || currentTier4List[0]?.id || '';
-
-  const currentLeavesList =
-    geoData.leavesMap?.[activeTier4Id] && geoData.leavesMap[activeTier4Id].length > 0
-      ? geoData.leavesMap[activeTier4Id]
-      : fallbackArea.leaves?.[activeTier4Id] || Object.values(fallbackArea.leaves || {})[0] || [];
+  const currentLeavesList = geoData.leavesMap?.[activeTier4Id] || [];
 
   const tier4Label =
     applicantInfo.areaType === 'RURAL' ? 'Mandal / Taluk' : 'Municipal Corporation / Zone';
@@ -457,21 +353,15 @@ export default function ApplyServicePage() {
   useEffect(() => {
     setApplicantInfo((prev) => {
       const distValid = currentDistricts.some((d) => d.id === prev.district);
-      const nextDist = distValid ? prev.district : currentDistricts[0]?.id || '';
+      const nextDist = distValid ? prev.district : (currentDistricts[0]?.id || '');
 
-      const tier4ForDist =
-        geoData.tier4Map?.[nextDist] && geoData.tier4Map[nextDist].length > 0
-          ? geoData.tier4Map[nextDist]
-          : fallbackArea.tier4;
+      const tier4ForDist = geoData.tier4Map?.[nextDist] || [];
       const tier4Valid = tier4ForDist.some((t) => t.id === prev.tier4);
-      const nextTier4 = tier4Valid ? prev.tier4 : tier4ForDist[0]?.id || '';
+      const nextTier4 = tier4Valid ? prev.tier4 : (tier4ForDist[0]?.id || '');
 
-      const leavesForTier4 =
-        geoData.leavesMap?.[nextTier4] && geoData.leavesMap[nextTier4].length > 0
-          ? geoData.leavesMap[nextTier4]
-          : fallbackArea.leaves?.[nextTier4] || Object.values(fallbackArea.leaves || {})[0] || [];
+      const leavesForTier4 = geoData.leavesMap?.[nextTier4] || [];
       const leafValid = leavesForTier4.some((l) => l.id === prev.leafNode);
-      const nextLeaf = leafValid ? prev.leafNode : leavesForTier4[0]?.id || '';
+      const nextLeaf = leafValid ? prev.leafNode : (leavesForTier4[0]?.id || '');
 
       if (nextDist === prev.district && nextTier4 === prev.tier4 && nextLeaf === prev.leafNode) {
         return prev;
@@ -484,7 +374,7 @@ export default function ApplyServicePage() {
         leafNode: nextLeaf,
       };
     });
-  }, [applicantInfo.stateId, applicantInfo.areaType, activeDistrictId, activeTier4Id, currentDistricts, currentTier4List, currentLeavesList, fallbackArea]);
+  }, [applicantInfo.stateId, applicantInfo.areaType, activeDistrictId, activeTier4Id, currentDistricts, currentTier4List, currentLeavesList, geoData]);
 
   // ── 4. Callbacks: Step 0 (Service Selection) ──
   const handleSelectService = (service) => {
@@ -1258,6 +1148,65 @@ export default function ApplyServicePage() {
                 </div>
               </div>
 
+              {/* Inline Loading / Error State for Jurisdictions */}
+              {isLoadingJurisdictions && (
+                <div style={{ padding: '16px', textAlign: 'center', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0', marginBottom: 'var(--space-md)', color: 'var(--navy-700)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid #cbd5e1', borderTopColor: 'var(--navy-600)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  Loading official jurisdiction hierarchy...
+                </div>
+              )}
+
+              {jurisdictionError && !isLoadingJurisdictions && (
+                <div
+                  style={{
+                    padding: '16px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: 'var(--space-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <span style={{ fontSize: '1.4rem' }}>⚠️</span>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#991b1b', fontSize: '0.95rem' }}>
+                        Unable to Load Jurisdiction Hierarchy
+                      </div>
+                      <div style={{ color: '#b91c1c', fontSize: '0.85rem', marginTop: '2px' }}>
+                        {jurisdictionError}
+                      </div>
+                      <div style={{ color: '#7f1d1d', fontSize: '0.78rem', marginTop: '4px' }}>
+                        Official hierarchy could not be loaded from the database. Please check connection and retry.
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fetchGeographyTree(applicantInfo.stateId)}
+                    style={{
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '8px 16px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span>🔄</span> Retry Loading Jurisdictions
+                  </button>
+                </div>
+              )}
+
               <div className="form-grid">
                 <div className="form-group col-span-full">
                   <label className="form-label">Door No / Street / Locality <span className="required">*</span></label>
@@ -1297,13 +1246,18 @@ export default function ApplyServicePage() {
                     name="district"
                     value={applicantInfo.district}
                     onChange={handleApplicantInfoChange}
+                    disabled={isLoadingJurisdictions || currentDistricts.length === 0}
                     required
                   >
-                    {currentDistricts.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                      </option>
-                    ))}
+                    {currentDistricts.length === 0 ? (
+                      <option value="">{isLoadingJurisdictions ? 'Loading districts...' : '-- No districts available --'}</option>
+                    ) : (
+                      currentDistricts.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1317,13 +1271,18 @@ export default function ApplyServicePage() {
                     name="tier4"
                     value={applicantInfo.tier4}
                     onChange={handleApplicantInfoChange}
+                    disabled={isLoadingJurisdictions || currentTier4List.length === 0}
                     required
                   >
-                    {currentTier4List.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
+                    {currentTier4List.length === 0 ? (
+                      <option value="">{isLoadingJurisdictions ? 'Loading...' : `-- No ${tier4Label} available --`}</option>
+                    ) : (
+                      currentTier4List.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1338,13 +1297,18 @@ export default function ApplyServicePage() {
                     value={applicantInfo.leafNode}
                     onChange={handleApplicantInfoChange}
                     style={{ borderColor: personalErrors.jurisdiction ? '#ef4444' : undefined }}
+                    disabled={isLoadingJurisdictions || currentLeavesList.length === 0}
                     required
                   >
-                    {currentLeavesList.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
+                    {currentLeavesList.length === 0 ? (
+                      <option value="">{isLoadingJurisdictions ? 'Loading...' : `-- No ${leafLabel} available --`}</option>
+                    ) : (
+                      currentLeavesList.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                   {personalErrors.jurisdiction && (
                     <div className="field-error">{personalErrors.jurisdiction}</div>
