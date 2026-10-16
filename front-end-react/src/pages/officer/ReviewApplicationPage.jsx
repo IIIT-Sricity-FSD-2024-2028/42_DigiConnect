@@ -94,27 +94,45 @@ export default function ReviewApplicationPage() {
 
         if (!isMounted) return;
 
-        setQueue(activeQueue);
-
         // If a specific ID is provided in the URL route, find its index
-        if (routeAppId && activeQueue.length > 0) {
+        if (routeAppId) {
           const foundIdx = activeQueue.findIndex(
             (a) => String(a.id).toLowerCase() === String(routeAppId).toLowerCase()
           );
           if (foundIdx !== -1) {
+            setQueue(activeQueue);
             setCurrentIdx(foundIdx);
           } else {
-            // Fallback: fetch single application
+            // Fallback: fetch single application and merge into existing queue
             try {
               const singleRes = await apiGetApplicationById(routeAppId);
               if (singleRes?.data && isMounted) {
-                setQueue([singleRes.data]);
+                const singleApp = singleRes.data;
+                setQueue((prevQueue) => {
+                  const source = activeQueue.length > 0 ? activeQueue : prevQueue;
+                  return [
+                    singleApp,
+                    ...source.filter(
+                      (a) => String(a.id).toLowerCase() !== String(singleApp.id).toLowerCase()
+                    ),
+                  ];
+                });
+                setCurrentIdx(0);
+              } else if (isMounted) {
+                setQueue(activeQueue);
                 setCurrentIdx(0);
               }
             } catch (err) {
               console.warn('Single app fetch fallback:', err.message);
+              if (isMounted) {
+                setQueue(activeQueue);
+                setCurrentIdx(0);
+              }
             }
           }
+        } else {
+          setQueue(activeQueue);
+          setCurrentIdx(0);
         }
       } catch (err) {
         if (isMounted) {
