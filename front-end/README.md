@@ -1,117 +1,192 @@
-# 🎨 DigiConnect Front-End Application
-> **Vanilla HTML5 / CSS3 / ES6 Client Portal**
-
-The frontend of **DigiConnect** is a fast, responsive, and decoupled multi-page dashboard application. Built entirely on vanilla web standards without bulky heavy framework overhead, it utilizes modular styling, centralized session managers, and a dedicated interface client layer to communicate with the REST API.
+# ⚛️ DigiConnect — React Front-End Application
+> **Modern Single Page Application (SPA) for the Unified Citizen Service Delivery Platform**  
+> *Built with React 19, Vite, React Router v7, and a Custom Clean CSS Design System.*
 
 ---
 
-## 📐 Directory Structure & Portals
+## 🌟 Overview
 
-The frontend code base is organized into role-specific folders that represent independent portals, coupled with shared utility folders:
+The `front-end-react` application is the primary citizen and official-facing client for **DigiConnect**. It provides responsive, accessible, and high-performance interfaces tailored for all 7 platform roles (Citizens, Verification Officers, Supervisors, Grievance Officers, Department Heads, State Admins, and Central Admins).
+
+Designed to meet rigorous public sector UX standards, it replaces complex government web portals with a streamlined, mobile-friendly experience featuring real-time status tracking, instant form validations, dynamic SLA indicators, and dedicated statutory compliance hubs.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Rationale |
+| :--- | :--- | :--- |
+| **Core Framework** | [React 19](https://react.dev/) | Component architecture, fast concurrent rendering, and fine-grained state management. |
+| **Build Tooling** | [Vite 8](https://vitejs.dev/) | Lightning-fast Hot Module Replacement (HMR) and optimized production bundles. |
+| **Client Routing** | [React Router v7](https://reactrouter.com/) | Declarative nested routing, role-based route guarding, and smooth navigation. |
+| **Icons** | [Lucide React](https://lucide.dev/) | Crisp, modern, accessible SVG iconography. |
+| **Styling & Theme** | Vanilla CSS Design System | Zero heavy CSS frameworks (no Tailwind or Bootstrap bloat). Lightweight custom CSS tokens in `src/styles/`. |
+| **HTTP Client** | [Axios](https://axios-http.com/) | Centralized interceptors propagating identity headers (`x-role`, `x-user-id`) and uniform error handling. |
+
+---
+
+## 🎨 Unified Design System Architecture
+
+All component styling is organized into **5 core stylesheets** under `src/styles/` to maintain strict design consistency without CSS sprawl:
 
 ```text
-front-end/
-├── css/                         # Custom Styling Sheets (Sleek UI tokens)
-│   ├── style.css                # Global styles, variables, typography, navigation
-│   ├── dashboard.css            # Grid layouts, widget cards, metrics tables
-│   ├── forms.css                # Multi-step wizards, file upload fields
-│   ├── auth.css                 # Login and Registration interface assets
-│   └── landing.css              # landing page styles
+src/styles/
+├── style.css       # Core design tokens, CSS variables, typography, buttons, badges, tables, alerts & modals
+├── landing.css     # Hero showcase, live application stream previews, feature grids, service tiles, CTA banners
+├── auth.css        # Split-screen branded authentication layouts, step progress bars, security question modals
+├── dashboard.css   # Collapsible sidebar layouts, summary stat cards, metric pills, queues & timeline status chips
+└── forms.css       # Multi-step wizard containers, payment breakdown tables, document uploaders & validation hints
+```
+
+### Color Palette & Design Tokens
+- **Navy Palette (`--navy-900` to `--navy-50`)**: Authoritative, trustworthy institutional government tones.
+- **Accent Gold (`--amber-500`)**: Highlight elements, primary calls-to-action, and SLA warnings.
+- **Success Green (`--green-600`)**: Approved applications, verified credentials, and active services.
+- **Danger Red (`--red-500`)**: SLA breach alerts, rejected applications, and critical escalations.
+- **Typography**: Responsive typography scale with system fallbacks ensuring instant load times.
+
+---
+
+## 🚀 Key Functional Modules & Pages
+
+### 1. Public Portal & Legal Compliance
+- **Landing Page (`LandingPage.jsx`)**:
+  - Live animated preview stream of recent applications with real-time status tags (`Approved`, `In Review`, `Issued`).
+  - Real-time SLA Compliance indicator (96.4% on-time resolution).
+  - Categorized service tiles linking to application initiation.
+  - 24/7 Citizen Toll-Free Helpline: **`1800-425-0042`**.
+- **Statutory Terms of Service (`TermsOfServicePage.jsx`)**:
+  - Full legal framework, service delivery standards, fee structures, and citizen rights.
+- **Citizen Privacy Policy (`PrivacyPolicyPage.jsx`)**:
+  - Aligned with the **Digital Personal Data Protection (DPDP) Act, 2023** and UIDAI guidelines.
+  - Transparent documentation of purpose limitation, data retention, and Data Protection Officer contacts.
+
+### 2. Authentication & Onboarding
+- **Multi-Role Login (`LoginPage.jsx`)**:
+  - Multi-identifier login: Phone number, Aadhaar number, or official email address.
+  - **Quick Demo Credentials Bar**: Instant 1-click credential auto-fill for all 8 system roles.
+  - Multi-step security question password recovery modal.
+- **Citizen Registration (`RegisterPage.jsx`)**:
+  - 4-step progressive wizard: (1) Basic Identity & Aadhaar, (2) Jurisdiction Selection (State, District, Mandal, Village/Ward), (3) Credential Creation, (4) OTP Verification.
+  - Dynamic loading of existing jurisdiction records directly from the backend seeder.
+
+### 3. Citizen Experience
+- **Citizen Dashboard (`CitizenDashboard.jsx`)**: Summary metrics, recent submissions, actionable query notifications.
+- **Service Application Wizard (`ApplyServicePage.jsx`)**:
+  - Multi-step form with dynamic requirements loading based on chosen service.
+  - Fee calculator with auto-computed processing charges and GST.
+  - File uploaders with drag-and-drop support.
+- **Application Tracking (`TrackApplicationPage.jsx`)**: Visual step-by-step audit timeline showing current stage, officer notes, and estimated SLA resolution date.
+- **Grievance Redressal (`RaiseGrievanceModal.jsx`)**: Submit complaints linked to specific application IDs with severity classification.
+
+### 4. Officer & Supervisor Verification
+- **Officer Verification Dashboard (`OfficerDashboard.jsx` & `ReviewApplicationPage.jsx`)**:
+  - Queue filtering by jurisdiction and status.
+  - Document viewer with zoom and verification checkboxes.
+  - Clarification query dialog that **pauses the statutory SLA timer**.
+  - Draft recommendation builder (Approve / Reject with statutory remarks).
+- **Supervisor Overrides & Reassignment (`SupervisorDashboard.jsx`)**:
+  - SLA breach warnings and overdue queue monitors.
+  - Workload rebalancing tool to reallocate pending files between officers.
+  - Final legal digital approval and certificate generation.
+
+### 5. Grievance Management
+- **Grievance Redressal Desk (`GrievanceDashboard.jsx`, `GrievanceQueueTable.jsx`, `GrievanceDetailPage.jsx`)**:
+  - Independent investigative queue sorted by severity (*Standard*, *Urgent*, *Emergency 24-hr*).
+  - Citizen inquiry history and hearing notes timeline.
+  - Resolution reports and direct supervisor escalations.
+
+### 6. Notifications & Profile
+- **Notification Drawer (`NotificationDrawer.jsx`, `NotificationBell.jsx`)**: Unread counter badge, real-time alerts for status transitions, and mark-as-read actions.
+- **Citizen / Officer Profile (`ProfilePage.jsx`)**: Dynamic profile binding, session jurisdiction details, and Aadhaar privacy masking (`•••• •••• ${last4}`).
+
+---
+
+## 📂 Source Code Structure
+
+```text
+front-end-react/src/
+├── api/                         # Backend REST API Integration
+│   ├── apiClient.js             # Axios base instance with interceptors for x-role & x-user-id
+│   ├── authApi.js               # Login, registration, profile fetch, password reset
+│   ├── applicationApi.js        # Submissions, reviews, query responses, timelines
+│   ├── serviceApi.js            # Services master catalog & requirements
+│   ├── grievanceApi.js          # Grievance submission, investigation, and resolution
+│   ├── notificationApi.js       # User notifications & read markers
+│   ├── jurisdictionApi.js       # Administrative hierarchy nodes (State to Village)
+│   └── auditApi.js              # Platform activity log queries
 │
-├── js/                          # Logic Modules & Core Helpers
-│   ├── api.js                   # ★ Centralized API client (Fetch wrappers)
-│   ├── auth.js                  # Login/Register scripts & session hooks
-│   ├── navigation.js            # Sidebar drawer renderer, breadcrumbs, initPage()
-│   ├── dashboard.js             # Dashboards loaders for all 5 roles
-│   ├── application.js           # Multi-step apply forms, review status updates
-│   ├── grievance.js             # Grievance registration and history detail logs
-│   ├── escalation.js            # Supervisor reassignment & approvals overrides
-│   ├── admin.js                 # Super User settings, onboarding & audit logic
-│   ├── notifications.js         # Inbox panels, polling loops, mark-read methods
-│   └── utils.js                 # Shared tools (Aadhaar masking, formats, toasts)
+├── components/                  # Reusable UI Components
+│   ├── common/                  # Navbar, Footer, Notifications, Toast Alerts
+│   └── grievance/               # GrievanceQueueTable, GrievanceFilters, RaiseGrievanceModal
 │
-├── citizen/                     # Citizen Portal Pages
-│   ├── citizen-dashboard.html   # Service status overview, metrics, inbox
-│   ├── apply-service.html       # Dynamic wizard form for certificate submissions
-│   ├── my-applications.html     # Application list and detailed timeline logs
-│   ├── track-application.html   # Public reference-based application tracker
-│   ├── my-grievances.html       # Citizen dispute files and feedback
-│   └── raise-grievance.html     # Complaint creation wizard
+├── context/                     # Global State Contexts
+│   └── AuthContext.jsx          # User session, role state, login/logout synchronization
 │
-├── officer/                     # Department Verification Officer Pages
-│   ├── officer-dashboard.html   # Review queue, priority metrics, filters
-│   └── review-application.html  # Document evaluation & query dispatch panel
+├── pages/                       # Application Views
+│   ├── public/                  # LandingPage, LoginPage, RegisterPage, Terms, Privacy
+│   ├── citizen/                 # CitizenDashboard, ApplyServicePage, TrackApplicationPage
+│   ├── officer/                 # OfficerDashboard, ReviewApplicationPage
+│   ├── supervisor/              # SupervisorDashboard, Overrides
+│   ├── grievance/               # GrievanceDashboard, GrievanceDetailPage
+│   ├── admin/                   # StateAdminDashboard, CentralAdminDashboard
+│   └── common/                  # ProfilePage
 │
-├── supervisor/                  # Department Supervisor Review Pages
-│   ├── supervisor-dashboard.html# SLA monitoring dashboard, escalation list
-│   ├── supervisor-review.html   # Final override approvals interface
-│   ├── escalated-cases.html     # Breached SLAs queue
-│   └── workload-management.html # Officer re-assignments grid
+├── styles/                      # 5 Unified CSS Design System Files
+│   ├── style.css
+│   ├── landing.css
+│   ├── auth.css
+│   ├── dashboard.css
+│   └── forms.css
 │
-├── grievance/                   # Grievance Resolution Officer Pages
-│   ├── grievance-dashboard.html # Active disputes queue
-│   ├── grievance-detail.html    # Full audit investigator & response portal
-│   └── grievance-history.html   # Historic resolutions archive
-│
-├── super-user/                  # System Admin Portal Pages
-│   ├── dashboard.html           # Platform usage logs, server telemetry indicators
-│   ├── manage-users.html        # System-wide user CRUD utility
-│   ├── manage-services.html     # Service catalogue settings & SLA intervals
-│   ├── officer-onboarding.html  # Registrations approval panels
-│   ├── audit-logs.html          # Unaltered chronological action logs viewer
-│   ├── system-settings.html     # Feature toggles, SLA clocks calibration
-│   └── workflow-config.html     # Dynamic state machine visualizer
-│
-├── index.html                   # Main Landing Page
-├── login.html                   # Universal login gateway
-├── register.html                # Citizen account registration page
-└── profile.html                 # Shared user profile management page
+├── App.jsx                      # Route definitions, route guarding & layouts
+└── main.jsx                     # Application entry point with BrowserRouter & AuthProvider
 ```
 
 ---
 
-## ⚡ Centralized API Layer (`js/api.js`)
+## 🚀 Running the Frontend Locally
 
-All AJAX network requests to the NestJS backend are routed through a single source of truth: `js/api.js`.
+### Prerequisites
+- Node.js v18.x or v20.x
+- DigiConnect Backend running at `http://localhost:3000`
 
-### Core Integration Standards:
-1.  **Session Propagation**: The UI automatically retrieves the active session from storage and appends the user's role and identification tokens onto HTTP headers (`x-role` and `x-user-id`) dynamically on every request.
-2.  **API Decoupling**: HTML pages never call the `fetch()` API directly. Instead, they import modules from `api.js` (e.g., `apiSubmitApplication(data)`). This design keeps your front-end controllers clean, modular, and decoupled from remote hostname changes.
-
----
-
-## 🧭 Page Initialization & Navigation Core (`js/navigation.js`)
-
-To replicate dynamic single-page application behaviors while retaining simple multi-page files, the client utilizes a centralized initialization interceptor: `js/navigation.js`.
-
-### How Page Security & Building Works:
-Every dashboard or sub-page imports `navigation.js` and calls the page initialization routine:
--   **Security Check**: Validates the active user session. If a user tries to access a page they don't have permission for (e.g., a citizen opening a supervisor page), it automatically redirects them back to `login.html`.
--   **Dynamic Template Injection**: Injects identical, unified sidebars, responsive navigation grids, and user profile menus into the DOM on the fly, eliminating structural code repetition across files.
-
----
-
-## 🎨 CSS Design System & Visual Tokens
-
-Styling utilizes a custom HSL palette configured to mimic modern, professional enterprise applications.
-*   **Root Colors**:
-    *   `--primary`: Deep Slate (`#0f172a`)
-    *   `--accent`: Slate Blue (`#3b82f6`)
-    *   `--success`: Forest Green (`#22c55e`)
-    *   `--warning`: Amber Gold (`#f59e0b`)
-    *   `--danger`: Crimson Red (`#ef4444`)
-*   **Key Design Tokens**: Integrated glassmorphic cards, custom utility hover transformations, and responsive grid layouts designed to support both standard desktop monitors and mobile browsers.
-
----
-
-## 🚀 Running the Frontend
-
-### Method 1: Local Server (Highly Recommended)
-Ensure you are in the `/front-end` directory and spin up a lightweight development static server to prevent CORS issues or protocol blockers:
+### 1. Installation
 ```bash
-npx serve .
+cd front-end-react
+npm install
 ```
 
-### Method 2: Direct Execution
-If you do not have node tools on the client system, you can open `index.html` directly in any modern browser by double-clicking it.
-*(Note: Browser security policies might restrict cross-origin script loads if accessing via the `file://` protocol depending on system permissions. Serving via HTTP standard is strongly advised).*
+### 2. Development Server
+Start the Vite development server with hot-reload:
+```bash
+npm run dev
+```
+Open your browser at **`http://localhost:5173`**.
+
+### 3. Production Build & Verification
+Compile and validate production assets:
+```bash
+npm run build
+```
+Preview the production bundle locally:
+```bash
+npm run preview
+```
+
+---
+
+## 🔑 Demo Credentials for Testing
+
+Use the quick-fill buttons on the login page or enter these directly with password **`password123`**:
+
+| Role | Email / ID | Jurisdiction / Office |
+| :--- | :--- | :--- |
+| **Citizen** | `ravi.ap@gmail.com` | Tirupati Rural, AP |
+| **Officer (VRO)** | `suresh.vro@ap.gov.in` | Chandragiri Village Office |
+| **Officer (RI)** | `jagadeesh.ri@ap.gov.in` | Revenue Inspectorate |
+| **Supervisor (MRO)** | `prabhakar.tah@ap.gov.in` | Mandal Revenue Office |
+| **Dept Head** | `head.rev@ap.gov.in` | Revenue Secretariat |
+| **State Admin** | `admin@ap.gov.in` | AP State Data Centre |
+| **Central Admin** | `superuser@gov.in` | Ministry of Electronics & IT |
+| **Grievance Officer** | `hemalatha.grv@ap.gov.in` | District Public Grievance Cell |
