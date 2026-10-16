@@ -61,6 +61,16 @@ export default function ProtectedRoute({ allowedRoles = [], children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // ── Guard 1b: Deactivated State Guard ──
+  if (user?.isStateDeactivated || (user?.stateStatus && user.stateStatus.toUpperCase() === 'INACTIVE')) {
+    return (
+      <Navigate
+        to={`/login?state_deactivated=true&stateName=${encodeURIComponent(user.deactivatedStateName || user.state || 'your state')}`}
+        replace
+      />
+    );
+  }
+
   // ── Guard 2: Authenticated but wrong role → redirect to their own dashboard ──
   if (allowedRoles.length > 0) {
     // Normalize role for comparison (handle aliases)

@@ -153,6 +153,66 @@ export class UsersService {
     return newUser;
   }
 
+  getUserState(user: any): any {
+    if (!user) return null;
+    const role = (user.role || '').toLowerCase();
+    const backendRole = (user.backendRole || '').toLowerCase();
+    if (role === 'super_user' || role === 'central_admin' || backendRole === 'central_admin') {
+      return null;
+    }
+
+    // 1. By direct stateId
+    if (user.stateId) {
+      const s = db.states.find(
+        (st) =>
+          st.id.toLowerCase() === user.stateId.toLowerCase() ||
+          st.code.toLowerCase() === user.stateId.toLowerCase(),
+      );
+      if (s) return s;
+    }
+
+    // 2. By stateAdminId
+    const adminState = db.states.find((st) => st.stateAdminId === user.id);
+    if (adminState) return adminState;
+
+    // 3. By state name or code
+    if (user.state) {
+      const s = db.states.find(
+        (st) =>
+          st.name.toLowerCase() === user.state.toLowerCase() ||
+          st.id.toLowerCase() === user.state.toLowerCase() ||
+          st.code.toLowerCase() === user.state.toLowerCase(),
+      );
+      if (s) return s;
+    }
+
+    // 4. By departmentId (e.g. dept_rev_ap -> stateId: state_ap)
+    if (user.departmentId) {
+      const dept = db.departments.find((d) => d.id === user.departmentId);
+      if (dept?.stateId) {
+        const s = db.states.find((st) => st.id === dept.stateId);
+        if (s) return s;
+      }
+    }
+
+    // 5. By jurisdiction or assignedNodeId (e.g. node_cg_vil -> stateId: state_ap)
+    const nodeId = user.assignedNodeId || user.jurisdiction;
+    if (nodeId) {
+      const node = db.jurisdictionNodes.find((n) => n.id === nodeId);
+      if (node?.stateId) {
+        const s = db.states.find((st) => st.id === node.stateId);
+        if (s) return s;
+      }
+      for (const st of db.states) {
+        if (nodeId.toLowerCase().includes(`_${st.code.toLowerCase()}`)) {
+          return st;
+        }
+      }
+    }
+
+    return null;
+  }
+
   login(loginDto: any): User {
     const identifier = (loginDto.email || loginDto.username || loginDto.loginId || loginDto.identifier || '').toLowerCase().trim();
     const identifierDigits = identifier.replace(/\D/g, '');
@@ -178,18 +238,34 @@ export class UsersService {
       throw new BadRequestException('Invalid credentials');
     }
 
+    const userState = this.getUserState(user);
+    const isStateDeactivated = userState
+      ? (userState.status || '').toUpperCase() === 'INACTIVE'
+      : false;
+
+    const enrichedUser: User = {
+      ...user,
+      stateId: userState?.id || user.stateId,
+      state: userState?.name || user.state,
+      stateStatus: userState ? userState.status : 'ACTIVE',
+      isStateDeactivated,
+      deactivatedStateName: userState?.name || user.state,
+    };
+
     // Automatic Server-Side Audit Log for Login
     db.auditLogs.unshift({
       id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,
-      action: 'User Login',
+      action: isStateDeactivated ? 'User Login (State Deactivated)' : 'User Login',
       actor: user.email,
       role: user.role,
       date: new Date().toISOString(),
-      details: `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`,
-      ip: '127.0.0.1'
+      details: isStateDeactivated
+        ? `User ${user.name} (${user.email}) logged in, but State Government '${userState?.name}' is currently deactivated.`
+        : `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`,
+      ip: '127.0.0.1',
     });
 
-    return user;
+    return enrichedUser;
   }
 
   remove(id: string): void {

@@ -4,9 +4,10 @@
 // Context (useAuth), Router (useNavigate, Link), API calls (apiLogin), Callbacks (handleSubmit, selectRole, fillDemo)
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiLogin, apiGetUsers, apiUpdateProfile } from '../../api/authApi';
+import Modal from '../../components/common/Modal';
 
 // ── Demo credentials list (rendered via .map for the quick-fill box) ──
 const DEMO_CREDENTIALS = [
@@ -53,17 +54,43 @@ export default function LoginPage() {
   const [fpError, setFpError] = useState('');
   const [fpUserId, setFpUserId] = useState(null);
 
+  // Deactivated state modal
+  const [deactivatedModal, setDeactivatedModal] = useState({
+    isOpen: false,
+    stateName: '',
+  });
+
   // ── Context & Router hooks ──
-  const { login, isLoggedIn, role } = useAuth();
+  const { login, logout, isLoggedIn, role, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── Effect: check URL for redirect due to deactivated state ──
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('state_deactivated') === 'true') {
+      logout();
+      setDeactivatedModal({
+        isOpen: true,
+        stateName: params.get('stateName') || 'Your State',
+      });
+    }
+  }, [location.search]);
 
   // ── Effect: redirect already-logged-in users to their dashboard ──
   useEffect(() => {
     if (isLoggedIn && role) {
+      if (user?.isStateDeactivated || (user?.stateStatus && user.stateStatus.toUpperCase() === 'INACTIVE')) {
+        setDeactivatedModal({
+          isOpen: true,
+          stateName: user.deactivatedStateName || user.state || 'Your State',
+        });
+        return;
+      }
       const dest = ROLE_REDIRECT_MAP[role] || '/citizen/dashboard';
       navigate(dest, { replace: true });
     }
-  }, [isLoggedIn, role, navigate]);
+  }, [isLoggedIn, role, user, navigate]);
 
   // ── Callback: fill demo credentials (click handler on demo buttons) ──
   const handleFillDemo = (demoEmail) => {
@@ -76,6 +103,13 @@ export default function LoginPage() {
     setShowPassword((prev) => !prev);
   };
 
+  // ── Callback: close deactivated state modal and go to landing page ──
+  const handleCloseDeactivatedModal = () => {
+    setDeactivatedModal({ isOpen: false, stateName: '' });
+    logout();
+    navigate('/', { replace: true });
+  };
+
   // ── Callback: form submit → API call → context login → navigate ──
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,6 +120,21 @@ export default function LoginPage() {
       // [API call] POST /users/login
       const res = await apiLogin(email, password);
       const user = res.data;
+
+      // Check if user belongs to a deactivated state
+      const isDeactivated =
+        user?.isStateDeactivated === true ||
+        (user?.stateStatus && user.stateStatus.toUpperCase() === 'INACTIVE');
+
+      if (isDeactivated) {
+        logout();
+        setDeactivatedModal({
+          isOpen: true,
+          stateName: user.deactivatedStateName || user.state || 'Your State',
+        });
+        setLoading(false);
+        return;
+      }
 
       // Build session object (matches original auth.js structure)
       const rawRole = (user.role || '').toLowerCase();
@@ -109,6 +158,8 @@ export default function LoginPage() {
         actualRole: user.role,
         stateId: user.stateId || '',
         state: user.state || '',
+        stateStatus: user.stateStatus || 'ACTIVE',
+        isStateDeactivated: false,
         departmentId: user.departmentId || '',
         assignedNodeId: user.assignedNodeId || user.jurisdiction || '',
         designationId: user.designationId || '',
@@ -598,6 +649,85 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+
+      {/* State Deactivated Modal */}
+      <Modal
+        isOpen={deactivatedModal.isOpen}
+        onClose={handleCloseDeactivatedModal}
+        title="State Government Deactivated"
+        maxWidth="520px"
+        showCloseButton={false}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleCloseDeactivatedModal}
+              style={{ minWidth: '200px', fontWeight: 600, padding: '10px 20px' }}
+            >
+              Go Back to Landing Page
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#991b1b',
+            }}
+          >
+            <svg
+              style={{ width: '24px', height: '24px', flexShrink: 0 }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                Your State Has Been Deactivated
+              </div>
+              <div style={{ fontSize: '0.825rem', color: '#b91c1c', marginTop: '2px' }}>
+                Portal workspaces and public services are temporarily suspended.
+              </div>
+            </div>
+          </div>
+
+          <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: 1.6, color: 'var(--slate-700)' }}>
+            The <strong>Government of {deactivatedModal.stateName}</strong> has been deactivated by the Central Government Administration.
+          </p>
+
+          <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--slate-600)' }}>
+            All administrative portal dashboards, officer review queues, grievance processing, and citizen service workflows for this state are currently disabled until the state instance is reactivated.
+          </p>
+
+          <div
+            style={{
+              padding: '12px 14px',
+              backgroundColor: 'var(--slate-50)',
+              borderRadius: '6px',
+              border: '1px solid var(--slate-200)',
+              fontSize: '0.825rem',
+              color: 'var(--slate-600)',
+            }}
+          >
+            Please go back to the landing page or contact the Central Administration helpdesk for assistance.
+          </div>
+        </div>
+      </Modal>
 
       {/* Toast container placeholder (for teammates who implement toast) */}
       <div id="toast-container"></div>

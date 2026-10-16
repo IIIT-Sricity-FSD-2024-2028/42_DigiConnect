@@ -29,4 +29,7 @@ export interface User {
   district?: string;
   mandal?: string;
   pincode?: string;
+  stateStatus?: string;
+  isStateDeactivated?: boolean;
+  deactivatedStateName?: string;
 }
