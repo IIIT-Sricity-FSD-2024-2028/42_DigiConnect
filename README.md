@@ -215,6 +215,69 @@ All pre-configured demonstration accounts authenticate with password: **`passwor
 
 ---
 
+## 🧪 Testing Instructions
+
+DigiConnect supports automated test suites (backend unit, e2e, coverage, frontend build/lint validation), interactive Swagger API inspection, and manual end-to-end multi-role workflow verification.
+
+### 1. Automated Backend Tests (Jest)
+Run the automated test suites inside the `back-end/` directory:
+
+```bash
+cd back-end
+
+# Run unit tests
+npm run test
+
+# Run end-to-end (e2e) tests
+npm run test:e2e
+
+# Generate test coverage report
+npm run test:cov
+```
+
+### 2. Frontend Validation & Build Testing
+Validate syntax, linting rules, and production bundle builds in `front-end-react/`:
+
+```bash
+cd front-end-react
+
+# Run linter
+npm run lint
+
+# Validate production bundle build
+npm run build
+
+# Preview production build locally
+npm run preview
+```
+
+### 3. Interactive API Testing (Swagger Docs)
+1. Start the backend: `cd back-end && npm run start:dev`.
+2. Open interactive Swagger documentation in your browser: **`http://localhost:3000/api/docs`**.
+3. Test endpoints with governance headers (`x-user-id`, `x-role`) and inspect schemas, request parameters, and live responses.
+
+### 4. End-to-End Role-Based Workflow Verification
+Verify the complete citizen-to-officer statutory service delivery lifecycle:
+
+1. **Citizen Application Flow**:
+   - Log in as **Citizen** (`ravi.ap@gmail.com` / `password123`) at `http://localhost:5173/login`.
+   - Navigate to **Apply for Service**, select a service (e.g., *Income Certificate*), complete the multi-step form, and submit.
+   - Note the generated Application Reference Number (e.g., `APP-AP-1001`).
+2. **Field Officer Review & Approval**:
+   - Log in as **Village Revenue Officer** (`suresh.vro@ap.gov.in` / `password123`).
+   - Open the **Officer Dashboard** (`/officer/dashboard`) and locate the application in the pending queue.
+   - Click to review, inspect form fields and uploaded documents, enter verification remarks, and click **Approve**.
+   - Verify that the application advances to the next officer (Revenue Inspector) and your *Approved Today* count increments by 1.
+3. **Supervisor / Certificate Issuance**:
+   - Log in as **Mandal Revenue Officer / Tahsildar** (`prabhakar.tah@ap.gov.in` / `password123`).
+   - Review and execute the final statutory approval.
+4. **Certificate Download Verification**:
+   - Return to the **Citizen Portal** (`ravi.ap@gmail.com`).
+   - Open **My Applications** (`/citizen/applications`) or **Track Application** (`/citizen/track`).
+   - Click **Download Certificate** and verify the generated official framed certificate with QR verification seal and browser print preview.
+
+---
+
 ## ⚖️ Legal, Compliance & Helplines
 - **Citizen Helpline**: `1800-425-0042 (Toll Free)` — Available 24/7.
 - **Grievance Helpdesk**: `grievance@digiconnect.gov.in`
