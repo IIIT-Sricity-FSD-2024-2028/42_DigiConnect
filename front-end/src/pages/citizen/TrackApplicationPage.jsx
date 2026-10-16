@@ -15,8 +15,8 @@ export default function TrackApplicationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Guard to ensure initial URL-based application loading executes only once on mount
-  const hasAutoLoadedRef = useRef(false);
+  // Track last loaded ID to allow URL parameter navigation without infinite re-renders
+  const lastLoadedIdRef = useRef('');
 
   // Tabs: 'timeline', 'documents', 'details'
   const [activeTab, setActiveTab] = useState('timeline');
@@ -40,7 +40,7 @@ export default function TrackApplicationPage() {
 
   const loadApplication = async (idToLoad) => {
     if (!idToLoad || !idToLoad.trim()) return;
-    const cleanId = idToLoad.trim();
+    const cleanId = idToLoad.trim().toUpperCase();
 
     try {
       setLoading(true);
@@ -49,6 +49,7 @@ export default function TrackApplicationPage() {
       const data = res?.data || res;
       if (data && data.id) {
         setApp(data);
+        lastLoadedIdRef.current = cleanId;
       } else {
         throw new Error('Application not found. Please verify the Application ID.');
       }
@@ -61,13 +62,13 @@ export default function TrackApplicationPage() {
   };
 
   useEffect(() => {
-    if (hasAutoLoadedRef.current) return;
-    hasAutoLoadedRef.current = true;
-
     const urlId = searchParams.get('id');
     if (urlId && urlId.trim()) {
       const cleanId = urlId.trim().toUpperCase();
-      loadApplication(cleanId);
+      if (cleanId !== lastLoadedIdRef.current) {
+        setSearchId(cleanId);
+        loadApplication(cleanId);
+      }
     }
   }, [searchParams]);
 
@@ -86,9 +87,17 @@ export default function TrackApplicationPage() {
 
   // Status mapping
   const normStatus = (app?.status || '').toLowerCase().replace(/_/g, '-');
+  const normCurrentStatus = (app?.currentStatus || '').toLowerCase().replace(/_/g, '-');
+  const hasOpenQuery = Array.isArray(app?.queries) && app.queries.some((q) => q.status === 'OPEN' || q.status === 'PENDING');
   const isApproved = ['approved', 'completed', 'certificate-generated'].includes(normStatus);
   const isRejected = normStatus === 'rejected';
-  const isQuery = ['query', 'query-raised'].includes(normStatus);
+  const isQuery =
+    !isApproved &&
+    !isRejected &&
+    (['query', 'query-raised', 'action-required', 'clarification-needed', 'query-pending'].includes(normStatus) ||
+      ['query', 'query-raised', 'action-required', 'clarification-needed', 'query-pending'].includes(normCurrentStatus) ||
+      hasOpenQuery ||
+      Boolean(app?.queryMessage));
   const isEscalated = normStatus === 'escalated';
 
   let statusBadgeClass = 'badge-info';
@@ -101,7 +110,7 @@ export default function TrackApplicationPage() {
     statusBadgeLabel = 'Rejected';
   } else if (isQuery) {
     statusBadgeClass = 'badge-warning';
-    statusBadgeLabel = 'Query Raised';
+    statusBadgeLabel = 'Action Required – Query Raised';
   } else if (isEscalated) {
     statusBadgeClass = 'badge-purple';
     statusBadgeLabel = 'Escalated';
@@ -176,24 +185,61 @@ export default function TrackApplicationPage() {
 
   // Query details
   const queryEvent = app?.timeline?.find((t) => (t.action || t.stepName || '').toLowerCase().includes('query'));
-  const queryMessage = app?.queryMessage || queryEvent?.note || queryEvent?.remarks || 'Please upload the requested supporting documents.';
+  const openQueryObj = Array.isArray(app?.queries) ? app.queries.find((q) => q.status === 'OPEN' || q.status === 'PENDING') : null;
+  const queryMessage =
+    app?.queryMessage ||
+    openQueryObj?.queryText ||
+    queryEvent?.note ||
+    queryEvent?.remarks ||
+    'Please upload the requested supporting documents.';
+
+  // Handle Query File Selection with validation and append
+  const handleQueryFileSelect = (e) => {
+    const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
+    if (selectedFiles.length === 0) return;
+
+    const maxSizeBytes = 5 * 1024 * 1024;
+    const oversized = selectedFiles.filter((f) => f.size > maxSizeBytes);
+    if (oversized.length > 0) {
+      setQueryErrorMsg(`File "${oversized[0].name}" exceeds 5MB size limit. Please upload files under 5MB.`);
+      return;
+    }
+
+    setQueryErrorMsg('');
+    setQueryFiles((prev) => {
+      const existingNames = new Set(prev.map((f) => f.name));
+      const fresh = selectedFiles.filter((f) => !existingNames.has(f.name));
+      return [...prev, ...fresh];
+    });
+  };
+
+  // Remove a selected file from the queue
+  const handleRemoveFile = (indexToRemove) => {
+    setQueryFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   // Handle Query Response Submit
   const handleQueryResponseSubmit = async (e) => {
     e.preventDefault();
     if (!app?.id) return;
+
+    // Validate that either files or note is provided
+    if (queryFiles.length === 0 && (!queryNote || !queryNote.trim())) {
+      setQueryErrorMsg('Please attach at least one document or provide a response note for the officer.');
+      return;
+    }
+
     try {
       setIsSubmittingQuery(true);
       setQueryErrorMsg('');
       setQuerySuccessMsg('Submitting response and documents to officer...');
-      const res = await apiRespondToQuery(app.id, queryNote, queryFiles);
-      const updated = res?.data || res;
-      if (updated && updated.id) {
-        setApp(updated);
-      } else {
-        loadApplication(app.id);
-      }
-      setQuerySuccessMsg('Documents and response submitted successfully.');
+
+      await apiRespondToQuery(app.id, queryNote.trim(), queryFiles);
+
+      // Reload fresh enriched application state from backend
+      await loadApplication(app.id);
+
+      setQuerySuccessMsg('Documents and response submitted successfully. Review resumed by department officer.');
       setTimeout(() => {
         setQuerySuccessMsg('');
         setQueryErrorMsg('');
@@ -201,14 +247,14 @@ export default function TrackApplicationPage() {
         setQueryFiles([]);
         setQueryNote('');
         showToast('Query response submitted to officer. Review resumed.', 'success');
-      }, 900);
+      }, 1000);
     } catch (err) {
       console.error('Query response API error:', err);
       const errorText = 'Failed to submit query response: ' + (err.message || 'Server error. Please try again.');
       setQuerySuccessMsg('');
       setQueryErrorMsg(errorText);
       showToast(errorText, 'error');
-      // Do NOT close modal or clear files/note — keep open so citizen can retry
+      // Keep modal open so citizen can inspect and retry
     } finally {
       setIsSubmittingQuery(false);
     }
@@ -534,7 +580,9 @@ export default function TrackApplicationPage() {
                     <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
                       <button
                         type="button"
+                        id="btn-upload-documents-respond"
                         className="btn btn-accent btn-sm"
+                        style={{ cursor: 'pointer', position: 'relative', zIndex: 2 }}
                         onClick={() => {
                           setQueryErrorMsg('');
                           setQuerySuccessMsg('');
@@ -591,8 +639,46 @@ export default function TrackApplicationPage() {
 
               {/* Tab 2: Documents */}
               {activeTab === 'documents' && (
-                <div className="table-wrapper" style={{ border: 'none' }}>
-                  <table className="table">
+                <div>
+                  {isQuery && (
+                    <div
+                      style={{
+                        marginBottom: 'var(--space-lg)',
+                        padding: 'var(--space-md) var(--space-lg)',
+                        background: '#fffbeb',
+                        border: '1px solid #fde68a',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 'var(--space-md)',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: '220px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#92400e', marginBottom: '2px' }}>
+                          ⚠️ Officer Query Pending – Action Required
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', color: '#78350f' }}>
+                          {queryMessage}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-accent btn-sm"
+                        onClick={() => {
+                          setQueryErrorMsg('');
+                          setQuerySuccessMsg('');
+                          setQueryModalOpen(true);
+                        }}
+                      >
+                        Upload Documents &amp; Respond
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="table-wrapper" style={{ border: 'none' }}>
+                    <table className="table">
                     <thead>
                       <tr>
                         <th>Document</th>
@@ -640,6 +726,7 @@ export default function TrackApplicationPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
               )}
 
               {/* Tab 3: Full Details */}
@@ -713,15 +800,20 @@ export default function TrackApplicationPage() {
       {/* ── Query Response Modal ── */}
       {queryModalOpen && (
         <div
-          className="modal-overlay"
+          className="modal-overlay active"
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(10, 22, 40, 0.5)',
+            background: 'rgba(5, 13, 26, 0.65)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000,
+            zIndex: 9999,
+            opacity: 1,
+            visibility: 'visible',
+            padding: 'var(--space-md)',
           }}
           onClick={() => setQueryModalOpen(false)}
         >
@@ -729,10 +821,15 @@ export default function TrackApplicationPage() {
             className="modal"
             style={{
               background: '#fff',
-              borderRadius: 'var(--radius-lg)',
+              borderRadius: 'var(--radius-xl, 16px)',
               maxWidth: '560px',
-              width: '90%',
-              overflow: 'hidden',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              transform: 'scale(1) translateY(0)',
+              opacity: 1,
+              visibility: 'visible',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -783,37 +880,105 @@ export default function TrackApplicationPage() {
                 )}
 
                 <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
-                  <label className="form-label" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
+                  <label htmlFor="queryFileInput" className="form-label" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
                     Upload Requested Document(s) <span style={{ color: 'var(--red-500)' }}>*</span>
                   </label>
+
+                  {/* Hidden file input with multiple selection and format validation */}
                   <input
                     ref={queryFileInputRef}
                     type="file"
                     id="queryFileInput"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        setQueryFiles(Array.from(e.target.files));
-                      }
-                    }}
+                    onClick={(e) => { e.target.value = null; }}
+                    onChange={handleQueryFileSelect}
                   />
-                  <div
+
+                  {/* Accessible upload zone label: clicking anywhere triggers the file browser natively */}
+                  <label
+                    htmlFor="queryFileInput"
                     className="upload-zone"
-                    onClick={() => queryFileInputRef.current?.click()}
+                    style={{
+                      display: 'block',
+                      cursor: 'pointer',
+                      border: '2px dashed var(--slate-300)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: 'var(--space-lg)',
+                      textAlign: 'center',
+                      background: 'var(--slate-50)',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
-                    <svg width="28" height="28" fill="none" stroke="var(--slate-400)" strokeWidth="2" viewBox="0 0 24 24" style={{ margin: '0 auto 8px auto', display: 'block' }}>
+                    <svg width="32" height="32" fill="none" stroke="var(--slate-400)" strokeWidth="2" viewBox="0 0 24 24" style={{ margin: '0 auto 8px auto', display: 'block' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
-                      Click to upload files (PDF, JPG, PNG up to 5MB)
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--navy-800)', marginBottom: '4px' }}>
+                      Click to Browse or Choose Files
                     </div>
-                  </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
+                      PDF, JPG, PNG (up to 5MB each)
+                    </div>
+                    <span
+                      className="btn btn-outline btn-sm"
+                      style={{ pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      📁 Browse &amp; Upload Documents
+                    </span>
+                  </label>
 
+                  {/* Selected files list with size badge & remove button */}
                   {queryFiles.length > 0 && (
-                    <div style={{ marginTop: '8px' }}>
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--slate-600)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Selected Files ({queryFiles.length}):
+                      </div>
                       {queryFiles.map((file, i) => (
-                        <div key={i} style={{ fontSize: '0.8rem', color: 'var(--navy-700)', fontWeight: 600, background: 'var(--green-50)', padding: '4px 8px', borderRadius: '4px', marginTop: '4px' }}>
-                          ✓ {file.name}
+                        <div
+                          key={i}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '0.8125rem',
+                            color: 'var(--navy-900)',
+                            fontWeight: 600,
+                            background: '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ color: '#059669', fontSize: '1rem' }}>✓</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--slate-500)', fontWeight: 400, flexShrink: 0 }}>
+                              ({(file.size / 1024).toFixed(0)} KB)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleRemoveFile(i);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#dc2626',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                              fontSize: '1rem',
+                              padding: '2px 6px',
+                              lineHeight: 1,
+                              flexShrink: 0,
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -822,12 +987,12 @@ export default function TrackApplicationPage() {
 
                 <div className="form-group">
                   <label className="form-label" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '6px' }}>
-                    Additional Note (Optional)
+                    Additional Note / Clarification
                   </label>
                   <textarea
                     className="form-control"
                     rows="3"
-                    placeholder="Add clarification notes for the officer…"
+                    placeholder="Add clarification notes or details for the verifying officer…"
                     value={queryNote}
                     onChange={(e) => setQueryNote(e.target.value)}
                     style={{ width: '100%' }}
@@ -836,11 +1001,22 @@ export default function TrackApplicationPage() {
               </div>
 
               <div className="modal-footer" style={{ padding: 'var(--space-md) var(--space-xl)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setQueryModalOpen(false)}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setQueryModalOpen(false)}
+                  disabled={isSubmittingQuery}
+                >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmittingQuery}>
-                  {isSubmittingQuery ? 'Submitting...' : 'Submit Response'}
+                <button
+                  type="submit"
+                  id="btn-submit-response"
+                  className="btn btn-primary"
+                  disabled={isSubmittingQuery}
+                  style={{ minWidth: '150px' }}
+                >
+                  {isSubmittingQuery ? 'Submitting Response...' : 'Submit Response'}
                 </button>
               </div>
             </form>

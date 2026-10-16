@@ -27,6 +27,7 @@ import {
   apiGetOfficerSlaRisks,
   apiGetOfficerWeekChart,
   apiCreateNotification,
+  apiGetApplicationById,
 } from '../../api/officerApi';
 import { apiGetStateJurisdictionNodes } from '../../api/departmentHeadApi';
 import { apiGetServices } from '../../api/citizenApi';
@@ -74,6 +75,8 @@ export default function OfficerDashboard() {
   const [allServices, setAllServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sendingReminderId, setSendingReminderId] = useState(null);
+  const [remindedQueryIds, setRemindedQueryIds] = useState(new Set());
 
   // ── [Hooks] Toast notification via shared useToast hook ──
   const { toast, showToast, hideToast } = useToast();
@@ -247,22 +250,47 @@ export default function OfficerDashboard() {
 
   // ── [Callbacks + API calls] Send reminder for pending query ──
   const handleSendReminder = async (queryItem) => {
+    const appId = queryItem.id || queryItem.appId;
     try {
-      const targetCitizenId = queryItem.citizenId || (queryItem.citizenUser && queryItem.citizenUser.id);
+      setSendingReminderId(appId);
+
+      // Resolve citizenId from queryItem, active queue, or fetch fresh from backend
+      let targetCitizenId = queryItem.citizenId || (queryItem.citizenUser && queryItem.citizenUser.id);
+      if (!targetCitizenId && appId) {
+        const matchedInQueue = queue.find((q) => q.id === appId);
+        if (matchedInQueue?.citizenId) {
+          targetCitizenId = matchedInQueue.citizenId;
+        } else {
+          try {
+            const appRes = await apiGetApplicationById(appId);
+            const appData = appRes?.data || appRes;
+            targetCitizenId = appData?.citizenId;
+          } catch (e) {
+            // fallback handled below
+          }
+        }
+      }
+
       if (!targetCitizenId) {
         showToast('Unable to send reminder: citizen identifier missing.', 'warning');
         return;
       }
+
       await apiCreateNotification({
         userId: targetCitizenId,
-        title: 'Query Reminder',
-        message: `Reminder: Please respond to the pending query for application ${queryItem.id || queryItem.appId}.`,
+        title: 'Query Clarification Reminder',
+        message: `Reminder: Please respond to the pending query for application ${appId} to resume review.`,
         type: 'warning',
-        link: `/citizen/track?id=${queryItem.id || queryItem.appId}`,
+        link: `/citizen/track?id=${appId}`,
       });
+
+      setRemindedQueryIds((prev) => new Set([...prev, appId]));
       showToast(`Reminder sent successfully to ${queryItem.citizen || queryItem.citizenName || 'citizen'}.`, 'success');
     } catch (err) {
+      console.error('Failed to send reminder:', err);
       showToast('Failed to send reminder notification.', 'error');
+    } finally {
+      setSendingReminderId(null);
     }
   };
 
@@ -780,10 +808,15 @@ export default function OfficerDashboard() {
                         ) : (
                           <button
                             type="button"
-                            className="btn btn-outline btn-sm"
+                            className={`btn btn-sm ${remindedQueryIds.has(q.id || q.appId) ? 'btn-success' : 'btn-outline'}`}
                             onClick={() => handleSendReminder(q)}
+                            disabled={sendingReminderId === (q.id || q.appId)}
                           >
-                            Send Reminder
+                            {sendingReminderId === (q.id || q.appId)
+                              ? 'Sending…'
+                              : remindedQueryIds.has(q.id || q.appId)
+                              ? '✓ Reminded'
+                              : 'Send Reminder'}
                           </button>
                         )}
                       </div>

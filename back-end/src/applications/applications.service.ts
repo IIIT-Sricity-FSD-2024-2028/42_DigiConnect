@@ -451,7 +451,19 @@ export class ApplicationsService {
     }
 
     app.status = AppStatus.UNDER_REVIEW;
+    (app as any).currentStatus = AppStatus.UNDER_REVIEW;
+    (app as any).queryMessage = null;
     app.citizenResponse = response;
+
+    if (Array.isArray((app as any).queries)) {
+      (app as any).queries.forEach((q: any) => {
+        if (q.status === 'OPEN') {
+          q.status = 'RESPONDED';
+          q.responseNote = response;
+          q.respondedAt = now.toISOString();
+        }
+      });
+    }
 
     if (!app.documents) app.documents = [];
     if (newDocs && newDocs.length > 0) {
@@ -484,7 +496,7 @@ export class ApplicationsService {
       });
     }
 
-    return app;
+    return this.enrichWithWorkflowStages(app);
   }
 
   // ─── THE 3 PRIMARY OFFICER ACTIONS (Sections 18-22) ───
@@ -713,6 +725,7 @@ export class ApplicationsService {
     };
 
     (app as any).queries.push(queryEntry);
+    (app as any).queryMessage = queryText.trim();
 
     app.timeline.push({
       action: 'Clarification Query Raised (Workflow Paused)',
@@ -952,9 +965,13 @@ export class ApplicationsService {
 
       return {
         id: a.id,
+        appId: a.id,
+        citizenId: a.citizenId,
         citizen: a.citizenName,
+        citizenName: a.citizenName,
         service: a.serviceName,
-        query: queryAction ? queryAction.note : 'Additional details requested',
+        serviceName: a.serviceName,
+        query: queryAction ? queryAction.note : (a as any).queryMessage || 'Additional details requested',
         sent: sentDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         deadline: deadlineDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         responded: !!a.citizenResponse

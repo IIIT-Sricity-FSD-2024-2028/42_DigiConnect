@@ -12,10 +12,13 @@ export async function apiFetch(endpoint, options = {}) {
     session = null;
   }
 
+  const defaultRole = session?.backendRole || session?.role || (typeof window !== 'undefined' && window.location.pathname.includes('/citizen') ? 'CITIZEN' : '');
+  const defaultUserId = session?.id || (defaultRole === 'CITIZEN' ? 'CIT-AP-001' : '');
+
   const headers = {
     'Content-Type': 'application/json',
-    'x-role': session?.backendRole || session?.role || '',
-    'x-user-id': session?.id || '',
+    'x-role': defaultRole,
+    'x-user-id': defaultUserId,
     'x-state-id': session?.stateId || session?.state || '',
     'x-department-id': session?.departmentId || '',
     'x-assigned-node-id': session?.assignedNodeId || '',
