@@ -56,10 +56,10 @@ export const apiRespondToQuery = (id, response, files = []) => {
   });
 };
 
-export const apiSimulatePayment = (serviceId, citizenId, amount) =>
+export const apiSimulatePayment = (serviceId, citizenId, amount, stateId) =>
   apiFetch('/applications/simulate-payment', {
     method: 'POST',
-    body: JSON.stringify({ serviceId, citizenId, amount }),
+    body: JSON.stringify({ serviceId, citizenId, amount, ...(stateId ? { stateId } : {}) }),
   });
 
 
