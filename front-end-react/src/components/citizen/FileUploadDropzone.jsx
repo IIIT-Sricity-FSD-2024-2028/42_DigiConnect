@@ -1,7 +1,7 @@
 // src/components/citizen/FileUploadDropzone.jsx
 // React concepts used: Components, Props (label, required, file, onFileSelect), State (dragActive, error), Events (dragOver, drop, change), Callbacks (onFileSelect(file))
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 /**
  * FileUploadDropzone — Handles file selection with drag-and-drop and client-side <5MB validation.
@@ -73,6 +73,7 @@ export default function FileUploadDropzone({
       : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const fileInputRef = useRef(null);
   const inputId = `file_input_${label.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   return (
@@ -87,7 +88,7 @@ export default function FileUploadDropzone({
           background: dragActive ? 'var(--navy-50)' : undefined,
           cursor: 'pointer',
         }}
-        onClick={() => document.getElementById(inputId)?.click()}
+        onClick={() => fileInputRef.current?.click()}
       >
         {/* Slot Icon: green checkmark if uploaded, upload arrow if empty */}
         <div className="upload-slot-icon">
@@ -140,6 +141,7 @@ export default function FileUploadDropzone({
         </div>
 
         <input
+          ref={fileInputRef}
           id={inputId}
           type="file"
           accept=".pdf,.jpg,.jpeg,.png"

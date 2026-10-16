@@ -309,13 +309,13 @@ export default function LoginPage() {
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                 <label className="form-label" htmlFor="password" style={{ margin: 0 }}>Password</label>
-                <a
-                  href="#"
-                  onClick={(e) => { e.preventDefault(); setFpOpen(true); setFpStep(1); setFpError(''); }}
-                  style={{ fontSize: '0.8rem', color: 'var(--navy-500)', fontWeight: 600 }}
+                <button
+                  type="button"
+                  onClick={() => { setFpOpen(true); setFpStep(1); setFpError(''); }}
+                  style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.8rem', color: 'var(--navy-500)', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Forgot password?
-                </a>
+                </button>
               </div>
               <div className="input-wrapper">
                 <svg className="input-icon" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

@@ -2,7 +2,7 @@
 // Grievance Officer Dashboard matching front-end/grievance/grievance-dashboard.html exactly
 // React concepts: Components, State, Effects, Controlled Filters, Pagination, Modals, CSV Export, Router Navigation
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetGrievances } from '../../api/grievanceApi';
@@ -128,12 +128,15 @@ export default function GrievanceDashboard() {
     fetchGrievances();
   }, []);
 
-  // Hash anchor scrolling for queue
+  const queueRef = useRef(null);
+
+  // Hash anchor scrolling for queue via React ref
   useEffect(() => {
     if (location.hash === '#queue' || location.hash === '#grievance-queue') {
       const timer = setTimeout(() => {
-        const el = document.getElementById('queue') || document.getElementById('grievance-queue');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        if (queueRef.current) {
+          queueRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }, 50);
       return () => clearTimeout(timer);
     } else if (!location.hash) {
@@ -395,7 +398,7 @@ export default function GrievanceDashboard() {
       </div>
 
       {/* Main Table Card */}
-      <div className="card" id="queue">
+      <div className="card" id="queue" ref={queueRef}>
         {/* Card Header */}
         <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
           <span className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

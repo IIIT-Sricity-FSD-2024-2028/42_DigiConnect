@@ -56,7 +56,7 @@ function getNotificationIcon(type = '') {
   }
 }
 
-export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
+export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggleSidebar }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -247,8 +247,7 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [] }) {
           className="sidebar-toggle"
           aria-label="Toggle Sidebar"
           onClick={() => {
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) sidebar.classList.toggle('open');
+            if (onToggleSidebar) onToggleSidebar();
           }}
         >
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

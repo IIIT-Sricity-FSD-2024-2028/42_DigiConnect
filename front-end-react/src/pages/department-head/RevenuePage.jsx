@@ -152,11 +152,11 @@ export default function RevenuePage() {
                   revData.transactions.map((tx, idx) => (
                     <tr key={tx.id || idx}>
                       <td><code>{tx.transactionId || tx.id}</code></td>
-                      <td><strong>{tx.applicationId || tx.appRef || 'APP-2025-001'}</strong></td>
+                      <td><strong>{tx.applicationId || tx.appRef || 'APP-REV-001'}</strong></td>
                       <td>{tx.serviceName || 'Revenue Service'}</td>
-                      <td><span style={{ color: '#166534', fontWeight: 600 }}>₹{tx.serviceFee || 35}</span></td>
-                      <td><span style={{ color: '#1e40af', fontWeight: 600 }}>₹{tx.platformFee || 15}</span></td>
-                      <td><strong style={{ color: '#6b21a8' }}>₹{tx.totalAmount || tx.amount || 50}</strong></td>
+                      <td><span style={{ color: '#166534', fontWeight: 600 }}>₹{tx.serviceFee != null ? tx.serviceFee : (tx.amount ? Math.round(tx.amount * 0.7) : 0)}</span></td>
+                      <td><span style={{ color: '#1e40af', fontWeight: 600 }}>₹{tx.platformFee != null ? tx.platformFee : (tx.amount ? Math.round(tx.amount * 0.3) : 0)}</span></td>
+                      <td><strong style={{ color: '#6b21a8' }}>₹{tx.totalAmount || tx.amount || 0}</strong></td>
                       <td style={{ color: 'var(--slate-500)', fontSize: '0.8rem' }}>
                         {tx.date || new Date().toLocaleDateString('en-IN')}
                       </td>

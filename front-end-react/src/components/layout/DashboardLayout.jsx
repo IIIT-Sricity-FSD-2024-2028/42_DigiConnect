@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Sidebar from './Sidebar';
@@ -217,17 +217,11 @@ const ROUTE_CONFIGS = {
 };
 
 function getResolvedRole(user) {
-  const activeRoleStorage =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('active_role')
-      : null;
-
   const raw = (
     user?.role ||
     user?.roleKey ||
     user?.actualRole ||
     user?.backendRole ||
-    activeRoleStorage ||
     'citizen'
   ).toLowerCase();
 
@@ -444,6 +438,12 @@ function resolveRouteConfig(pathname, hash = '', user = null) {
 export default function DashboardLayout() {
   const location = useLocation();
   const { user } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Auto-close mobile sidebar when navigating routes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const currentConfig = resolveRouteConfig(
     location.pathname,
@@ -453,11 +453,12 @@ export default function DashboardLayout() {
 
   return (
     <div className="app-layout">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <Topbar
         title={currentConfig.title}
         breadcrumbs={currentConfig.breadcrumbs}
+        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
       />
 
       <main className="main-content">

@@ -12,7 +12,7 @@
 // 8. Router (useNavigate for quick navigation to jurisdictions and departments)
 // 9. API calls (apiGetStateDashboard, apiGetJurisdictionStats)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Context: consuming existing AuthContext
 import { useAuth } from '../../context/AuthContext';
@@ -49,39 +49,39 @@ export default function StateDashboard() {
   const [error, setError] = useState(null);
   const [showAllDepts, setShowAllDepts] = useState(false);
 
-  // Hooks / useEffect: fetch dashboard data on component mount
-  useEffect(() => {
-    async function loadData() {
+  // Hooks / useCallback: fetch dashboard data for current state
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // API Call: fetch dashboard data for current state
+      const res = await apiGetStateDashboard(stateId);
+      const data = res?.data || res || {};
+
+      // API Call: fetch aggregated jurisdiction tier stats
       try {
-        setLoading(true);
-        setError(null);
-
-        // API Call: fetch dashboard data for current state
-        const res = await apiGetStateDashboard(stateId);
-        const data = res?.data || res || {};
-
-        // API Call: fetch aggregated jurisdiction tier stats
-        try {
-          const statsRes = await apiGetJurisdictionStats(stateId);
-          if (statsRes?.data || statsRes) {
-            data.jurisdiction = statsRes.data || statsRes;
-          }
-        } catch (_err) {
-          // Fallback gracefully if stats endpoint is unavailable
+        const statsRes = await apiGetJurisdictionStats(stateId);
+        if (statsRes?.data || statsRes) {
+          data.jurisdiction = statsRes.data || statsRes;
         }
-
-        setDashboardData(data);
-      } catch (err) {
-        // State: set error message if API fails
-        setError(err.message || 'Failed to load State Administration Dashboard');
-      } finally {
-        // State: end loading indicator
-        setLoading(false);
+      } catch (_err) {
+        // Fallback gracefully if stats endpoint is unavailable
       }
-    }
 
-    loadData();
+      setDashboardData(data);
+    } catch (err) {
+      // State: set error message if API fails
+      setError(err.message || 'Failed to load State Administration Dashboard');
+    } finally {
+      // State: end loading indicator
+      setLoading(false);
+    }
   }, [stateId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // ── 1. LOADING STATE ──
   if (loading) {
@@ -120,7 +120,7 @@ export default function StateDashboard() {
             type="button"
             className="btn btn-primary btn-sm"
             style={{ marginTop: '14px' }}
-            onClick={() => window.location.reload()}
+            onClick={loadData}
           >
             Retry Connection
           </button>

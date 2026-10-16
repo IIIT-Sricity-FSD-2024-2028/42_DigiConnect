@@ -42,7 +42,7 @@ function getGrievanceStatusMeta(status = '') {
   if (s === 'rejected' || s === 'dismissed') {
     return { badgeClass: 'badge-danger', label: 'Rejected' };
   }
-  if (s === 'investigating' || s === 'under-review' || s === 'in-progress') {
+  if (s === 'investigating' || s === 'under-review' || s === 'in-progress' || s === 'under-investigation') {
     return { badgeClass: 'badge-info', label: 'Investigating' };
   }
   return { badgeClass: 'badge-warning', label: 'Open' };

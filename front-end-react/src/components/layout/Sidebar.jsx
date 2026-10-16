@@ -250,7 +250,7 @@ const ROLE_NAV_CONFIGS = {
   },
 };
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose }) {
   // [Context] Extract logged in user and logout callback
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -267,9 +267,8 @@ export default function Sidebar() {
     return defaultIsActive;
   };
 
-  // Normalize role key (default to citizen with storage fallback)
-  const activeRoleStorage = typeof window !== 'undefined' ? localStorage.getItem('active_role') : null;
-  const rawRole = (user?.role || user?.roleKey || user?.actualRole || user?.backendRole || activeRoleStorage || 'citizen').toLowerCase();
+  // Normalize role key cleanly from user state
+  const rawRole = (user?.role || user?.roleKey || user?.actualRole || user?.backendRole || 'citizen').toLowerCase();
   const roleKey =
     rawRole === 'super_user' || rawRole === 'central_admin' || rawRole === 'central-admin' || rawRole === 'admin'
       ? 'central_admin'
@@ -301,7 +300,20 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar" id="sidebar">
+    <>
+      {isOpen && (
+        <div
+          className="sidebar-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+            zIndex: 39,
+          }}
+          onClick={onClose}
+        />
+      )}
+      <aside className={`sidebar${isOpen ? ' open' : ''}`} id="sidebar">
       {/* Brand & Portal Label */}
       <div className="sidebar-brand">
         <Link to={config.dashboardTo} className="sidebar-brand-icon">
@@ -395,5 +407,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

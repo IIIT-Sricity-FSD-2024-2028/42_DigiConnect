@@ -2,7 +2,7 @@
 // Centralized fetch client communicating with NestJS backend at http://localhost:3000/api/v1
 // Automatically appends governance headers (x-role, x-user-id, x-state-id, etc.)
 
-const BASE_URL = 'http://localhost:3000/api/v1';
+const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'http://localhost:3000/api/v1';
 
 export async function apiFetch(endpoint, options = {}) {
   let session = null;
@@ -16,7 +16,7 @@ export async function apiFetch(endpoint, options = {}) {
     'Content-Type': 'application/json',
     'x-role': session?.backendRole || session?.role || '',
     'x-user-id': session?.id || '',
-    'x-state-id': session?.stateId || 'state_ap',
+    'x-state-id': session?.stateId || session?.state || '',
     'x-department-id': session?.departmentId || '',
     'x-assigned-node-id': session?.assignedNodeId || '',
     'x-designation-id': session?.designationId || '',

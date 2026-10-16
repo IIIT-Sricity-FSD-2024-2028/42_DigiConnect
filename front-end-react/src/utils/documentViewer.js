@@ -25,7 +25,8 @@ export function viewDocumentInNewTab(doc, app = {}) {
   // If a real file was uploaded to the server, open it directly
   if (doc.path) {
     const cleanPath = doc.path.replace(/\\/g, '/').replace(/^\/+/, '');
-    const fileUrl = `http://localhost:3000/${cleanPath}`;
+    const backendOrigin = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL) || 'http://localhost:3000';
+    const fileUrl = `${backendOrigin}/${cleanPath}`;
     window.open(fileUrl, '_blank');
     return;
   }

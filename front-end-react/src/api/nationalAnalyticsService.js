@@ -26,10 +26,7 @@ export async function getNationalAnalyticsData() {
     const data = await apiGetCentralNationalAnalytics();
     if (data && data.totalStates !== undefined) {
       const mappedStates = (data.states || []).map((s) => {
-        const localStatus =
-          localStorage.getItem('state_status_' + s.id) ||
-          localStorage.getItem('state_status_' + s.code);
-        const status = localStatus || s.status || 'ACTIVE';
+        const status = s.status || 'ACTIVE';
 
         const apps = s.totalApplications || 0;
         const rev = s.totalRevenue || 0;
@@ -95,10 +92,7 @@ export async function getNationalAnalyticsData() {
     const trends = trendsRes?.data || trendsRes || { daily: [], weekly: [], monthly: [], yearly: [] };
 
     const mappedStates = statesList.map((s) => {
-      const localStatus =
-        localStorage.getItem('state_status_' + s.id) ||
-        localStorage.getItem('state_status_' + s.code);
-      const status = localStatus || s.status || 'ACTIVE';
+      const status = s.status || 'ACTIVE';
 
       return {
         id: s.id,

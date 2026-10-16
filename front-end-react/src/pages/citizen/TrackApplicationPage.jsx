@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { apiTrackApplication, apiGetMyApplications, apiRespondToQuery } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
@@ -20,6 +20,7 @@ export default function TrackApplicationPage() {
   const [queryNote, setQueryNote] = useState('');
   const [queryFiles, setQueryFiles] = useState([]);
   const [querySuccessMsg, setQuerySuccessMsg] = useState('');
+  const queryFileInputRef = useRef(null);
 
   // Toast / notification message
   const [toastMsg, setToastMsg] = useState(null);
@@ -744,6 +745,7 @@ export default function TrackApplicationPage() {
                     Upload Requested Document(s) <span style={{ color: 'var(--red-500)' }}>*</span>
                   </label>
                   <input
+                    ref={queryFileInputRef}
                     type="file"
                     id="queryFileInput"
                     style={{ display: 'none' }}
@@ -755,7 +757,7 @@ export default function TrackApplicationPage() {
                   />
                   <div
                     className="upload-zone"
-                    onClick={() => document.getElementById('queryFileInput')?.click()}
+                    onClick={() => queryFileInputRef.current?.click()}
                   >
                     <svg width="28" height="28" fill="none" stroke="var(--slate-400)" strokeWidth="2" viewBox="0 0 24 24" style={{ margin: '0 auto 8px auto', display: 'block' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
