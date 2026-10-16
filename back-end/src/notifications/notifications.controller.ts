@@ -12,7 +12,17 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) { }
 
   @Get()
-  @Roles(Role.CITIZEN, Role.OFFICER, Role.SUPERVISOR, Role.GRIEVANCE, Role.SUPER_USER)
+  @Roles(
+    Role.CITIZEN,
+    Role.OFFICER,
+    Role.GRIEVANCE_OFFICER,
+    Role.DEPARTMENT_HEAD,
+    Role.STATE_ADMIN,
+    Role.CENTRAL_ADMIN,
+    Role.SUPERVISOR,
+    Role.GRIEVANCE,
+    Role.SUPER_USER,
+  )
   @ApiOperation({ summary: 'Get all notifications for current user' })
   @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
@@ -26,7 +36,17 @@ export class NotificationsController {
   }
 
   @Post()
-  @Roles(Role.OFFICER, Role.SUPERVISOR, Role.GRIEVANCE, Role.SUPER_USER)
+  @Roles(
+    Role.OFFICER,
+    Role.GRIEVANCE_OFFICER,
+    Role.DEPARTMENT_HEAD,
+    Role.STATE_ADMIN,
+    Role.CENTRAL_ADMIN,
+    Role.CITIZEN,
+    Role.SUPERVISOR,
+    Role.GRIEVANCE,
+    Role.SUPER_USER,
+  )
   @ApiOperation({ summary: 'Create a manual notification' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiResponse({ status: 201, description: 'Notification created' })
@@ -39,7 +59,17 @@ export class NotificationsController {
   }
 
   @Get('count')
-  @Roles(Role.CITIZEN, Role.OFFICER, Role.SUPERVISOR, Role.GRIEVANCE, Role.SUPER_USER)
+  @Roles(
+    Role.CITIZEN,
+    Role.OFFICER,
+    Role.GRIEVANCE_OFFICER,
+    Role.DEPARTMENT_HEAD,
+    Role.STATE_ADMIN,
+    Role.CENTRAL_ADMIN,
+    Role.SUPERVISOR,
+    Role.GRIEVANCE,
+    Role.SUPER_USER,
+  )
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
@@ -53,7 +83,17 @@ export class NotificationsController {
   }
 
   @Patch('read-all')
-  @Roles(Role.CITIZEN, Role.OFFICER, Role.SUPERVISOR, Role.GRIEVANCE, Role.SUPER_USER)
+  @Roles(
+    Role.CITIZEN,
+    Role.OFFICER,
+    Role.GRIEVANCE_OFFICER,
+    Role.DEPARTMENT_HEAD,
+    Role.STATE_ADMIN,
+    Role.CENTRAL_ADMIN,
+    Role.SUPERVISOR,
+    Role.GRIEVANCE,
+    Role.SUPER_USER,
+  )
   @ApiOperation({ summary: 'Mark all notifications as read' })
   @ApiHeader({ name: 'x-user-id', description: 'ID of the caller', required: true })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
@@ -63,7 +103,17 @@ export class NotificationsController {
   }
 
   @Patch(':id/read')
-  @Roles(Role.CITIZEN, Role.OFFICER, Role.SUPERVISOR, Role.GRIEVANCE, Role.SUPER_USER)
+  @Roles(
+    Role.CITIZEN,
+    Role.OFFICER,
+    Role.GRIEVANCE_OFFICER,
+    Role.DEPARTMENT_HEAD,
+    Role.STATE_ADMIN,
+    Role.CENTRAL_ADMIN,
+    Role.SUPERVISOR,
+    Role.GRIEVANCE,
+    Role.SUPER_USER,
+  )
   @ApiOperation({ summary: 'Mark notification as read' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiResponse({ status: 200, description: 'Notification marked as read' })

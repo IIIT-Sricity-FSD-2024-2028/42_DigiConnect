@@ -24,6 +24,15 @@ import { Role } from '../models/enums';
 export class GeographyController {
   constructor(private readonly geographyService: GeographyService) {}
 
+  @Get('states')
+  @ApiOperation({ summary: 'List all registered states' })
+  listStates() {
+    return {
+      success: true,
+      data: this.geographyService.listStates(),
+    };
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Get aggregated tier summary statistics for a state' })
   getStats(

@@ -14,6 +14,7 @@ import {
   apiResolveGrievance,
   apiUpdateGrievanceStatus,
 } from '../../api/grievanceApi';
+import { apiCreateNotification } from '../../api/notificationApi';
 import GrievanceTimeline from '../../components/grievance/GrievanceTimeline';
 
 const JURISDICTION_NAMES = {
@@ -259,10 +260,43 @@ export default function GrievanceDetailPage() {
       await apiUpdateGrievanceStatus(grievance.id, {
         remarks: `Officer Reminded (${suffix}) — Priority expedited notice sent to assigned field officer.`,
       });
+
+      // Dispatch real push notification to the assigned officer
+      try {
+        const targetOfficerId = grievance.assignedOfficerId || grievance.officerId || 'USR-OFF-AP-REV-01';
+        await apiCreateNotification({
+          userId: targetOfficerId,
+          title: `Grievance Reminder (${suffix}) — #${grievance.id}`,
+          message: `Expedited action requested for Grievance #${grievance.id} (${grievance.subject || 'Citizen Complaint'}). Please submit inquiry findings promptly.`,
+          type: 'GRIEVANCE_REMINDER',
+          link: `/grievance/detail/${grievance.id}`,
+        });
+      } catch (notifErr) {
+        console.warn('Notification delivery fallback:', notifErr);
+      }
+
       showToast(`Officer Reminded (${suffix}) successfully!`, 'success');
       loadGrievance();
     } catch (err) {
       showToast(err.message || 'Failed to send reminder to officer', 'error');
+    }
+  };
+
+  // ── Notify Citizen Action ──
+  const handleNotifyCitizen = async () => {
+    if (!grievance) return;
+    try {
+      const targetCitizenId = grievance.citizenId || grievance.userId || 'USR-CIT-01';
+      await apiCreateNotification({
+        userId: targetCitizenId,
+        title: `Update on Grievance #${grievance.id}`,
+        message: `Official Notice: Your grievance #${grievance.id} (${grievance.subject || 'Complaint'}) is actively under review by Grievance Redressal Authority.`,
+        type: 'GRIEVANCE_NOTICE',
+        link: `/citizen/grievances`,
+      });
+      showToast(`Official notice dispatched to citizen ${grievance.citizenName || 'Applicant'}!`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to send notification to citizen', 'error');
     }
   };
 
@@ -464,7 +498,7 @@ export default function GrievanceDetailPage() {
           <button
             type="button"
             className="btn btn-outline btn-sm"
-            onClick={() => showToast(`Notice dispatched to citizen ${grievance.citizenName}`, 'success')}
+            onClick={handleNotifyCitizen}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

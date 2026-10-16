@@ -75,6 +75,13 @@ export class GeographyService {
   }
 
   /**
+   * List all registered state governments.
+   */
+  listStates(): any[] {
+    return db.states || [];
+  }
+
+  /**
    * List all jurisdiction nodes, optionally filtered by state.
    */
   listNodes(stateId?: string): JurisdictionNode[] {

@@ -195,6 +195,15 @@ export class ApplicationsService {
       });
     }
 
+    db.auditLogs.unshift({
+      id: `AUD-${Date.now()}`,
+      action: 'APPLICATION_SUBMITTED',
+      actor: citizen ? citizen.name : 'Citizen',
+      role: 'CITIZEN',
+      date: nowIso,
+      details: `Application ${newApp.id} for '${newApp.serviceName}' submitted in ${newApp.jurisdiction}.`,
+    });
+
     db.applications.unshift(newApp); // Add to beginning
     return newApp;
   }
@@ -455,6 +464,26 @@ export class ApplicationsService {
       actor: 'Citizen',
       note: response
     });
+
+    db.auditLogs.unshift({
+      id: `AUD-${Date.now()}`,
+      action: 'QUERY_RESPONDED',
+      actor: 'Citizen',
+      role: 'CITIZEN',
+      date: now.toISOString(),
+      details: `Citizen responded to query on application ${app.id}. Review resumed.`,
+    });
+
+    if (app.officerId) {
+      this.notificationsService.createNotification({
+        userId: app.officerId,
+        title: `📩 Citizen Responded to Query (${app.id})`,
+        message: `Applicant responded to query on ${app.serviceName}: "${response.slice(0, 80)}"`,
+        type: 'info',
+        link: `/officer/review/${app.id}`,
+      });
+    }
+
     return app;
   }
 
@@ -499,6 +528,15 @@ export class ApplicationsService {
         date: timestamp,
         actor: actorName,
         note: remarks || `Application approved. Certificate ${certData.id} generated.`,
+      });
+
+      db.auditLogs.unshift({
+        id: `AUD-${Date.now()}`,
+        action: 'APPLICATION_APPROVED',
+        actor: actorName,
+        role: 'OFFICER',
+        date: timestamp,
+        details: `Application ${app.id} (${app.serviceName}) received final approval. Certificate ${certData.id} issued.`,
       });
 
       this.notificationsService.pushApplicationNotification(
@@ -547,6 +585,15 @@ export class ApplicationsService {
         note: remarks || `Stage verified and forwarded to next officer in workflow.`,
         remarks: remarks || `Stage verified and forwarded to next officer in workflow.`,
         status: 'IN_PROGRESS',
+      });
+
+      db.auditLogs.unshift({
+        id: `AUD-${Date.now()}`,
+        action: 'STAGE_APPROVED',
+        actor: actorName,
+        role: 'OFFICER',
+        date: timestamp,
+        details: `Application ${app.id} Stage ${currentStep} approved by ${actorName}. Advanced to Step ${nextStep}.`,
       });
 
       this.notificationsService.pushApplicationNotification(
@@ -654,6 +701,15 @@ export class ApplicationsService {
       date: timestamp,
       actor: actorName,
       note: queryText,
+    });
+
+    db.auditLogs.unshift({
+      id: `AUD-${Date.now()}`,
+      action: 'QUERY_RAISED',
+      actor: actorName,
+      role: 'OFFICER',
+      date: timestamp,
+      details: `Clarification query raised on application ${app.id} by ${actorName}: "${queryText}"`,
     });
 
     this.notificationsService.pushApplicationNotification(

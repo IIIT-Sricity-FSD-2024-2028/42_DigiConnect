@@ -32,3 +32,14 @@ export const apiMarkAllAsRead = () =>
   apiFetch('/notifications/read-all', {
     method: 'PATCH',
   });
+
+/**
+ * Create a new notification.
+ * @param {object} notificationData - { userId, title, message, type, link, ... }
+ */
+export const apiCreateNotification = (notificationData) =>
+  apiFetch('/notifications', {
+    method: 'POST',
+    body: JSON.stringify(notificationData),
+  });
+

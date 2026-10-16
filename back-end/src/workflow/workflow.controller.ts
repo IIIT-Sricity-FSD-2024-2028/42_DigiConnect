@@ -73,7 +73,7 @@ export class WorkflowController {
 
   @Get('audit-logs')
   @UseGuards(RolesGuard)
-  @Roles(Role.SUPER_USER)
+  @Roles(Role.SUPER_USER, Role.CENTRAL_ADMIN, Role.STATE_ADMIN, Role.DEPARTMENT_HEAD)
   @ApiOperation({ summary: 'Get system audit logs' })
   @ApiHeader({ name: 'x-role', description: 'Role of the caller', required: true })
   @ApiResponse({ status: 200, description: 'Audit logs retrieved' })

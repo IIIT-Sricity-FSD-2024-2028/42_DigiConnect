@@ -12,21 +12,41 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequestOtp, apiRegister } from '../../api/authApi';
+import { apiFetch } from '../../api/client';
 import useToast from '../../hooks/useToast';
 import Toast from '../../components/common/Toast';
 
-const STATES = [
-  'Andhra Pradesh',
-  'Telangana',
-  'Tamil Nadu',
-  'Karnataka',
-  'Maharashtra',
-  'Gujarat',
-  'Rajasthan',
-  'Uttar Pradesh',
-  'West Bengal',
-  'Other',
+const FALLBACK_STATES = [
+  { id: 'state_ap', name: 'Andhra Pradesh', code: 'AP' },
+  { id: 'state_ka', name: 'Karnataka', code: 'KA' },
+  { id: 'state_kl', name: 'Kerala', code: 'KL' },
+  { id: 'state_tn', name: 'Tamil Nadu', code: 'TN' },
 ];
+
+const FALLBACK_DISTRICTS = {
+  state_ap: [
+    { id: 'node_tpt', name: 'Tirupati District' },
+    { id: 'node_vsp', name: 'Visakhapatnam District' },
+    { id: 'node_kri', name: 'Krishna District' },
+    { id: 'node_gun', name: 'Guntur District' },
+    { id: 'node_ant', name: 'Anantapur District' },
+  ],
+  state_ka: [
+    { id: 'node_blr', name: 'Bengaluru Urban District' },
+    { id: 'node_mys', name: 'Mysuru District' },
+    { id: 'node_bel', name: 'Belagavi District' },
+  ],
+  state_kl: [
+    { id: 'node_tvm', name: 'Thiruvananthapuram District' },
+    { id: 'node_ekm', name: 'Ernakulam District' },
+    { id: 'node_clt', name: 'Kozhikode District' },
+  ],
+  state_tn: [
+    { id: 'node_chn', name: 'Chennai District' },
+    { id: 'node_cbe', name: 'Coimbatore District' },
+    { id: 'node_mdu', name: 'Madurai District' },
+  ],
+};
 
 const SECURITY_QUESTIONS = [
   "What is your mother's maiden name?",
@@ -76,6 +96,40 @@ export default function RegisterPage() {
   const [simulatedOtp, setSimulatedOtp] = useState('');
   const [otpTimer, setOtpTimer] = useState(30);
   const otpInputsRef = useRef([]);
+
+  // ── Existing Jurisdiction State from Backend ──
+  const [availableStates, setAvailableStates] = useState(FALLBACK_STATES);
+  const [allJurisdictionNodes, setAllJurisdictionNodes] = useState([]);
+  const [districtsForState, setDistrictsForState] = useState([]);
+  const [selectedStateId, setSelectedStateId] = useState('');
+  const [isCustomDistrict, setIsCustomDistrict] = useState(false);
+
+  // Fetch registered states and jurisdiction hierarchy on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadJurisdictions() {
+      try {
+        const [statesRes, nodesRes] = await Promise.all([
+          apiFetch('/geography/states').catch(() => null),
+          apiFetch('/geography/nodes').catch(() => null),
+        ]);
+        if (isMounted) {
+          if (statesRes?.data && Array.isArray(statesRes.data) && statesRes.data.length > 0) {
+            setAvailableStates(statesRes.data);
+          }
+          if (nodesRes?.data && Array.isArray(nodesRes.data) && nodesRes.data.length > 0) {
+            setAllJurisdictionNodes(nodesRes.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load existing jurisdiction records:', err);
+      }
+    }
+    loadJurisdictions();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -130,10 +184,63 @@ export default function RegisterPage() {
     if (formErrors.pincode) setFormErrors((prev) => ({ ...prev, pincode: '' }));
   };
 
-  // District: Letters and spaces only
+  // District: Letters and spaces only (Custom fallback)
   const handleDistrictChange = (e) => {
     let raw = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-    setFormData((prev) => ({ ...prev, district: raw }));
+    setFormData((prev) => ({ ...prev, district: raw, selectedJurisdictionNodeId: '' }));
+    if (formErrors.district) setFormErrors((prev) => ({ ...prev, district: '' }));
+  };
+
+  // State dropdown selection - dynamically filters district nodes
+  const handleStateSelectChange = (e) => {
+    const selectedName = e.target.value;
+    const matchedState = availableStates.find((st) => st.name === selectedName);
+    const stateId = matchedState?.id || '';
+    setSelectedStateId(stateId);
+
+    setFormData((prev) => ({
+      ...prev,
+      state: selectedName,
+      district: '',
+      selectedJurisdictionNodeId: '',
+    }));
+
+    if (formErrors.state) setFormErrors((prev) => ({ ...prev, state: '' }));
+    if (formErrors.district) setFormErrors((prev) => ({ ...prev, district: '' }));
+
+    if (!selectedName || selectedName === 'Other') {
+      setDistrictsForState([]);
+      setIsCustomDistrict(true);
+      return;
+    }
+
+    // Filter existing district nodes belonging to this state
+    let districts = allJurisdictionNodes.filter(
+      (n) => n.stateId === stateId && (n.tierLevel || '').toUpperCase() === 'DISTRICT'
+    );
+    if (districts.length === 0 && FALLBACK_DISTRICTS[stateId]) {
+      districts = FALLBACK_DISTRICTS[stateId];
+    }
+
+    setDistrictsForState(districts);
+    setIsCustomDistrict(districts.length === 0);
+  };
+
+  // District dropdown selection
+  const handleDistrictSelectChange = (e) => {
+    const val = e.target.value;
+    if (val === '__OTHER__') {
+      setIsCustomDistrict(true);
+      setFormData((prev) => ({ ...prev, district: '', selectedJurisdictionNodeId: '' }));
+      return;
+    }
+
+    const matchedNode = districtsForState.find((d) => d.name === val || d.id === val);
+    setFormData((prev) => ({
+      ...prev,
+      district: matchedNode?.name || val,
+      selectedJurisdictionNodeId: matchedNode?.id || '',
+    }));
     if (formErrors.district) setFormErrors((prev) => ({ ...prev, district: '' }));
   };
 
@@ -316,6 +423,8 @@ export default function RegisterPage() {
         phone: formData.phone,
         aadhaar: plainAadhaar,
         jurisdiction: formData.district || formData.state || 'General',
+        selectedJurisdictionNodeId: formData.selectedJurisdictionNodeId || '',
+        stateId: selectedStateId || 'state_ap',
         password: formData.password,
         otp: enteredOtp,
         role: 'CITIZEN',
@@ -332,6 +441,9 @@ export default function RegisterPage() {
         phone: payload.phone,
         role: 'citizen',
         roleKey: 'citizen',
+        jurisdiction: payload.jurisdiction,
+        selectedJurisdictionNodeId: payload.selectedJurisdictionNodeId,
+        stateId: payload.stateId,
       };
 
       login(userSession);
@@ -675,21 +787,22 @@ export default function RegisterPage() {
 
               <div className="form-group">
                 <label className="form-label" htmlFor="state">
-                  State <span className="required">*</span>
+                  State / Jurisdiction <span className="required">*</span>
                 </label>
                 <select
                   id="state"
                   name="state"
                   className="form-input"
                   value={formData.state}
-                  onChange={handleInputChange}
+                  onChange={handleStateSelectChange}
                 >
-                  <option value="">Select state</option>
-                  {STATES.map((st) => (
-                    <option key={st} value={st}>
-                      {st}
+                  <option value="">Select state jurisdiction</option>
+                  {availableStates.map((st) => (
+                    <option key={st.id || st.name} value={st.name}>
+                      {st.name} {st.code ? `(${st.code})` : ''}
                     </option>
                   ))}
+                  <option value="Other">Other State</option>
                 </select>
                 {formErrors.state && (
                   <div style={{ color: 'var(--red-500)', fontSize: '0.8rem', marginTop: '4px' }}>
@@ -703,15 +816,57 @@ export default function RegisterPage() {
                   <label className="form-label" htmlFor="district">
                     District <span className="required">*</span>
                   </label>
-                  <input
-                    type="text"
-                    id="district"
-                    name="district"
-                    className="form-input"
-                    placeholder="Your district"
-                    value={formData.district}
-                    onChange={handleDistrictChange}
-                  />
+                  {!isCustomDistrict && districtsForState.length > 0 ? (
+                    <select
+                      id="district"
+                      name="district"
+                      className="form-input"
+                      value={formData.district}
+                      onChange={handleDistrictSelectChange}
+                      disabled={!formData.state}
+                    >
+                      <option value="">{formData.state ? 'Select district' : 'Select state first'}</option>
+                      {districtsForState.map((d) => (
+                        <option key={d.id || d.name} value={d.name}>
+                          {d.name}
+                        </option>
+                      ))}
+                      <option value="__OTHER__">Other / Unlisted District</option>
+                    </select>
+                  ) : (
+                    <div>
+                      <input
+                        type="text"
+                        id="district"
+                        name="district"
+                        className="form-input"
+                        placeholder={formData.state ? 'Enter district name' : 'Select state first'}
+                        value={formData.district}
+                        onChange={handleDistrictChange}
+                      />
+                      {districtsForState.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCustomDistrict(false);
+                            setFormData((prev) => ({ ...prev, district: '', selectedJurisdictionNodeId: '' }));
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--navy-600)',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            marginTop: '4px',
+                            textDecoration: 'underline',
+                            padding: 0,
+                          }}
+                        >
+                          ← Choose from existing districts
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {formErrors.district && (
                     <div style={{ color: 'var(--red-500)', fontSize: '0.8rem', marginTop: '4px' }}>
                       {formErrors.district}
