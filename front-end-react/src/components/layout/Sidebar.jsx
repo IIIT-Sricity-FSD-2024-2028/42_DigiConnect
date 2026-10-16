@@ -264,6 +264,9 @@ export default function Sidebar({ isOpen = false, onClose }) {
     if (item.to === '/grievance/dashboard') {
       return location.pathname === '/grievance/dashboard';
     }
+    if (item.to === '/grievance/detail') {
+      return location.pathname.startsWith('/grievance/detail');
+    }
     return defaultIsActive;
   };
 
@@ -353,6 +356,7 @@ export default function Sidebar({ isOpen = false, onClose }) {
                 }}
                 className={({ isActive }) => `nav-item ${isItemActive(item, isActive) ? 'active' : ''}`.trim()}
                 data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                title={item.label}
               >
                 {item.icon}
                 <span>{item.label}</span>

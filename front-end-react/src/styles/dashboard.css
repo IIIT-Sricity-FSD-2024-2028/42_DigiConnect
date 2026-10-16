@@ -28,6 +28,7 @@
     overflow-x: hidden;
     z-index: 100;
     transition: transform var(--transition-base);
+    box-sizing: border-box;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -46,6 +47,10 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     min-height: var(--topbar-height);
     flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .sidebar-brand-icon {
@@ -80,6 +85,8 @@
     color: var(--navy-400);
     font-weight: 400;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ── Nav ── */
@@ -89,6 +96,10 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .nav-section-label {
@@ -99,6 +110,13 @@
     color: var(--navy-500);
     padding: var(--space-sm) var(--space-md);
     margin-top: var(--space-md);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .nav-item {
@@ -114,7 +132,21 @@
     transition: all var(--transition-fast);
     position: relative;
     cursor: pointer;
-    white-space: nowrap;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    white-space: normal;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
+}
+
+.nav-item span {
+    min-width: 0;
+    flex: 1 1 auto;
+    word-break: normal;
+    overflow-wrap: break-word;
 }
 
 .nav-item:hover {
@@ -163,6 +195,10 @@
     padding: var(--space-md) var(--space-sm);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .sidebar-user {
@@ -173,6 +209,10 @@
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: background var(--transition-fast);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .sidebar-user:hover {
