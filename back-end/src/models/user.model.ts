@@ -32,4 +32,6 @@ export interface User {
   stateStatus?: string;
   isStateDeactivated?: boolean;
   deactivatedStateName?: string;
+  isSuspended?: boolean;
+  suspendedBy?: string;
 }

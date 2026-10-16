@@ -60,12 +60,19 @@ export default function LoginPage() {
     stateName: '',
   });
 
+  // Suspended officer modal
+  const [suspendedOfficerModal, setSuspendedOfficerModal] = useState({
+    isOpen: false,
+    officerName: '',
+    departmentHeadName: '',
+  });
+
   // ── Context & Router hooks ──
   const { login, logout, isLoggedIn, role, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ── Effect: check URL for redirect due to deactivated state ──
+  // ── Effect: check URL for redirect due to deactivated state or officer suspension ──
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('state_deactivated') === 'true') {
@@ -73,6 +80,13 @@ export default function LoginPage() {
       setDeactivatedModal({
         isOpen: true,
         stateName: params.get('stateName') || 'Your State',
+      });
+    } else if (params.get('officer_suspended') === 'true') {
+      logout();
+      setSuspendedOfficerModal({
+        isOpen: true,
+        officerName: params.get('officerName') || '',
+        departmentHeadName: params.get('deptHeadName') || 'the Department Head',
       });
     }
   }, [location.search]);
@@ -87,6 +101,17 @@ export default function LoginPage() {
         });
         return;
       }
+
+      const isOfficer = (role || '').toLowerCase() === 'officer' || (user?.actualRole || '').toLowerCase() === 'officer';
+      if (isOfficer && (user?.isSuspended || user?.status === 'Suspended' || user?.status === 'Inactive')) {
+        setSuspendedOfficerModal({
+          isOpen: true,
+          officerName: user.name || '',
+          departmentHeadName: user.suspendedBy || 'the Department Head',
+        });
+        return;
+      }
+
       const dest = ROLE_REDIRECT_MAP[role] || '/citizen/dashboard';
       navigate(dest, { replace: true });
     }
@@ -106,6 +131,13 @@ export default function LoginPage() {
   // ── Callback: close deactivated state modal and go to landing page ──
   const handleCloseDeactivatedModal = () => {
     setDeactivatedModal({ isOpen: false, stateName: '' });
+    logout();
+    navigate('/', { replace: true });
+  };
+
+  // ── Callback: close suspended officer modal and go to landing page ──
+  const handleCloseSuspendedOfficerModal = () => {
+    setSuspendedOfficerModal({ isOpen: false, officerName: '', departmentHeadName: '' });
     logout();
     navigate('/', { replace: true });
   };
@@ -131,6 +163,22 @@ export default function LoginPage() {
         setDeactivatedModal({
           isOpen: true,
           stateName: user.deactivatedStateName || user.state || 'Your State',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Check if officer has been suspended / deactivated by department head
+      const isSuspendedOfficer =
+        (user?.role === 'officer' || (user?.backendRole || '').toLowerCase() === 'officer') &&
+        (user?.isSuspended === true || user?.status === 'Suspended' || user?.status === 'Inactive');
+
+      if (isSuspendedOfficer) {
+        logout();
+        setSuspendedOfficerModal({
+          isOpen: true,
+          officerName: user.name || '',
+          departmentHeadName: user.suspendedBy || 'the Department Head',
         });
         setLoading(false);
         return;
@@ -725,6 +773,85 @@ export default function LoginPage() {
             }}
           >
             Please go back to the landing page or contact the Central Administration helpdesk for assistance.
+          </div>
+        </div>
+      </Modal>
+
+      {/* Suspended Officer Modal */}
+      <Modal
+        isOpen={suspendedOfficerModal.isOpen}
+        onClose={handleCloseSuspendedOfficerModal}
+        title="Officer Account Suspended"
+        maxWidth="520px"
+        showCloseButton={false}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleCloseSuspendedOfficerModal}
+              style={{ minWidth: '200px', fontWeight: 600, padding: '10px 20px' }}
+            >
+              Go Back to Landing Page
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 16px',
+              borderRadius: '8px',
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fef3c7',
+              color: '#92400e',
+            }}
+          >
+            <svg
+              style={{ width: '24px', height: '24px', flexShrink: 0 }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                Account Suspended
+              </div>
+              <div style={{ fontSize: '0.825rem', color: '#b45309', marginTop: '2px' }}>
+                Officer portal permissions temporarily revoked.
+              </div>
+            </div>
+          </div>
+
+          <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--slate-800)' }}>
+            You have been suspended by the Department Head, <strong>{suspendedOfficerModal.departmentHeadName}</strong>.
+          </p>
+
+          <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--slate-600)' }}>
+            Your field officer account status has been set to <strong>Suspended</strong> by your Department Head (<strong>{suspendedOfficerModal.departmentHeadName}</strong>). Review queues, query handling, and certificate issuance access are currently inactive.
+          </p>
+
+          <div
+            style={{
+              padding: '12px 14px',
+              backgroundColor: 'var(--slate-50)',
+              borderRadius: '6px',
+              border: '1px solid var(--slate-200)',
+              fontSize: '0.825rem',
+              color: 'var(--slate-600)',
+            }}
+          >
+            Please go back to the landing page or contact your Department Secretariat if you believe this suspension is in error.
           </div>
         </div>
       </Modal>

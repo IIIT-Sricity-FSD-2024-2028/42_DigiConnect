@@ -243,25 +243,55 @@ export class UsersService {
       ? (userState.status || '').toUpperCase() === 'INACTIVE'
       : false;
 
+    // Check if officer is suspended / deactivated by department head
+    const roleLower = (user.role || '').toLowerCase();
+    const isOfficer = roleLower === 'officer' || (user.backendRole || '').toLowerCase() === 'officer';
+    const officerRecord = isOfficer ? db.officers.find(o => o.id === user.id) : null;
+    const currentStatus = officerRecord?.status || user.status;
+    const isSuspended = isOfficer && (currentStatus === 'Suspended' || currentStatus === 'Inactive');
+
+    let suspendedBy = (officerRecord as any)?.suspendedBy || (user as any).suspendedBy;
+    if (isSuspended && !suspendedBy) {
+      const deptId = officerRecord?.departmentId || user.departmentId;
+      const deptHead = db.users.find(
+        (u) =>
+          (u.role === 'department_head' || (u.backendRole && (u.backendRole as string).toLowerCase() === 'department_head')) &&
+          u.departmentId === deptId,
+      );
+      suspendedBy = deptHead ? deptHead.name : 'Department Head';
+    }
+
     const enrichedUser: User = {
       ...user,
+      status: currentStatus,
       stateId: userState?.id || user.stateId,
       state: userState?.name || user.state,
       stateStatus: userState ? userState.status : 'ACTIVE',
       isStateDeactivated,
       deactivatedStateName: userState?.name || user.state,
+      isSuspended,
+      suspendedBy: isSuspended ? suspendedBy : undefined,
     };
+
+    let auditAction = 'User Login';
+    let auditDetails = `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`;
+
+    if (isSuspended) {
+      auditAction = 'Officer Login (Suspended)';
+      auditDetails = `Officer ${user.name} (${user.email}) logged in, but is currently suspended by ${suspendedBy}.`;
+    } else if (isStateDeactivated) {
+      auditAction = 'User Login (State Deactivated)';
+      auditDetails = `User ${user.name} (${user.email}) logged in, but State Government '${userState?.name}' is currently deactivated.`;
+    }
 
     // Automatic Server-Side Audit Log for Login
     db.auditLogs.unshift({
       id: `LOG-${Math.floor(Math.random() * 90000 + 10000)}`,
-      action: isStateDeactivated ? 'User Login (State Deactivated)' : 'User Login',
+      action: auditAction,
       actor: user.email,
       role: user.role,
       date: new Date().toISOString(),
-      details: isStateDeactivated
-        ? `User ${user.name} (${user.email}) logged in, but State Government '${userState?.name}' is currently deactivated.`
-        : `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`,
+      details: auditDetails,
       ip: '127.0.0.1',
     });
 

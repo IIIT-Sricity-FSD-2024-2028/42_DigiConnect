@@ -71,6 +71,17 @@ export default function ProtectedRoute({ allowedRoles = [], children }) {
     );
   }
 
+  // ── Guard 1c: Suspended Officer Guard ──
+  const isOfficer = (role || '').toLowerCase() === 'officer' || (user?.actualRole || '').toLowerCase() === 'officer';
+  if (isOfficer && (user?.isSuspended || user?.status === 'Suspended' || user?.status === 'Inactive')) {
+    return (
+      <Navigate
+        to={`/login?officer_suspended=true&deptHeadName=${encodeURIComponent(user.suspendedBy || 'the Department Head')}&officerName=${encodeURIComponent(user.name || '')}`}
+        replace
+      />
+    );
+  }
+
   // ── Guard 2: Authenticated but wrong role → redirect to their own dashboard ──
   if (allowedRoles.length > 0) {
     // Normalize role for comparison (handle aliases)

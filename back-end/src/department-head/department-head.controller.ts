@@ -98,8 +98,9 @@ export class DepartmentHeadController {
   updateOfficerStatus(
     @Param('id') id: string,
     @Body() dto: UpdateOfficerStatusDto,
+    @Headers('x-user-id') actorId?: string,
   ) {
-    const updated = this.deptHeadService.updateOfficerStatus(id, dto.status);
+    const updated = this.deptHeadService.updateOfficerStatus(id, dto.status, actorId);
     return {
       success: true,
       message: `Officer '${updated.name}' status updated to '${dto.status}'.`,

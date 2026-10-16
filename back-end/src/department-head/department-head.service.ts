@@ -184,6 +184,7 @@ export class DepartmentHeadService {
   updateOfficerStatus(
     id: string,
     status: 'Active' | 'Suspended' | 'Inactive',
+    actorId?: string,
   ): OfficerUser {
     const officer = db.officers.find((o) => o.id === id);
     if (!officer) {
@@ -191,18 +192,38 @@ export class DepartmentHeadService {
     }
     officer.status = status;
 
+    // Resolve Department Head name
+    const deptHead = db.users.find(
+      (u) =>
+        (actorId && u.id === actorId) ||
+        ((u.role === 'department_head' || (u.backendRole as string) === Role.DEPARTMENT_HEAD) &&
+          u.departmentId === officer.departmentId),
+    );
+    const deptHeadName = deptHead ? deptHead.name : 'Department Head';
+
+    if (status === 'Suspended' || status === 'Inactive') {
+      (officer as any).suspendedBy = deptHeadName;
+    } else {
+      delete (officer as any).suspendedBy;
+    }
+
     const user = db.users.find((u) => u.id === id);
     if (user) {
       user.status = status;
+      if (status === 'Suspended' || status === 'Inactive') {
+        (user as any).suspendedBy = deptHeadName;
+      } else {
+        delete (user as any).suspendedBy;
+      }
     }
 
     db.auditLogs.push({
       id: `AUD-${Date.now()}`,
       action: `OFFICER_${status.toUpperCase()}`,
-      actor: 'Department Head',
+      actor: deptHeadName,
       role: 'DEPARTMENT_HEAD',
       date: new Date().toISOString(),
-      details: `Officer '${officer.name}' status set to ${status}.`,
+      details: `Officer '${officer.name}' status set to ${status} by ${deptHeadName}.`,
     });
 
     return officer;
