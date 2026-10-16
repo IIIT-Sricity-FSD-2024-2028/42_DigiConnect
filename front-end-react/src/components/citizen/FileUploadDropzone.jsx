@@ -23,9 +23,20 @@ export default function FileUploadDropzone({
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
 
-  // Validates file size (<5MB) and triggers parent callback
+  // Validates file size (<5MB) and allowed file types (.pdf, .jpg, .jpeg, .png)
   const validateAndSelect = (selectedFile) => {
     if (!selectedFile) return;
+
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const fileName = (selectedFile.name || '').toLowerCase();
+    const hasValidExt = allowedExtensions.some((ext) => fileName.endsWith(ext));
+    const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    const hasValidMime = selectedFile.type ? allowedMimes.includes(selectedFile.type.toLowerCase()) : hasValidExt;
+
+    if (!hasValidExt && !hasValidMime) {
+      setError('Invalid file type. Only PDF, JPG, and PNG files are accepted.');
+      return;
+    }
 
     const maxBytes = maxSizeMB * 1024 * 1024;
     if (selectedFile.size > maxBytes) {
@@ -128,6 +139,7 @@ export default function FileUploadDropzone({
               style={{ color: 'var(--red-600)', padding: '4px 8px' }}
               onClick={(e) => {
                 e.stopPropagation();
+                setError('');
                 onFileSelect(null);
               }}
             >
@@ -152,7 +164,7 @@ export default function FileUploadDropzone({
 
       {/* Validation Error */}
       {error && (
-        <div style={{ color: 'var(--red-600)', fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
+        <div className="field-error" style={{ color: 'var(--red-600)', fontSize: '0.75rem', marginTop: '6px', fontWeight: 600 }}>
           {error}
         </div>
       )}

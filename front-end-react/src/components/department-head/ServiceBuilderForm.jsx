@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
+import ConfirmModal from '../common/ConfirmModal';
 
 // Available Dynamic Field Types supported by the backend DTO
 const FIELD_TYPES = [
@@ -149,6 +150,16 @@ export default function ServiceBuilderForm({
   const [newStepCanQuery, setNewStepCanQuery] = useState(true);
   const [newStepIsFinal, setNewStepIsFinal] = useState(false);
 
+  // Validation & Modal error states
+  const [fieldModalError, setFieldModalError] = useState('');
+  const [docModalError, setDocModalError] = useState('');
+  const [stepModalError, setStepModalError] = useState('');
+  const [formErrors, setFormErrors] = useState({});
+
+  // Publishing confirmation state
+  const [confirmPublishOpen, setConfirmPublishOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
+
   // ── 4. Hook: Sync with initialData if editing an existing service ──
   useEffect(() => {
     if (initialData) {
@@ -188,6 +199,13 @@ export default function ServiceBuilderForm({
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
   };
 
   const handleOpenAddField = () => {
@@ -195,14 +213,16 @@ export default function ServiceBuilderForm({
     setNewFieldType('TEXT');
     setNewFieldRequired(true);
     setNewFieldOptions('');
+    setFieldModalError('');
     setIsFieldModalOpen(true);
   };
 
   const handleConfirmAddField = () => {
     if (!newFieldLabel.trim()) {
-      alert('Field label is required.');
+      setFieldModalError('Field label is required.');
       return;
     }
+    setFieldModalError('');
 
     const newField = {
       id: `field_${Date.now()}`,
@@ -236,14 +256,16 @@ export default function ServiceBuilderForm({
     setNewDocName('');
     setNewDocExts('pdf, jpg, png');
     setNewDocRequired(true);
+    setDocModalError('');
     setIsDocModalOpen(true);
   };
 
   const handleConfirmAddDoc = () => {
     if (!newDocName.trim()) {
-      alert('Document name is required.');
+      setDocModalError('Document name is required.');
       return;
     }
+    setDocModalError('');
 
     const exts = newDocExts
       .split(',')
@@ -276,14 +298,16 @@ export default function ServiceBuilderForm({
     setNewStepCanReject(true);
     setNewStepCanQuery(true);
     setNewStepIsFinal(false);
+    setStepModalError('');
     setIsStepModalOpen(true);
   };
 
   const handleConfirmAddStep = () => {
     if (!newStepName.trim()) {
-      alert('Stage name is required.');
+      setStepModalError('Stage name is required.');
       return;
     }
+    setStepModalError('');
 
     const newStep = {
       stepNumber: workflowSteps.length + 1,
@@ -296,6 +320,13 @@ export default function ServiceBuilderForm({
     };
 
     setWorkflowSteps((prev) => [...prev, newStep]);
+    if (formErrors.workflowSteps) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.workflowSteps;
+        return copy;
+      });
+    }
     setIsStepModalOpen(false);
   };
 
@@ -314,15 +345,22 @@ export default function ServiceBuilderForm({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.code.trim()) {
-      alert('Service Name and Service Code are mandatory.');
-      return;
+    const errors = {};
+    if (!formData.name?.trim()) {
+      errors.name = 'Service Name is required.';
+    }
+    if (!formData.code?.trim()) {
+      errors.code = 'Service Code is required.';
+    }
+    if (workflowSteps.length === 0) {
+      errors.workflowSteps = 'Please add at least one workflow approval stage.';
     }
 
-    if (workflowSteps.length === 0) {
-      alert('Please add at least one workflow approval stage.');
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+    setFormErrors({});
 
     // Prepare complete payload matching CreateDynamicServiceDto
     const payload = {
@@ -338,9 +376,15 @@ export default function ServiceBuilderForm({
       workflowSteps,
     };
 
-    if (onSubmit) {
-      onSubmit(payload);
+    setPendingPayload(payload);
+    setConfirmPublishOpen(true);
+  };
+
+  const handleFinalConfirmPublish = () => {
+    if (pendingPayload && onSubmit) {
+      onSubmit(pendingPayload);
     }
+    setConfirmPublishOpen(false);
   };
 
   return (
@@ -363,6 +407,7 @@ export default function ServiceBuilderForm({
               onChange={handleInputChange}
               required
             />
+            {formErrors.name && <div className="field-error">{formErrors.name}</div>}
           </div>
           <div className="form-group">
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvCode">Service Code *</label>
@@ -377,6 +422,7 @@ export default function ServiceBuilderForm({
               onChange={handleInputChange}
               required
             />
+            {formErrors.code && <div className="field-error">{formErrors.code}</div>}
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="srvDesc">Service Description</label>
@@ -605,6 +651,12 @@ export default function ServiceBuilderForm({
           </button>
         </div>
 
+        {formErrors.workflowSteps && (
+          <div className="field-error" style={{ marginBottom: '14px', fontSize: '0.8125rem' }}>
+            {formErrors.workflowSteps}
+          </div>
+        )}
+
         {/* Visual Sequence Flow Bar */}
         <div
           style={{
@@ -760,8 +812,12 @@ export default function ServiceBuilderForm({
             className="form-input"
             placeholder="e.g. Annual Family Income"
             value={newFieldLabel}
-            onChange={(e) => setNewFieldLabel(e.target.value)}
+            onChange={(e) => {
+              setNewFieldLabel(e.target.value);
+              if (fieldModalError) setFieldModalError('');
+            }}
           />
+          {fieldModalError && <div className="field-error">{fieldModalError}</div>}
         </div>
         <div className="form-group" style={{ marginBottom: '14px' }}>
           <label className="form-label" style={{ fontWeight: 700 }}>Field Type *</label>
@@ -823,8 +879,12 @@ export default function ServiceBuilderForm({
             className="form-input"
             placeholder="e.g. Aadhaar Card, Electricity Bill"
             value={newDocName}
-            onChange={(e) => setNewDocName(e.target.value)}
+            onChange={(e) => {
+              setNewDocName(e.target.value);
+              if (docModalError) setDocModalError('');
+            }}
           />
+          {docModalError && <div className="field-error">{docModalError}</div>}
         </div>
         <div className="form-group" style={{ marginBottom: '14px' }}>
           <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newDocExts">Allowed Extensions (Comma-separated)</label>
@@ -873,8 +933,12 @@ export default function ServiceBuilderForm({
             className="form-input"
             placeholder="e.g. Mandal Revenue Officer Scrutiny"
             value={newStepName}
-            onChange={(e) => setNewStepName(e.target.value)}
+            onChange={(e) => {
+              setNewStepName(e.target.value);
+              if (stepModalError) setStepModalError('');
+            }}
           />
+          {stepModalError && <div className="field-error">{stepModalError}</div>}
         </div>
         <div className="form-group" style={{ marginBottom: '14px' }}>
           <label className="form-label" style={{ fontWeight: 700 }} htmlFor="newStepDesignation">Required Officer Designation *</label>
@@ -953,6 +1017,18 @@ export default function ServiceBuilderForm({
           </label>
         </div>
       </Modal>
+
+      {/* ── Accessible Confirmation Dialog before Publishing ── */}
+      <ConfirmModal
+        isOpen={confirmPublishOpen}
+        onClose={() => setConfirmPublishOpen(false)}
+        onConfirm={handleFinalConfirmPublish}
+        title={initialData ? 'Confirm Configuration Update' : 'Confirm Service Publishing'}
+        message={`Are you sure you want to ${initialData ? 'update configuration for' : 'publish'} "${pendingPayload?.name || formData.name}"? The defined routing workflow (${workflowSteps.length} stages) will take effect.`}
+        confirmText={initialData ? 'Update Service' : 'Publish Service'}
+        confirmVariant="primary"
+        loading={loading}
+      />
     </form>
   );
 }

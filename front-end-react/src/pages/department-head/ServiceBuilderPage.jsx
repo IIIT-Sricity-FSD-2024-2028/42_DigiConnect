@@ -14,6 +14,8 @@ import {
   apiUpdateService,
 } from '../../api/departmentHeadApi';
 import ServiceBuilderForm from '../../components/department-head/ServiceBuilderForm';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 export default function ServiceBuilderPage() {
   const { user } = useAuth();
@@ -29,6 +31,7 @@ export default function ServiceBuilderPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState('');
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     let isMounted = true;
@@ -78,15 +81,19 @@ export default function ServiceBuilderPage() {
     try {
       if (editId) {
         await apiUpdateService(editId, payload);
-        alert(`Service "${payload.name}" updated successfully!`);
+        showToast(`Service "${payload.name}" updated successfully!`, 'success');
       } else {
         await apiCreateService(payload);
-        alert(`Service "${payload.name}" created and published successfully!`);
+        showToast(`Service "${payload.name}" created and published successfully!`, 'success');
       }
-      navigate('/department-head/services');
+      setTimeout(() => {
+        navigate('/department-head/services');
+      }, 1200);
     } catch (err) {
       console.error('Error saving dynamic service:', err);
-      setError(err.message || 'Failed to publish dynamic service. Please check your inputs.');
+      const msg = err.message || 'Failed to publish dynamic service. Please check your inputs.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -158,6 +165,9 @@ export default function ServiceBuilderPage() {
           loading={loading}
         />
       )}
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }

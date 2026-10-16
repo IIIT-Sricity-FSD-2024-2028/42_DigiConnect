@@ -12,6 +12,9 @@ import {
   apiDeleteDesignation,
 } from '../../api/departmentHeadApi';
 import Modal from '../../components/common/Modal';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 export default function DesignationsPage() {
   const { user } = useAuth();
@@ -22,12 +25,20 @@ export default function DesignationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Modal State
+  // Toast feedback state
+  const { toast, showToast, hideToast } = useToast();
+
+  // Create Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
+  const [deleting, setDeleting] = useState(false);
 
   const fetchDesignations = async () => {
     setLoading(true);
@@ -49,10 +60,16 @@ export default function DesignationsPage() {
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newCode.trim()) {
-      alert('Designation title and code are required.');
+    const errors = {};
+    if (!newTitle.trim()) errors.title = 'Designation title is required.';
+    if (!newCode.trim()) errors.code = 'Role code is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      showToast('Designation title and code are required.', 'warning');
       return;
     }
+    setFieldErrors({});
 
     setSubmitting(true);
     try {
@@ -62,29 +79,35 @@ export default function DesignationsPage() {
         code: newCode.trim().toUpperCase(),
         description: newDesc.trim() || `${newTitle.trim()} for ${departmentName}`,
       });
-      alert(`Designation "${newTitle}" created successfully!`);
+      showToast(`Designation "${newTitle}" created successfully!`, 'success');
       setIsModalOpen(false);
       setNewTitle('');
       setNewCode('');
       setNewDesc('');
       fetchDesignations();
     } catch (err) {
-      alert(`Error creating designation: ${err.message}`);
+      showToast(err.message || 'Error creating designation', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to delete designation "${title}"?`)) {
-      return;
-    }
+  const handleDelete = (id, title) => {
+    setDeleteTarget({ id, title });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await apiDeleteDesignation(id);
-      setDesignations((prev) => prev.filter((d) => d.id !== id));
-      alert(`Designation "${title}" deleted.`);
+      await apiDeleteDesignation(deleteTarget.id);
+      setDesignations((prev) => prev.filter((d) => d.id !== deleteTarget.id));
+      showToast(`Designation "${deleteTarget.title}" deleted.`, 'success');
+      setDeleteTarget(null);
     } catch (err) {
-      alert(`Failed to delete designation: ${err.message}`);
+      showToast(err.message || 'Failed to delete designation', 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -212,7 +235,7 @@ export default function DesignationsPage() {
         title="👔 Add Department Designation"
         footer={null}
       >
-        <form onSubmit={handleCreateSubmit}>
+        <form onSubmit={handleCreateSubmit} noValidate>
           <div className="form-group" style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: 700 }}>Designation Title *</label>
             <input
@@ -220,9 +243,13 @@ export default function DesignationsPage() {
               className="form-input"
               placeholder="e.g. Village Revenue Officer (VRO)"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={(e) => {
+                setNewTitle(e.target.value);
+                if (fieldErrors.title) setFieldErrors((prev) => ({ ...prev, title: '' }));
+              }}
               required
             />
+            {fieldErrors.title && <div className="field-error">{fieldErrors.title}</div>}
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: 700 }}>Role Code *</label>
@@ -232,9 +259,13 @@ export default function DesignationsPage() {
               placeholder="e.g. VRO"
               style={{ textTransform: 'uppercase' }}
               value={newCode}
-              onChange={(e) => setNewCode(e.target.value)}
+              onChange={(e) => {
+                setNewCode(e.target.value);
+                if (fieldErrors.code) setFieldErrors((prev) => ({ ...prev, code: '' }));
+              }}
               required
             />
+            {fieldErrors.code && <div className="field-error">{fieldErrors.code}</div>}
           </div>
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label className="form-label" style={{ fontWeight: 700 }}>Description</label>
@@ -256,6 +287,21 @@ export default function DesignationsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Accessible Confirmation Modal for Designation Deletion */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Designation"
+        message={`Are you sure you want to delete designation "${deleteTarget?.title}"? Officers assigned to this designation will be unlinked.`}
+        confirmText={deleting ? 'Deleting...' : 'Delete Designation'}
+        confirmVariant="danger"
+        loading={deleting}
+      />
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }

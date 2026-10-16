@@ -15,6 +15,8 @@ import FormStepper from '../../components/citizen/FormStepper';
 import DynamicField from '../../components/citizen/DynamicField';
 import FileUploadDropzone from '../../components/citizen/FileUploadDropzone';
 import SearchBar from '../../components/common/SearchBar';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 const WIZARD_STEPS = [
   'Personal Details',
@@ -338,6 +340,12 @@ export default function ApplyServicePage() {
   // Success state
   const [submittedAppId, setSubmittedAppId] = useState(null);
 
+  // Unified Toast & Validation Feedback States
+  const { toast, showToast, hideToast } = useToast();
+  const [personalErrors, setPersonalErrors] = useState({});
+  const [docErrors, setDocErrors] = useState({});
+  const [declError, setDeclError] = useState('');
+
   // ── 3. Effects: Fetch services from backend & auto-fill citizen details ──
   useEffect(() => {
     async function loadServices() {
@@ -509,6 +517,13 @@ export default function ApplyServicePage() {
   const handleApplicantInfoChange = (e) => {
     const { name, value } = e.target;
     setApplicantInfo((prev) => ({ ...prev, [name]: value }));
+    if (personalErrors[name]) {
+      setPersonalErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
   };
 
   const handleDynamicFieldChange = (fieldKey, value) => {
@@ -517,11 +532,18 @@ export default function ApplyServicePage() {
 
   const handleStep1Continue = (e) => {
     e.preventDefault();
-    // Validate required personal fields
-    if (!applicantInfo.firstName || !applicantInfo.aadhaar || !applicantInfo.mobile || !applicantInfo.dob) {
-      alert('Please fill all mandatory personal information fields marked with *');
+    const errors = {};
+    if (!applicantInfo.firstName?.trim()) errors.firstName = 'First Name is required.';
+    if (!applicantInfo.aadhaar?.trim()) errors.aadhaar = 'Aadhaar Number is required.';
+    if (!applicantInfo.mobile?.trim()) errors.mobile = 'Mobile Number is required.';
+    if (!applicantInfo.dob?.trim()) errors.dob = 'Date of Birth is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setPersonalErrors(errors);
+      showToast('Please fill all mandatory personal information fields marked with *', 'warning');
       return;
     }
+    setPersonalErrors({});
     setCurrentStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -537,9 +559,27 @@ export default function ApplyServicePage() {
       }
       return copy;
     });
+    if (file && docErrors[docName]) {
+      setDocErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[docName];
+        return copy;
+      });
+    }
   };
 
   const handleStep2Continue = () => {
+    const missingDocs = requiredDocs.filter((doc) => !uploadedFiles[doc]);
+    if (missingDocs.length > 0) {
+      const errMap = {};
+      missingDocs.forEach((doc) => {
+        errMap[doc] = `${doc} is mandatory. Please upload a document.`;
+      });
+      setDocErrors(errMap);
+      showToast('Please upload all required supporting documents before proceeding.', 'warning');
+      return;
+    }
+    setDocErrors({});
     setCurrentStep(3);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -547,15 +587,34 @@ export default function ApplyServicePage() {
   // ── 7. Callbacks: Step 3 (Declaration) ──
   const handleDeclarationChange = (declKey) => {
     setDeclarations((prev) => ({ ...prev, [declKey]: !prev[declKey] }));
+    setDeclError('');
   };
 
   const handleStep3Continue = () => {
     if (!declarations.decl1 || !declarations.decl2 || !declarations.decl3) {
-      alert('Please accept all declaration conditions before proceeding to payment.');
+      setDeclError('Please accept all declaration conditions before proceeding to payment.');
+      showToast('Please accept all declaration conditions before proceeding to payment.', 'warning');
       return;
     }
+    setDeclError('');
     setCurrentStep(4);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ── Save Draft Helper ──
+  const handleSaveDraft = () => {
+    try {
+      const draft = {
+        serviceId: selectedService?.id,
+        applicantInfo,
+        dynamicAnswers,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`digiconnect_draft_${selectedService?.id || 'service'}`, JSON.stringify(draft));
+      showToast('Draft application saved successfully!', 'success');
+    } catch {
+      showToast('Failed to save draft application.', 'error');
+    }
   };
 
   // ── 8. Callbacks: Step 4 (Payment & Final Submission) ──
@@ -634,6 +693,7 @@ export default function ApplyServicePage() {
       const res = await apiSubmitApplication(payload);
       const createdApp = res?.data || res;
       setSubmittedAppId(createdApp?.id || 'APP-' + Math.floor(10000 + Math.random() * 90000));
+      showToast('Application submitted successfully!', 'success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       setSubmitError(err.message || 'Failed to submit application. Please check details and try again.');
@@ -702,6 +762,7 @@ export default function ApplyServicePage() {
   if (submittedAppId) {
     return (
       <div style={{ padding: 'var(--space-xl) var(--space-lg)' }}>
+        <Toast toast={toast} onClose={hideToast} />
         <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto' }}>
           {/* Green check icon */}
           <div
@@ -781,6 +842,7 @@ export default function ApplyServicePage() {
   if (!selectedService) {
     return (
       <div id="stepServiceSelect">
+        <Toast toast={toast} onClose={hideToast} />
         {/* Page Header */}
         <div className="page-header" style={{ marginBottom: 'var(--space-xl)' }}>
           <div>
@@ -939,9 +1001,14 @@ export default function ApplyServicePage() {
           </div>
         </div>
 
-        <button type="button" className="btn btn-outline btn-sm" onClick={handleResetService}>
-          ← Choose Different Service
-        </button>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-outline btn-sm" onClick={handleSaveDraft} title="Save current form draft">
+            💾 Save Draft
+          </button>
+          <button type="button" className="btn btn-outline btn-sm" onClick={handleResetService}>
+            ← Choose Different Service
+          </button>
+        </div>
       </div>
 
       {/* Multi-Step Wizard Progress Stepper */}
@@ -986,6 +1053,7 @@ export default function ApplyServicePage() {
                     onChange={handleApplicantInfoChange}
                     required
                   />
+                  {personalErrors.firstName && <div className="field-error">{personalErrors.firstName}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Last Name <span className="required">*</span></label>
@@ -997,6 +1065,7 @@ export default function ApplyServicePage() {
                     onChange={handleApplicantInfoChange}
                     required
                   />
+                  {personalErrors.lastName && <div className="field-error">{personalErrors.lastName}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Aadhaar Number <span className="required">*</span></label>
@@ -1010,6 +1079,7 @@ export default function ApplyServicePage() {
                     onChange={handleApplicantInfoChange}
                     required
                   />
+                  {personalErrors.aadhaar && <div className="field-error">{personalErrors.aadhaar}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Date of Birth <span className="required">*</span></label>
@@ -1021,6 +1091,7 @@ export default function ApplyServicePage() {
                     onChange={handleApplicantInfoChange}
                     required
                   />
+                  {personalErrors.dob && <div className="field-error">{personalErrors.dob}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Gender <span className="required">*</span></label>
@@ -1058,6 +1129,7 @@ export default function ApplyServicePage() {
                     onChange={handleApplicantInfoChange}
                     required
                   />
+                  {personalErrors.mobile && <div className="field-error">{personalErrors.mobile}</div>}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Email Address</label>
@@ -1268,13 +1340,19 @@ export default function ApplyServicePage() {
             </div>
             <div className="form-section-body">
               {requiredDocs.map((docLabel) => (
-                <FileUploadDropzone
-                  key={docLabel}
-                  label={docLabel}
-                  required={true}
-                  file={uploadedFiles[docLabel] || null}
-                  onFileSelect={(file) => handleFileUpload(docLabel, file)}
-                />
+                <div key={docLabel}>
+                  <FileUploadDropzone
+                    label={docLabel}
+                    required={true}
+                    file={uploadedFiles[docLabel] || null}
+                    onFileSelect={(file) => handleFileUpload(docLabel, file)}
+                  />
+                  {docErrors[docLabel] && (
+                    <div className="field-error" style={{ marginTop: '-8px', marginBottom: 'var(--space-md)' }}>
+                      {docErrors[docLabel]}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -1454,6 +1532,11 @@ export default function ApplyServicePage() {
                   </span>
                 </label>
               </div>
+              {declError && (
+                <div className="field-error" style={{ marginTop: 'var(--space-md)', fontSize: '0.8125rem' }}>
+                  {declError}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1758,6 +1841,9 @@ export default function ApplyServicePage() {
           </div>
         </div>
       )}
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }

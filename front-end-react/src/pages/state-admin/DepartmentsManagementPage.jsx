@@ -27,11 +27,16 @@ import {
 import Modal from '../../components/common/Modal';
 // Component reuse: StatusBadge from common components
 import StatusBadge from '../../components/common/StatusBadge';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 export default function DepartmentsManagementPage() {
   // Context: AuthContext provides current admin session
   const { user } = useAuth();
   const stateId = user?.stateId || 'state_ap';
+
+  // Toast feedback state
+  const { toast, showToast, hideToast } = useToast();
 
   // State: departments list, loading, error
   const [departments, setDepartments] = useState([]);
@@ -41,6 +46,10 @@ export default function DepartmentsManagementPage() {
   // State / Controlled inputs: search query and status filter
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Inline validation error states
+  const [createFieldErrors, setCreateFieldErrors] = useState({});
+  const [headFieldErrors, setHeadFieldErrors] = useState({});
 
   // State: Create Department Modal & Controlled Form state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -89,20 +98,40 @@ export default function DepartmentsManagementPage() {
   const handleCreateInputChange = (e) => {
     const { name, value } = e.target;
     setCreateForm((prev) => ({ ...prev, [name]: value }));
+    if (createFieldErrors[name]) {
+      setCreateFieldErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
   };
 
   const handleHeadInputChange = (e) => {
     const { name, value } = e.target;
     setHeadForm((prev) => ({ ...prev, [name]: value }));
+    if (headFieldErrors[name]) {
+      setHeadFieldErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
   };
 
   // ── Forms / Events: handle Create Department submit ──
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!createForm.name.trim() || !createForm.code.trim()) {
+    const errors = {};
+    if (!createForm.name.trim()) errors.name = 'Department name is required.';
+    if (!createForm.code.trim()) errors.code = 'Department code is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setCreateFieldErrors(errors);
       setCreateError('Department name and code are required.');
       return;
     }
+    setCreateFieldErrors({});
 
     try {
       setCreating(true);
@@ -120,6 +149,8 @@ export default function DepartmentsManagementPage() {
       // API Call: create department & appoint head in backend
       await apiCreateDepartment(payload);
 
+      showToast(`Department "${payload.name}" created successfully!`, 'success');
+
       // Close modal, reset form, and refresh department list
       setIsCreateModalOpen(false);
       setCreateForm({
@@ -131,7 +162,9 @@ export default function DepartmentsManagementPage() {
       });
       await fetchDepartments();
     } catch (err) {
-      setCreateError(err.message || 'Failed to create department.');
+      const msg = err.message || 'Failed to create department.';
+      setCreateError(msg);
+      showToast(msg, 'error');
     } finally {
       setCreating(false);
     }
@@ -144,6 +177,7 @@ export default function DepartmentsManagementPage() {
       name: dept.headName || '',
       email: dept.headEmail || '',
     });
+    setHeadFieldErrors({});
     setHeadError(null);
     setIsHeadModalOpen(true);
   };
@@ -151,10 +185,16 @@ export default function DepartmentsManagementPage() {
   // ── Forms / Events: handle Appoint IAS Head submit ──
   const handleAppointHeadSubmit = async (e) => {
     e.preventDefault();
-    if (!headForm.name.trim() || !headForm.email.trim()) {
+    const errors = {};
+    if (!headForm.name.trim()) errors.name = 'IAS Department Head name is required.';
+    if (!headForm.email.trim()) errors.email = 'Official email is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setHeadFieldErrors(errors);
       setHeadError('Both IAS Department Head name and official email are required.');
       return;
     }
+    setHeadFieldErrors({});
 
     try {
       setAppointingHead(true);
@@ -166,11 +206,15 @@ export default function DepartmentsManagementPage() {
         email: headForm.email.trim(),
       });
 
+      showToast(`Department Head for ${selectedDeptForHead.name} appointed successfully!`, 'success');
+
       // Close modal and refresh list
       setIsHeadModalOpen(false);
       await fetchDepartments();
     } catch (err) {
-      setHeadError(err.message || 'Failed to appoint Department Head.');
+      const msg = err.message || 'Failed to appoint Department Head.';
+      setHeadError(msg);
+      showToast(msg, 'error');
     } finally {
       setAppointingHead(false);
     }
@@ -182,9 +226,10 @@ export default function DepartmentsManagementPage() {
     try {
       // API Call: patch department status
       await apiUpdateDepartmentStatus(dept.id, nextStatus);
+      showToast(`Department "${dept.name}" status updated to ${nextStatus}.`, 'success');
       await fetchDepartments();
     } catch (err) {
-      alert(`Could not update status: ${err.message}`);
+      showToast(err.message || `Could not update status: ${err.message}`, 'error');
     }
   };
 
@@ -524,6 +569,7 @@ export default function DepartmentsManagementPage() {
               required
               style={{ width: '100%', boxSizing: 'border-box' }}
             />
+            {createFieldErrors.name && <div className="field-error">{createFieldErrors.name}</div>}
           </div>
 
           {/* Controlled input: Department Code */}
@@ -541,6 +587,7 @@ export default function DepartmentsManagementPage() {
               required
               style={{ width: '100%', boxSizing: 'border-box', textTransform: 'uppercase' }}
             />
+            {createFieldErrors.code && <div className="field-error">{createFieldErrors.code}</div>}
           </div>
 
           {/* Controlled input: Description */}
@@ -669,6 +716,7 @@ export default function DepartmentsManagementPage() {
               required
               style={{ width: '100%', boxSizing: 'border-box' }}
             />
+            {headFieldErrors.name && <div className="field-error">{headFieldErrors.name}</div>}
           </div>
 
           {/* Controlled input: Official Email */}
@@ -686,6 +734,7 @@ export default function DepartmentsManagementPage() {
               required
               style={{ width: '100%', boxSizing: 'border-box' }}
             />
+            {headFieldErrors.email && <div className="field-error">{headFieldErrors.email}</div>}
           </div>
 
           {/* Modal Footer Actions */}
@@ -707,6 +756,9 @@ export default function DepartmentsManagementPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }

@@ -384,44 +384,36 @@ export default function LoginPage() {
             </button>
 
             {/* ── Quick Demo Credentials (renders from DEMO_CREDENTIALS via .map) ── */}
-            <div style={{
-              marginTop: '18px', padding: '12px', background: '#f8fafc',
-              border: '1px dashed #cbd5e1', borderRadius: '8px',
-            }}>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px',
-              }}>
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase',
-                  color: '#475569', letterSpacing: '0.05em',
-                }}>
+            <div className="demo-credentials-box">
+              <div className="demo-credentials-header">
+                <span className="demo-credentials-title">
                   Quick Demo Credentials (Password: password123)
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '0.75rem' }}>
+              <div className="demo-credentials-grid">
                 {DEMO_CREDENTIALS.map((demo) => (
                   <button
                     key={demo.email}
                     type="button"
-                    className="btn btn-sm"
-                    style={{
-                      textAlign: 'left', justifyContent: 'flex-start', padding: '5px 8px',
-                      border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: '0.72rem',
-                    }}
+                    className="demo-credential-btn"
                     onClick={() => handleFillDemo(demo.email)}
                   >
-                    <span style={{ fontWeight: 700, color: demo.color, marginRight: '4px' }}>
+                    <span
+                      className="demo-credential-label"
+                      style={{ color: demo.color }}
+                    >
                       {demo.label}:
                     </span>
-                    {demo.email}
+                    <span className="demo-credential-email">
+                      {demo.email}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
           </form>
 
-          <br />
-          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: 'var(--space-lg)' }}>
             By signing in, you agree to our <Link to="/terms" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Terms of Service</Link> and <Link to="/privacy" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Privacy Policy</Link>
           </p>
         </div>

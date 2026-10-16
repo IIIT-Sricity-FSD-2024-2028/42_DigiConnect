@@ -1,16 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { apiTrackApplication, apiGetMyApplications, apiRespondToQuery } from '../../api/citizenApi';
+import { apiTrackApplication, apiRespondToQuery } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
 
 export default function TrackApplicationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchId, setSearchId] = useState('');
+  const [searchId, setSearchId] = useState(() => {
+    const initialId = searchParams.get('id');
+    return initialId && initialId.trim() ? initialId.trim().toUpperCase() : '';
+  });
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Guard to ensure initial URL-based application loading executes only once on mount
+  const hasAutoLoadedRef = useRef(false);
 
   // Tabs: 'timeline', 'documents', 'details'
   const [activeTab, setActiveTab] = useState('timeline');
@@ -53,29 +59,26 @@ export default function TrackApplicationPage() {
   };
 
   useEffect(() => {
+    if (hasAutoLoadedRef.current) return;
+    hasAutoLoadedRef.current = true;
+
     const urlId = searchParams.get('id');
-    if (urlId) {
-      setSearchId(urlId);
-      loadApplication(urlId);
-    } else {
-      // Auto-load first citizen application if no query param is passed
-      apiGetMyApplications()
-        .then((res) => {
-          const list = Array.isArray(res) ? res : res?.data || [];
-          if (list.length > 0) {
-            setSearchId(list[0].id);
-            loadApplication(list[0].id);
-          }
-        })
-        .catch(() => {});
+    if (urlId && urlId.trim()) {
+      const cleanId = urlId.trim().toUpperCase();
+      loadApplication(cleanId);
     }
   }, [searchParams]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchId.trim()) {
-      setSearchParams({ id: searchId.trim().toUpperCase() });
-      loadApplication(searchId.trim().toUpperCase());
+    const cleanId = searchId.trim();
+    if (cleanId) {
+      const upperId = cleanId.toUpperCase();
+      setSearchParams({ id: upperId });
+      loadApplication(upperId);
+    } else {
+      setError('Please enter a valid Application ID.');
+      setApp(null);
     }
   };
 

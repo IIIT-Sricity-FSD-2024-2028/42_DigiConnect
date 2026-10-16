@@ -63,6 +63,9 @@ function Toast({ toast, onClose }) {
   return (
     <div
       id="toast-container"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       style={{
         position: 'fixed',
         top: '24px',
@@ -71,6 +74,8 @@ function Toast({ toast, onClose }) {
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
+        maxWidth: 'min(460px, calc(100vw - 32px))',
+        pointerEvents: 'none',
       }}
     >
       <div
@@ -87,9 +92,10 @@ function Toast({ toast, onClose }) {
           backgroundColor: '#ffffff',
           borderLeft: `5px solid ${getBorderColor(toast.type)}`,
           color: 'var(--navy-900, #0f172a)',
-          minWidth: '320px',
-          maxWidth: '460px',
+          minWidth: '280px',
+          maxWidth: '100%',
           pointerEvents: 'auto',
+          wordBreak: 'break-word',
         }}
       >
         {/* Status Icon — [Props] toast.type drives which icon renders */}
@@ -106,6 +112,7 @@ function Toast({ toast, onClose }) {
         <button
           type="button"
           onClick={onClose}
+          aria-label="Dismiss notification"
           style={{
             background: 'none',
             border: 'none',
@@ -116,7 +123,7 @@ function Toast({ toast, onClose }) {
             lineHeight: 1,
             marginLeft: '6px',
           }}
-          title="Close"
+          title="Dismiss notification"
         >
           ✕
         </button>

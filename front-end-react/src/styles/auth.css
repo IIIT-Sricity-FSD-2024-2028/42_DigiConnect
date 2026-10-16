@@ -545,6 +545,95 @@ select.form-input {
     opacity: 1;
 }
 
+/* ── Quick Demo Credentials ── */
+.demo-credentials-box {
+    margin-top: 18px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.demo-credentials-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.demo-credentials-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.demo-credentials-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.demo-credential-btn {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    column-gap: 4px;
+    row-gap: 2px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.demo-credential-btn:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.demo-credential-label {
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.demo-credential-email {
+    color: #334155;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
     .auth-page {
@@ -567,6 +656,12 @@ select.form-input {
 
     .role-selector {
         grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 540px) {
+    .demo-credentials-grid {
+        grid-template-columns: 1fr;
     }
 }
 

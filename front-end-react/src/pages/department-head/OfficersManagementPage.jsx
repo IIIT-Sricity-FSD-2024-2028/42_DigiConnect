@@ -15,6 +15,8 @@ import {
   apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 
 export default function OfficersManagementPage() {
   const navigate = useNavigate();
@@ -39,6 +41,8 @@ export default function OfficersManagementPage() {
     assignedNodeId: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
+  const [formErrors, setFormErrors] = useState({});
 
   const fetchOfficers = async () => {
     setLoading(true);
@@ -82,15 +86,35 @@ export default function OfficersManagementPage() {
       designationId: designations[0]?.id || '',
       assignedNodeId: jurisdictionNodes[0]?.id || '',
     });
+    setFormErrors({});
     setOnboardModalOpen(true);
+  };
+
+  const handleFieldChange = (field, value) => {
+    setNewOfficer((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
   };
 
   const handleOnboardSubmit = async (e) => {
     e.preventDefault();
-    if (!newOfficer.name || !newOfficer.email || !newOfficer.designationId || !newOfficer.assignedNodeId) {
-      alert('Please fill all mandatory fields.');
+    const errors = {};
+    if (!newOfficer.name?.trim()) errors.name = 'Officer Full Name is required.';
+    if (!newOfficer.email?.trim()) errors.email = 'Official Email Address is required.';
+    if (!newOfficer.designationId) errors.designationId = 'Role Designation is required.';
+    if (!newOfficer.assignedNodeId) errors.assignedNodeId = 'Assigned Jurisdiction Node is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      showToast('Please fill all mandatory fields marked with *.', 'warning');
       return;
     }
+    setFormErrors({});
 
     setSubmitting(true);
     try {
@@ -99,12 +123,12 @@ export default function OfficersManagementPage() {
         departmentId,
       };
       await apiOnboardOfficer(payload);
-      alert(`Officer "${newOfficer.name}" onboarded successfully!`);
+      showToast(`Officer "${newOfficer.name}" onboarded successfully!`, 'success');
       setOnboardModalOpen(false);
       // Refetch upon successful mutation
       fetchOfficers();
     } catch (err) {
-      alert(`Error onboarding officer: ${err.message}`);
+      showToast(err.message || 'Error onboarding officer', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -124,12 +148,13 @@ export default function OfficersManagementPage() {
     // 2. Perform backend mutation
     try {
       await apiUpdateOfficerStatus(officer.id, nextStatus);
+      showToast(`Status for ${officer.name} updated to ${nextStatus}.`, 'success');
     } catch (err) {
       // 3. Rollback on failure
       setOfficers((prev) =>
         prev.map((o) => (o.id === officer.id ? { ...o, status: previousStatus } : o))
       );
-      alert(`Failed to update status for ${officer.name}: ${err.message}`);
+      showToast(err.message || `Failed to update status for ${officer.name}`, 'error');
     }
   };
 
@@ -321,7 +346,7 @@ export default function OfficersManagementPage() {
         title="👮 Onboard New Field Officer"
         footer={null}
       >
-        <form onSubmit={handleOnboardSubmit}>
+        <form onSubmit={handleOnboardSubmit} noValidate>
           <div className="form-group" style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offName">Officer Full Name *</label>
             <input
@@ -330,9 +355,10 @@ export default function OfficersManagementPage() {
               className="form-input"
               placeholder="e.g. GOKUL RAO"
               value={newOfficer.name}
-              onChange={(e) => setNewOfficer({ ...newOfficer, name: e.target.value })}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
               required
             />
+            {formErrors.name && <div className="field-error">{formErrors.name}</div>}
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offEmail">Official Email Address *</label>
@@ -342,9 +368,10 @@ export default function OfficersManagementPage() {
               className="form-input"
               placeholder="e.g. gokul.vro@digiconnect.gov.in"
               value={newOfficer.email}
-              onChange={(e) => setNewOfficer({ ...newOfficer, email: e.target.value })}
+              onChange={(e) => handleFieldChange('email', e.target.value)}
               required
             />
+            {formErrors.email && <div className="field-error">{formErrors.email}</div>}
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offPhone">Contact Phone Number</label>
@@ -355,7 +382,7 @@ export default function OfficersManagementPage() {
               placeholder="e.g. 9876543210"
               pattern="[0-9]{10}"
               value={newOfficer.phone}
-              onChange={(e) => setNewOfficer({ ...newOfficer, phone: e.target.value })}
+              onChange={(e) => handleFieldChange('phone', e.target.value)}
             />
           </div>
           <div className="form-group" style={{ marginBottom: '14px' }}>
@@ -364,7 +391,7 @@ export default function OfficersManagementPage() {
               id="offDesig"
               className="form-input"
               value={newOfficer.designationId}
-              onChange={(e) => setNewOfficer({ ...newOfficer, designationId: e.target.value })}
+              onChange={(e) => handleFieldChange('designationId', e.target.value)}
               required
             >
               {designations.length > 0 ? (
@@ -381,6 +408,7 @@ export default function OfficersManagementPage() {
                 </>
               )}
             </select>
+            {formErrors.designationId && <div className="field-error">{formErrors.designationId}</div>}
           </div>
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label className="form-label" style={{ fontWeight: 700 }} htmlFor="offNode">
@@ -390,7 +418,7 @@ export default function OfficersManagementPage() {
               id="offNode"
               className="form-input"
               value={newOfficer.assignedNodeId}
-              onChange={(e) => setNewOfficer({ ...newOfficer, assignedNodeId: e.target.value })}
+              onChange={(e) => handleFieldChange('assignedNodeId', e.target.value)}
               required
             >
               {jurisdictionNodes.length > 0 ? (
@@ -404,6 +432,7 @@ export default function OfficersManagementPage() {
                 <option value="">No jurisdiction nodes available</option>
               )}
             </select>
+            {formErrors.assignedNodeId && <div className="field-error">{formErrors.assignedNodeId}</div>}
             <small style={{ color: 'var(--slate-500)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
               The officer will have verification authority over this node and all its child nodes.
             </small>
@@ -427,6 +456,9 @@ export default function OfficersManagementPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }
