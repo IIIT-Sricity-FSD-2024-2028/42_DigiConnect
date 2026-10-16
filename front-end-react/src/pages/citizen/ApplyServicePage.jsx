@@ -492,6 +492,25 @@ export default function ApplyServicePage() {
     setCurrentStep(1);
     setDynamicAnswers({});
     setUploadedFiles({});
+
+    // Restore draft if previously saved by this authenticated citizen
+    if (user?.id) {
+      try {
+        const savedDraftRaw = localStorage.getItem(`digiconnect_draft_${user.id}_${service.id}`);
+        if (savedDraftRaw) {
+          const parsed = JSON.parse(savedDraftRaw);
+          if (parsed?.applicantInfo) {
+            setApplicantInfo((prev) => ({ ...prev, ...parsed.applicantInfo }));
+          }
+          if (parsed?.dynamicAnswers) {
+            setDynamicAnswers(parsed.dynamicAnswers);
+          }
+        }
+      } catch (draftErr) {
+        console.warn('Failed to restore saved draft:', draftErr);
+      }
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -524,6 +543,13 @@ export default function ApplyServicePage() {
         return copy;
       });
     }
+    if (personalErrors.jurisdiction && ['stateId', 'district', 'subDivision', 'tier4', 'leafNode', 'areaType'].includes(name)) {
+      setPersonalErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.jurisdiction;
+        return copy;
+      });
+    }
   };
 
   const handleDynamicFieldChange = (fieldKey, value) => {
@@ -538,9 +564,20 @@ export default function ApplyServicePage() {
     if (!applicantInfo.mobile?.trim()) errors.mobile = 'Mobile Number is required.';
     if (!applicantInfo.dob?.trim()) errors.dob = 'Date of Birth is required.';
 
+    const resolvedJurisdiction =
+      applicantInfo.leafNode ||
+      applicantInfo.tier4 ||
+      applicantInfo.subDivision ||
+      applicantInfo.district ||
+      applicantInfo.stateId;
+
+    if (!resolvedJurisdiction) {
+      errors.jurisdiction = 'Please select a valid jurisdiction for your application.';
+    }
+
     if (Object.keys(errors).length > 0) {
       setPersonalErrors(errors);
-      showToast('Please fill all mandatory personal information fields marked with *', 'warning');
+      showToast(errors.jurisdiction || 'Please fill all mandatory personal information fields marked with *', 'warning');
       return;
     }
     setPersonalErrors({});
@@ -603,14 +640,21 @@ export default function ApplyServicePage() {
 
   // ── Save Draft Helper ──
   const handleSaveDraft = () => {
+    // Strict authentication verification: disallow orphan drafts under missing or fake IDs
+    if (!user || !user.id) {
+      showToast('Session expired or citizen details not loaded. Please sign in again.', 'error');
+      return;
+    }
+
     try {
       const draft = {
         serviceId: selectedService?.id,
+        citizenId: user.id,
         applicantInfo,
         dynamicAnswers,
         savedAt: new Date().toISOString(),
       };
-      localStorage.setItem(`digiconnect_draft_${selectedService?.id || 'service'}`, JSON.stringify(draft));
+      localStorage.setItem(`digiconnect_draft_${user.id}_${selectedService?.id || 'service'}`, JSON.stringify(draft));
       showToast('Draft application saved successfully!', 'success');
     } catch {
       showToast('Failed to save draft application.', 'error');
@@ -620,6 +664,29 @@ export default function ApplyServicePage() {
   // ── 8. Callbacks: Step 4 (Payment & Final Submission) ──
   const handleSubmitApplication = async () => {
     if (!selectedService) return;
+
+    // 1. Strict Authentication Validation: Prevent silent dummy user fallback
+    if (!user || !user.id) {
+      const authErrorMsg = 'Session expired or citizen details not loaded. Please sign in again.';
+      setSubmitError(authErrorMsg);
+      showToast(authErrorMsg, 'error');
+      return;
+    }
+
+    // 2. Strict Jurisdiction Node Resolution & Validation: Prevent silent default to Chandragiri Village
+    const resolvedJurisdictionNodeId =
+      applicantInfo.leafNode ||
+      applicantInfo.tier4 ||
+      applicantInfo.subDivision ||
+      applicantInfo.district ||
+      applicantInfo.stateId;
+
+    if (!resolvedJurisdictionNodeId) {
+      const jurisErrorMsg = 'Please select a valid jurisdiction for your application.';
+      setSubmitError(jurisErrorMsg);
+      showToast(jurisErrorMsg, 'warning');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -631,8 +698,8 @@ export default function ApplyServicePage() {
       let transactionId = 'TXN-EXEMPT-000';
       if (feeAmount > 0) {
         try {
-          const paymentStateId = applicantInfo.stateId || selectedService.stateId || user?.stateId;
-          const payRes = await apiSimulatePayment(selectedService.id, user?.id || 'CIT-1001', feeAmount, paymentStateId);
+          const paymentStateId = applicantInfo.stateId || selectedService.stateId || user.stateId;
+          const payRes = await apiSimulatePayment(selectedService.id, user.id, feeAmount, paymentStateId);
           transactionId = payRes?.transactionId || `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
         } catch (payErr) {
           console.warn('Payment simulation fallback:', payErr.message);
@@ -647,12 +714,12 @@ export default function ApplyServicePage() {
       if (hasRealFiles) {
         const fd = new FormData();
         fd.append('serviceId', selectedService.id);
-        fd.append('citizenId', user?.id || 'CIT-1001');
+        fd.append('citizenId', user.id);
         if (selectedService.dept) fd.append('dept', selectedService.dept);
         fd.append('fee', String(feeAmount));
         fd.append('paymentMethod', paymentMethod);
         fd.append('paymentTransactionId', transactionId);
-        fd.append('selectedJurisdictionNodeId', applicantInfo.leafNode || 'node_cg_vil');
+        fd.append('selectedJurisdictionNodeId', resolvedJurisdictionNodeId);
         fd.append(
           'formData',
           JSON.stringify({
@@ -673,12 +740,12 @@ export default function ApplyServicePage() {
       } else {
         payload = {
           serviceId: selectedService.id,
-          citizenId: user?.id || 'CIT-1001',
+          citizenId: user.id,
           dept: selectedService.dept,
           fee: feeAmount,
           paymentMethod: paymentMethod,
           paymentTransactionId: transactionId,
-          selectedJurisdictionNodeId: applicantInfo.leafNode || 'node_cg_vil',
+          selectedJurisdictionNodeId: resolvedJurisdictionNodeId,
           formData: {
             ...applicantInfo,
             ...dynamicAnswers,
@@ -694,6 +761,14 @@ export default function ApplyServicePage() {
       const res = await apiSubmitApplication(payload);
       const createdApp = res?.data || res;
       setSubmittedAppId(createdApp?.id || 'APP-' + Math.floor(10000 + Math.random() * 90000));
+
+      // Clear draft upon successful submission
+      try {
+        localStorage.removeItem(`digiconnect_draft_${user.id}_${selectedService.id}`);
+      } catch (cleanErr) {
+        // ignore
+      }
+
       showToast('Application submitted successfully!', 'success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -1262,6 +1337,7 @@ export default function ApplyServicePage() {
                     name="leafNode"
                     value={applicantInfo.leafNode}
                     onChange={handleApplicantInfoChange}
+                    style={{ borderColor: personalErrors.jurisdiction ? '#ef4444' : undefined }}
                     required
                   >
                     {currentLeavesList.map((l) => (
@@ -1270,6 +1346,9 @@ export default function ApplyServicePage() {
                       </option>
                     ))}
                   </select>
+                  {personalErrors.jurisdiction && (
+                    <div className="field-error">{personalErrors.jurisdiction}</div>
+                  )}
                 </div>
 
                 {/* PIN Code */}
@@ -1286,6 +1365,26 @@ export default function ApplyServicePage() {
                   />
                 </div>
               </div>
+              {personalErrors.jurisdiction && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 'var(--radius-sm)',
+                    color: '#b91c1c',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>⚠️</span>
+                  <span>{personalErrors.jurisdiction}</span>
+                </div>
+              )}
             </div>
           </div>
 
