@@ -224,23 +224,7 @@ export default function OfficersManagementPage() {
         </button>
       </div>
 
-      {/* Architecture Rule Note */}
-      <div
-        style={{
-          background: '#eff6ff',
-          borderLeft: '4px solid #2563eb',
-          padding: '12px 16px',
-          borderRadius: '0 var(--radius-md) var(--radius-md) 0',
-          marginBottom: 'var(--space-lg)',
-        }}
-      >
-        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e40af' }}>
-          Hierarchical Officer Scoping Rule:
-        </div>
-        <div style={{ fontSize: '0.8125rem', color: '#1e3a8a', marginTop: '2px' }}>
-          Every officer is assigned to an exact <code>assignedNodeId</code> in the tree. An officer assigned to a Mandal automatically covers all child villages; a District officer covers all descendant nodes. Applications are routed using <code>isNodeWithinScope(leafNodeId, assignedNodeId)</code>.
-        </div>
-      </div>
+
 
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>

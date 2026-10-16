@@ -9,7 +9,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetDeptAnalytics, apiGetDeptServices } from '../../api/departmentHeadApi';
 import StatCard from '../../components/common/StatCard';
-import StatusBadge from '../../components/common/StatusBadge';
+// import StatusBadge from '../../components/common/StatusBadge';
 
 export default function DeptDashboard() {
   const { user } = useAuth();
@@ -285,20 +285,19 @@ export default function DeptDashboard() {
                   <th>Service Name</th>
                   <th>Fee (Service + Platform)</th>
                   <th>Workflow Sequence</th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
                       Loading configured department services...
                     </td>
                   </tr>
                 ) : services.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
                       No services configured yet for this department.{' '}
                       <Link to="/department-head/service-builder" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>
                         Create one now →
@@ -337,15 +336,6 @@ export default function DeptDashboard() {
                           <span className="badge badge-purple" style={{ fontSize: '0.75rem', whiteSpace: 'normal', lineHeight: '1.4' }}>
                             {workflowSummary}
                           </span>
-                        </td>
-                        <td>
-                          {s.status === 'Suspended' || s.status === 'SUSPENDED' ? (
-                            <span className="badge badge-danger">● Suspended</span>
-                          ) : s.status === 'Disabled' || s.status === 'DISABLED' || s.status === 'Inactive' ? (
-                            <span className="badge badge-neutral">● Inactive</span>
-                          ) : (
-                            <span className="badge badge-success">● Active</span>
-                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>

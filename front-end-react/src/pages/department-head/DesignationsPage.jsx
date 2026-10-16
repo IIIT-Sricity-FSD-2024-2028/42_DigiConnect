@@ -142,22 +142,7 @@ export default function DesignationsPage() {
         </button>
       </div>
 
-      <div
-        style={{
-          background: '#eff6ff',
-          borderLeft: '4px solid #2563eb',
-          padding: '12px 16px',
-          borderRadius: '0 var(--radius-md) var(--radius-md) 0',
-          marginBottom: 'var(--space-lg)',
-        }}
-      >
-        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e40af' }}>
-          Job Role Philosophy:
-        </div>
-        <div style={{ fontSize: '0.8125rem', color: '#1e3a8a', marginTop: '2px' }}>
-          Designations define operational duties (e.g. Village Revenue Officer, Revenue Inspector, Tahsildar). Every service workflow stage binds directly to a required designation.
-        </div>
-      </div>
+
 
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>

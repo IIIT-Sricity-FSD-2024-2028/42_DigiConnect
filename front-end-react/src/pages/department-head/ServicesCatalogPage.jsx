@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiGetDeptServices, apiDeleteService } from '../../api/departmentHeadApi';
 import Modal from '../../components/common/Modal';
-import StatusBadge from '../../components/common/StatusBadge';
+// import StatusBadge from '../../components/common/StatusBadge';
 
 export default function ServicesCatalogPage() {
   const { user } = useAuth();
@@ -90,23 +90,7 @@ export default function ServicesCatalogPage() {
         </Link>
       </div>
 
-      {/* Info Callout */}
-      <div
-        style={{
-          background: '#eff6ff',
-          borderLeft: '4px solid #2563eb',
-          padding: '12px 16px',
-          borderRadius: '0 var(--radius-md) var(--radius-md) 0',
-          marginBottom: 'var(--space-lg)',
-        }}
-      >
-        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e40af' }}>
-          🏛️ Department Head Service Engine:
-        </div>
-        <div style={{ fontSize: '0.8125rem', color: '#1e3a8a', marginTop: '2px' }}>
-          Department Heads define the end-to-end citizen application lifecycle: dynamic form fields, mandatory document uploads, statutory service fee &amp; platform fee splits, escalation SLAs, and multi-stage designation approval routing.
-        </div>
-      </div>
+
 
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>
@@ -135,20 +119,19 @@ export default function ServicesCatalogPage() {
                   <th>Fee Breakdown</th>
                   <th>Resolution SLA</th>
                   <th>Workflow Sequence</th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
                       Loading department services...
                     </td>
                   </tr>
                 ) : services.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '32px', color: 'var(--slate-500)' }}>
                       No services configured for this department yet.{' '}
                       <Link to="/department-head/service-builder" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>
                         Click "+ Build New Service" to create one.
@@ -194,15 +177,6 @@ export default function ServicesCatalogPage() {
                           <span className="badge badge-purple" style={{ fontSize: '0.75rem', whiteSpace: 'normal', lineHeight: '1.4' }}>
                             {workflowText}
                           </span>
-                        </td>
-                        <td>
-                          {s.status === 'Suspended' || s.status === 'SUSPENDED' ? (
-                            <span className="badge badge-danger">● Suspended</span>
-                          ) : s.status === 'Disabled' || s.status === 'DISABLED' || s.status === 'Inactive' ? (
-                            <span className="badge badge-neutral">● Inactive</span>
-                          ) : (
-                            <span className="badge badge-success">● Active</span>
-                          )}
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
