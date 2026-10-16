@@ -10,9 +10,10 @@ import { apiFetch } from './client';
  * @param {string} stateId - State identifier (defaults to 'state_ap')
  * @returns {Promise<Array>} Array of root jurisdiction tree nodes
  */
-export async function apiGetJurisdictionsTree(stateId = 'state_ap') {
+export async function apiGetJurisdictionsTree(stateId) {
   // API Call: GET request to retrieve hierarchical jurisdiction tree
-  const res = await apiFetch(`/geography/tree?stateId=${stateId}`);
+  const query = stateId ? `?stateId=${stateId}` : '';
+  const res = await apiFetch(`/geography/tree${query}`);
   const data = Array.isArray(res) ? res : res?.data || [];
   return data;
 }
@@ -48,23 +49,25 @@ export async function apiUpdateJurisdictionNode(id, updateData) {
 
 /**
  * Fetch aggregated statistics across all tiers for a state.
- * @param {string} stateId - State identifier (defaults to 'state_ap')
+ * @param {string} [stateId] - State identifier
  * @returns {Promise<Object>} Tier counts: districtsCount, mandalsCount, etc.
  */
-export async function apiGetJurisdictionStats(stateId = 'state_ap') {
+export async function apiGetJurisdictionStats(stateId) {
   // API Call: GET request for jurisdiction tier statistics
-  const res = await apiFetch(`/geography/stats?stateId=${stateId}`);
+  const query = stateId ? `?stateId=${stateId}` : '';
+  const res = await apiFetch(`/geography/stats${query}`);
   return res?.data || res;
 }
 
 /**
  * Fetch all registered departments for a state.
- * @param {string} stateId - State identifier (defaults to 'state_ap')
+ * @param {string} [stateId] - State identifier
  * @returns {Promise<Array>} List of state departments
  */
-export async function apiGetDepartments(stateId = 'state_ap') {
+export async function apiGetDepartments(stateId) {
   // API Call: GET request to retrieve department list
-  const res = await apiFetch(`/state-admin/departments?stateId=${stateId}`);
+  const query = stateId ? `?stateId=${stateId}` : '';
+  const res = await apiFetch(`/state-admin/departments${query}`);
   const list = Array.isArray(res) ? res : res?.data || [];
   return list;
 }
@@ -115,23 +118,25 @@ export async function apiUpdateDepartmentStatus(departmentId, status) {
 
 /**
  * Fetch state dashboard overview data (KPIs, summaries, leaderboard, activity).
- * @param {string} stateId - State identifier (defaults to 'state_ap')
+ * @param {string} [stateId] - State identifier
  * @returns {Promise<Object>} Dashboard overview data
  */
-export async function apiGetStateDashboard(stateId = 'state_ap') {
+export async function apiGetStateDashboard(stateId) {
   // API Call: GET request for high-level state dashboard analytics
-  const res = await apiFetch(`/state-admin/dashboard?stateId=${stateId}`);
+  const query = stateId ? `?stateId=${stateId}` : '';
+  const res = await apiFetch(`/state-admin/dashboard${query}`);
   return res?.data || res;
 }
 
 /**
  * Fetch all configured grievance cells for a state.
- * @param {string} stateId - State identifier (defaults to 'state_ap')
+ * @param {string} [stateId] - State identifier
  * @returns {Promise<Array>} List of configured grievance cells
  */
-export async function apiGetGrievanceCells(stateId = 'state_ap') {
+export async function apiGetGrievanceCells(stateId) {
   // API Call: GET request to retrieve grievance cells for state
-  const res = await apiFetch(`/state-admin/grievance-cells?stateId=${stateId}`);
+  const query = stateId ? `?stateId=${stateId}` : '';
+  const res = await apiFetch(`/state-admin/grievance-cells${query}`);
   const list = Array.isArray(res) ? res : res?.data || [];
   return list;
 }

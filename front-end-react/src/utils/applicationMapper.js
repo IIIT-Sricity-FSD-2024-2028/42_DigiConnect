@@ -10,7 +10,7 @@
 export function normalizeApplication(app) {
   if (!app) return null;
 
-  const id = app.id || app.applicationNumber || app.appId || '—';
+  const id = app.id || app.applicationNumber || app.appId || app.arn || '—';
   const citizenName =
     app.citizenName ||
     app.citizen ||
@@ -35,6 +35,7 @@ export function normalizeApplication(app) {
     ...app,
     id,
     applicationNumber: id,
+    arn: id,
     citizenName,
     citizen: citizenName,
     serviceName,

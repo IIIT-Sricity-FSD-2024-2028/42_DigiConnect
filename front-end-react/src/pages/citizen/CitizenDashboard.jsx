@@ -5,6 +5,7 @@ import { apiGetMyApplications, apiGetMyGrievances, apiGetServices } from '../../
 import StatCard from '../../components/common/StatCard';
 import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
 import { downloadDigitalCertificate } from '../../utils/certificate';
+import { normalizeApplications } from '../../utils/applicationMapper';
 
 // Sub-component for individual application item in the list
 // Demonstrates: Components, Props, Prop Drilling, Events, and Callbacks
@@ -122,7 +123,7 @@ export default function CitizenDashboard() {
           ? servRes
           : servRes?.data || servRes?.items || [];
 
-        setApplications(appsList);
+        setApplications(normalizeApplications(appsList));
         setGrievances(grievList);
         setServices(servList);
       } catch (err) {

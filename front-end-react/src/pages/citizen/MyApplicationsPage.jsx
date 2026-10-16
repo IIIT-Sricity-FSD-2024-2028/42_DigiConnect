@@ -6,6 +6,7 @@ import { checkStatusCategory } from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import SearchBar from '../../components/common/SearchBar';
 import { downloadDigitalCertificate } from '../../utils/certificate';
+import { normalizeApplications } from '../../utils/applicationMapper';
 
 export default function MyApplicationsPage() {
   const [applications, setApplications] = useState([]);
@@ -28,7 +29,8 @@ export default function MyApplicationsPage() {
       setError(null);
       const res = await apiGetMyApplications(1, 100);
       const appsList = Array.isArray(res) ? res : res?.data || res?.items || [];
-      setApplications(appsList);
+      const normalized = normalizeApplications(appsList);
+      setApplications(normalized);
     } catch (err) {
       setError(err.message || 'Failed to load applications');
     } finally {

@@ -31,7 +31,7 @@ import StatusBadge from '../../components/common/StatusBadge';
 export default function DepartmentsManagementPage() {
   // Context: AuthContext provides current admin session
   const { user } = useAuth();
-  const stateId = user?.stateId || 'state_ap';
+  const stateId = user?.stateId || user?.state_id || user?.state;
 
   // State: departments list, loading, error
   const [departments, setDepartments] = useState([]);
@@ -66,6 +66,10 @@ export default function DepartmentsManagementPage() {
 
   // Hooks / useEffect: fetch departments on component mount
   const fetchDepartments = async () => {
+    if (!stateId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -82,7 +86,11 @@ export default function DepartmentsManagementPage() {
   };
 
   useEffect(() => {
-    fetchDepartments();
+    if (stateId) {
+      fetchDepartments();
+    } else {
+      setLoading(false);
+    }
   }, [stateId]);
 
   // ── Controlled input change handlers ──
@@ -205,6 +213,32 @@ export default function DepartmentsManagementPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Notice if administrator has no assigned state jurisdiction
+  if (!stateId) {
+    return (
+      <div style={{ padding: '32px', maxWidth: '800px', margin: '40px auto' }}>
+        <div
+          style={{
+            background: 'var(--color-bg-card, #ffffff)',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            borderRadius: '12px',
+            padding: '32px',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🏛️</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
+            No State Jurisdiction Assigned
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: '#64748b', maxWidth: '500px', margin: '0 auto' }}>
+            No state jurisdiction assigned to this administrator account. Please contact the Central Administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // ── 1. LOADING STATE ──
   if (loading) {
