@@ -193,17 +193,17 @@ export default function ProfilePage() {
           phone: u.phone || user.phone || '',
           altPhone: u.altPhone || '',
           email: u.email || user.email || '',
-          aadhaar: u.aadhaar || '',
-          dob: u.dob || '1995-06-15',
-          gender: u.gender || 'Male',
-          religion: u.religion || 'Hindu',
-          caste: u.caste || 'General',
-          income: u.income || '350000',
-          address: u.address || 'H.No 4-22, Gandhi Road',
-          state: u.state || user.stateName || 'Andhra Pradesh',
-          district: u.district || 'Tirupati',
-          mandal: u.mandal || 'Chandragiri',
-          pincode: u.pincode || '517501',
+          aadhaar: u.aadhaar || user.aadhaar || '',
+          dob: u.dob || user.dob || '',
+          gender: u.gender || user.gender || 'Male',
+          religion: u.religion || user.religion || '',
+          caste: u.caste || user.caste || '',
+          income: u.income || user.income || '',
+          address: u.address || user.address || '',
+          state: u.state || user.stateName || user.state || '',
+          district: u.district || user.district || user.jurisdiction || '',
+          mandal: u.mandal || user.mandal || '',
+          pincode: u.pincode || user.pincode || '',
         });
       })
       .catch((err) => {
@@ -317,9 +317,10 @@ export default function ProfilePage() {
     .toUpperCase()
     .slice(0, 2) || 'U';
 
-  const maskedAadhaar = profileData.aadhaar
-    ? 'XXXX XXXX ' + profileData.aadhaar.replace(/\s/g, '').slice(-4)
-    : 'XXXX XXXX 8901';
+  const aadhaarValue = profileData.aadhaar || user?.aadhaar || '';
+  const maskedAadhaar = aadhaarValue.replace(/\s/g, '').length >= 4
+    ? '•••• •••• ' + aadhaarValue.replace(/\s/g, '').slice(-4)
+    : (user?.role === 'CITIZEN' ? '•••• •••• 8901' : 'Not Linked');
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: 'var(--space-2xl)' }}>
@@ -388,7 +389,7 @@ export default function ProfilePage() {
                     {user?.role || 'CITIZEN'}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                    ID: {user?.id || 'USR-2025'}
+                    ID: {user?.id || 'USR-CIT-01'}
                   </span>
                 </div>
               </div>

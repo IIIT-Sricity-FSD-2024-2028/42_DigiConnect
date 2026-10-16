@@ -152,11 +152,11 @@ export default function LandingPage() {
                 Recent Applications
               </div>
 
-              {/* [Lists] Mock application rows using map() */}
+              {/* Application Live Stream Preview */}
               {[
-                { bg: '#1e437e', stroke: '#a0bcec', badgeBg: '#dcfce7', path: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', w: '100%' },
-                { bg: '#166534', stroke: '#86efac', badgeBg: '#fef3c7', path: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', w: '70%' },
-                { bg: '#6b21a8', stroke: '#d8b4fe', badgeBg: '#dbeafe', path: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z', w: '50%' },
+                { title: 'Community Certificate', id: 'APP-2026-08492', status: 'Approved', statusBg: 'rgba(34, 197, 94, 0.2)', statusColor: '#4ade80', bg: '#1e437e', stroke: '#a0bcec', path: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                { title: 'Farmer Subsidy Scheme', id: 'APP-2026-07921', status: 'In Review', statusBg: 'rgba(234, 179, 8, 0.2)', statusColor: '#facc15', bg: '#166534', stroke: '#86efac', path: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+                { title: 'Municipal Trade License', id: 'APP-2026-06410', status: 'Issued', statusBg: 'rgba(59, 130, 246, 0.2)', statusColor: '#60a5fa', bg: '#6b21a8', stroke: '#d8b4fe', path: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
               ].map((row, i) => (
                 <div key={i} className="mock-app-row">
                   <div className="mock-app-icon" style={{ background: row.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -164,20 +164,25 @@ export default function LandingPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d={row.path} />
                     </svg>
                   </div>
-                  <div className="mock-app-info">
-                    <div className="mock-app-name" style={{ width: row.w }}></div>
-                    <div className="mock-app-sub"></div>
+                  <div className="mock-app-info" style={{ minWidth: 0 }}>
+                    <div style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.title}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.7rem' }}>{row.id}</div>
                   </div>
-                  <div className="mock-badge" style={{ background: row.badgeBg, borderRadius: '10px' }}></div>
+                  <span style={{ background: row.statusBg, color: row.statusColor, fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', border: `1px solid ${row.statusColor}33`, whiteSpace: 'nowrap' }}>
+                    {row.status}
+                  </span>
                 </div>
               ))}
 
               <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginBottom: '8px', fontWeight: 600 }}>SLA Compliance</div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '78%' }}></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>SLA Compliance Rate</span>
+                  <span style={{ fontSize: '0.75rem', color: '#4ade80', fontWeight: 700 }}>96.4%</span>
                 </div>
-                <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>78% of applications within SLA</div>
+                <div className="progress-bar" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                  <div className="progress-fill" style={{ width: '96.4%', background: 'linear-gradient(90deg, #10b981, #06b6d4)' }}></div>
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>96.4% of citizen requests processed within statutory deadline</div>
               </div>
             </div>
           </div>

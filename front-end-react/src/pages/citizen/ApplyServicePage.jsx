@@ -1710,10 +1710,10 @@ export default function ApplyServicePage() {
                     Application Reference
                   </div>
                   <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem', fontWeight: 700, color: 'var(--navy-900)' }}>
-                    APP-2025-XXXX
+                    APP-2026-XXXX
                   </div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                    Save this reference for tracking
+                    Official tracking reference assigned upon submission
                   </div>
                 </div>
 

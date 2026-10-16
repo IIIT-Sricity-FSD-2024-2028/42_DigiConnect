@@ -265,7 +265,7 @@ export default function LoginPage() {
         </div>
 
         <div className="auth-panel-footer">
-          © 2025 DigiConnect – Digital Governance &amp; E-Services
+          © 2026 DigiConnect – Digital Governance &amp; E-Services
         </div>
       </div>
 
@@ -297,7 +297,7 @@ export default function LoginPage() {
                   type="text"
                   id="loginId"
                   className="form-input has-icon"
-                  placeholder="Enter your ID"
+                  placeholder="Enter phone, Aadhaar, or email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -422,7 +422,7 @@ export default function LoginPage() {
 
           <br />
           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-            By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            By signing in, you agree to our <Link to="/terms" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Terms of Service</Link> and <Link to="/privacy" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Privacy Policy</Link>
           </p>
         </div>
       </div>

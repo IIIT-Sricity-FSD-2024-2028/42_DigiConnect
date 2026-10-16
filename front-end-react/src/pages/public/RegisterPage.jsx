@@ -538,7 +538,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <div className="auth-panel-footer">© 2025 DigiConnect – Digital Governance & E-Services</div>
+        <div className="auth-panel-footer">© 2026 DigiConnect – Digital Governance &amp; E-Services</div>
       </div>
 
       {/* ── Right Form Panel ── */}
@@ -655,7 +655,7 @@ export default function RegisterPage() {
                     id="aadhaar"
                     name="aadhaar"
                     className="form-input has-icon"
-                    placeholder="XXXX XXXX XXXX"
+                    placeholder="5482 1904 2318"
                     maxLength={14}
                     value={formData.aadhaar}
                     onChange={handleAadhaarChange}
@@ -1115,7 +1115,7 @@ export default function RegisterPage() {
                   style={{ marginTop: '3px' }}
                 />
                 <label htmlFor="agreeTerms" style={{ fontSize: '0.85rem' }}>
-                  I agree to the <a href="#terms" onClick={(e) => e.preventDefault()}>Terms of Service</a> and <a href="#privacy" onClick={(e) => e.preventDefault()}>Privacy Policy</a>
+                  I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Terms of Service</Link> and <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--navy-600)', fontWeight: 600 }}>Privacy Policy</Link>
                 </label>
               </div>
 

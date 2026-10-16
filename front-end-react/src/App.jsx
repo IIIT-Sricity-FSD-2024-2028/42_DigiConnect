@@ -15,6 +15,8 @@ import RaiseGrievancePage from './pages/citizen/RaiseGrievancePage';
 import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/public/LoginPage.jsx';
 import RegisterPage from './pages/public/RegisterPage';
+import TermsOfServicePage from './pages/public/TermsOfServicePage';
+import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
 
 import ProfilePage from './pages/common/ProfilePage';
 
@@ -164,6 +166,8 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/terms" element={<TermsOfServicePage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />

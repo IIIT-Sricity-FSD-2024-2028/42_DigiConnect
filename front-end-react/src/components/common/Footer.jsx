@@ -15,10 +15,10 @@ const FOOTER_COLUMNS = [
   {
     title: 'Support',
     links: [
-      { label: 'Help Center', to: '#' },
-      { label: 'Track Application', to: '#' },
-      { label: 'Contact Us', to: '#' },
-      { label: 'Find Service Center', to: '#' },
+      { label: 'Help Center', to: '/terms#support' },
+      { label: 'Track Application', to: '/login' },
+      { label: 'Contact Us', to: '/terms#support' },
+      { label: 'Find Service Center', to: '/terms#support' },
     ],
   },
   {
@@ -26,8 +26,8 @@ const FOOTER_COLUMNS = [
     links: [
       { label: 'Citizen Login', to: '/login' },
       { label: 'New Registration', to: '/register' },
-      { label: 'Privacy Policy', to: '#' },
-      { label: 'Terms of Service', to: '#' },
+      { label: 'Privacy Policy', to: '/privacy' },
+      { label: 'Terms of Service', to: '/terms' },
     ],
   },
 ];
@@ -75,8 +75,8 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="footer-bottom">
-        <span>© 2025 DigiConnect – Digital Governance &amp; E-Services. All rights reserved.</span>
-        <span>Helpline: 1800-XXX-XXXX | Available 24/7</span>
+        <span>© 2026 DigiConnect – Digital Governance &amp; E-Services. All rights reserved.</span>
+        <span>Helpline: 1800-425-0042 (Toll Free) | Available 24/7</span>
       </div>
     </footer>
   );
