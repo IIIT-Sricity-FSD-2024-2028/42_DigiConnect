@@ -1,18 +1,3 @@
-// src/components/officer/DecisionModal.jsx
-// Decision confirmation modal for officer review workflow.
-// Built on top of src/components/common/Modal.jsx
-//
-// React Concepts Demonstrated:
-//  [Component]     — DecisionModal is a self-contained presentational + form component
-//  [Props]         — Receives isOpen, onClose, onConfirm, decision, app, form state, and change callbacks via prop drilling
-//  [State]         — No local state; all state is owned by the parent (ReviewApplicationPage) and passed down as props
-//  [Events]        — onChange on textarea/select form elements, onClick on action buttons
-//  [Lists]         — REJECTION_REASONS rendered as <option> list via .map()
-//  [Hooks]         — None needed (no local state or effects)
-//  [Forms]         — Controlled inputs: remarks textarea, rejection reason select, query textarea
-//  [Prop Drilling] — form values (rejectReason, queryText, officerRemarks) and setters passed from parent
-//  [Callbacks]     — onClose and onConfirm fire parent-owned handler functions
-
 import React from 'react';
 import Modal from '../common/Modal';
 

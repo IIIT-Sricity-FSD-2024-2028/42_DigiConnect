@@ -1,7 +1,3 @@
-// src/components/common/charts/TrendChart.jsx
-// Lightweight, responsive SVG Line & Area Trend Chart Component
-// React concepts: Components, Props, Responsive SVG paths, Hover states
-
 import React, { useState } from 'react';
 
 export default function TrendChart({

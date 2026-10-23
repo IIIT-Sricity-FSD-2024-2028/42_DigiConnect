@@ -1,7 +1,3 @@
-// src/components/central-admin/CreateStateModal.jsx
-// 2-Step State Government Onboarding Wizard for Central Administrator
-// React concepts: useState, Controlled Forms, Props, Callbacks, Modal reuse, Validation
-
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import { apiCreateCentralState } from '../../api/centralAdminApi';

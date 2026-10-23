@@ -1,18 +1,3 @@
-// src/components/officer/OfficerQueueRow.jsx
-// Renders a single application row inside the officer's pending queue.
-// Matches the layout from front-end/officer/officer-dashboard.html and dashboard.js.
-//
-// React Concepts Demonstrated:
-//  [Component]     — OfficerQueueRow is a self-contained, reusable component
-//  [Props]         — Receives `application` data and `onSelect` callback from parent
-//  [State]         — useState tracks whether the SLA tooltip is expanded
-//  [Events]        — onClick on the row, onMouseEnter/Leave on SLA bar
-//  [Hooks]         — useState for local tooltip state
-//  [Context]       — useAuth reads logged-in officer name from AuthContext
-//  [Router]        — useNavigate navigates to /officer/review/:id on row click
-//  [Prop Drilling] — onSelect is drilled: OfficerDashboard → OfficerQueueTable → OfficerQueueRow
-//  [Callbacks]     — onSelect(application.id) is called when row is clicked
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

@@ -1,6 +1,3 @@
-// src/components/citizen/FormStepper.jsx
-// React concepts used: Components, Props (steps, currentStep), Lists (steps.map())
-
 import React from 'react';
 
 /**

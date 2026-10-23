@@ -1,6 +1,3 @@
-// src/components/citizen/ServiceCard.jsx
-// React concepts used: Components, Props (service, onSelect), Events (onClick), Callbacks (onSelect(service))
-
 import React from 'react';
 
 /**

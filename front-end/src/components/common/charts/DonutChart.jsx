@@ -1,7 +1,3 @@
-// src/components/common/charts/DonutChart.jsx
-// Lightweight, interactive SVG Donut / Pie Chart with legend
-// React concepts: Components, Props, Math trigonometry for SVG paths, Hover highlighting
-
 import React, { useState } from 'react';
 
 export default function DonutChart({

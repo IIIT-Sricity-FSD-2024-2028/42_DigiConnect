@@ -1,7 +1,3 @@
-// src/pages/central-admin/CentralDashboard.jsx
-// Executive National Dashboard for Central Administrator (Super User)
-// React concepts: useState, useEffect, Props, Components & Charts reuse, API integration
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '../../components/common/StatCard';

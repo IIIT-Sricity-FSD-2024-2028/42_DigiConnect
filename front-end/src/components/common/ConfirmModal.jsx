@@ -1,7 +1,3 @@
-// src/components/common/ConfirmModal.jsx
-// Reusable accessible confirmation dialog component built on Modal.jsx.
-// Provides non-blocking modal confirmation with clear Cancel and Confirm actions.
-
 import React from 'react';
 import Modal from './Modal';
 

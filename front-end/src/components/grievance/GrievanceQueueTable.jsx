@@ -1,9 +1,3 @@
-
-// src/components/grievance/GrievanceQueueTable.jsx
-// React concepts used: Components, Props, State (useState), Events (onChange, onClick),
-// Lists (.map), Hooks (useState), Router (useNavigate), Callbacks
-// Renders a filterable grievance queue table with priority, SLA, and action controls.
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../common/SearchBar';

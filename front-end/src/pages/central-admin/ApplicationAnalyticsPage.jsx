@@ -1,7 +1,3 @@
-// src/pages/central-admin/ApplicationAnalyticsPage.jsx
-// National Application Velocity & SLA Analytics for Central Administrator
-// React concepts: useState, useEffect, useMemo, Link, StatCard, TrendChart, BarChart
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '../../components/common/StatCard';

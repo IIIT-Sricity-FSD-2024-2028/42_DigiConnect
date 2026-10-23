@@ -1,7 +1,3 @@
-// src/components/common/charts/BarChart.jsx
-// Lightweight, responsive SVG Bar Chart Component
-// React concepts: Components, Props, Responsive SVG, Tooltip interaction
-
 import React, { useState } from 'react';
 
 /**

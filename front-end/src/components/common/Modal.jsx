@@ -1,7 +1,3 @@
-// src/components/common/Modal.jsx
-// Universal State-driven Modal dialog component for DigiConnect.
-// React concepts: Components, Props, Events (onClick, onKeyDown), Hooks (useEffect), Callbacks (onClose)
-
 import React, { useEffect } from 'react';
 
 /**

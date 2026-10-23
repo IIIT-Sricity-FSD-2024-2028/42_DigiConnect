@@ -1,6 +1,3 @@
-// src/components/citizen/DynamicField.jsx
-// React concepts used: Components, Props (field, value, onChange), Events (onChange), Forms (controlled inputs), Callbacks (onChange(key, val))
-
 import React from 'react';
 
 /**

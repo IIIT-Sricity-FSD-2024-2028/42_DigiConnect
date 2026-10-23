@@ -1,15 +1,3 @@
-// src/components/state-admin/JurisdictionTreeNode.jsx
-// Recursive component to render a hierarchical jurisdiction tree
-// React concepts used:
-// 1. Components (JurisdictionTreeNode)
-// 2. Props (node, level, onAddChild, onEdit, filterArea)
-// 3. State (useState for expanding / collapsing tree branches)
-// 4. Events (onClick for toggle, add, edit buttons)
-// 5. Lists (.map with key for rendering children)
-// 6. Prop drilling (passing onAddChild, onEdit, filterArea down to recursive child nodes)
-// 7. Callbacks (invoking onAddChild and onEdit to notify parent page)
-// 8. Recursion (component renders itself for each child in node.children)
-
 import React, { useState } from 'react';
 
 // Friendly badge styling helpers for administrative tiers

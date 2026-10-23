@@ -1,20 +1,3 @@
-// src/pages/officer/OfficerDashboard.jsx
-// Main Department Field Officer Dashboard page.
-//
-// React Concepts Demonstrated:
-//  [Component]     — OfficerDashboard is the root page component containing stat cards, tabs, queue table, and quick actions
-//  [Props]         — Passes application lists, loading state, and callback functions down to OfficerQueueTable
-//  [State]         — useState manages activeTab, queue data, slaRisks, queries, weekChart, loading, and toast notifications
-//  [Events]        — onClick on tab switches, quick action buttons, notification reminders, and export trigger
-//  [Lists]         — Mapped rendering of tabs, breach items, pending queries, and weekly chart bars
-//  [Hooks]         — useState for state management, useEffect for initial API data loading, useMemo for computed values
-//  [Forms]         — Filter/search forms embedded in child components
-//  [Context]       — useAuth reads current logged-in officer profile and department
-//  [Router]        — useNavigate provides client-side routing to application review page
-//  [API calls]     — apiGetOfficerQueue, apiGetOfficerQueries, apiGetOfficerSlaRisks, apiGetOfficerWeekChart, apiCreateNotification
-//  [Prop Drilling] — Passes onSelect & onQuickAction callbacks down to OfficerQueueTable → OfficerQueueRow
-//  [Callbacks]     — handleSelectApplication, handleQuickAction, handleSendReminder, handleExportReport
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

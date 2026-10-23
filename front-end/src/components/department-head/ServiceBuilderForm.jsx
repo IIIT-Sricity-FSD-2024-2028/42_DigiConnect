@@ -1,16 +1,3 @@
-// src/components/department-head/ServiceBuilderForm.jsx
-// Core Sub-Component for Member 4: Department Head & Dynamic Service Builder
-// React concepts used:
-// 1. Components (functional component & modular sections)
-// 2. Props (initialData, availableDesignations, onSubmit, onCancel, loading)
-// 3. State (useState for metadata, fields array, docs array, workflow steps array, and modal controls)
-// 4. Events (onClick, onChange, onSubmit)
-// 5. Lists (fields.map, docs.map, workflowSteps.map, availableDesignations.map with unique keys)
-// 6. Hooks (useState, useEffect for state synchronization)
-// 7. Forms (controlled inputs for all metadata and modal field builders)
-// 8. Callbacks (handleAddField, handleRemoveField, handleAddDoc, handleAddStep, etc.)
-// 9. Prop Drilling (passing handler functions to modular controls)
-
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
 import ConfirmModal from '../common/ConfirmModal';

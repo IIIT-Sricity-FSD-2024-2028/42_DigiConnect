@@ -1,20 +1,3 @@
-// src/components/officer/OfficerQueueTable.jsx
-// Renders the searchable, filterable, and paginated queue of pending applications.
-// Matches the structure from front-end/officer/officer-dashboard.html and dashboard.js.
-//
-// React Concepts Demonstrated:
-//  [Component]     — OfficerQueueTable is a modular, reusable UI container
-//  [Props]         — Receives `applications`, `loading`, `error`, `onSelect` from parent
-//  [State]         — useState manages serviceFilter, sortBy, currentPage, pageSize
-//  [Events]        — onChange (selects), onClick (pagination buttons)
-//  [Lists]         — Maps filtered/paginated applications to <OfficerQueueRow /> with unique keys
-//  [Hooks]         — useState for UI state, useMemo for performant filtering/sorting, useEffect for reset
-//  [Forms]         — Controlled filter dropdown select controls
-//  [Context]       — useAuth for officer preferences
-//  [Router]        — useNavigate for direct routing
-//  [Prop Drilling] — Passes onSelect callback down to child OfficerQueueRow components
-//  [Callbacks]     — Triggered when user selects a row or modifies filters
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

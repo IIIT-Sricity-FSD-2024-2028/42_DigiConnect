@@ -1,7 +1,3 @@
-// src/components/grievance/GrievanceTimeline.jsx
-// React concepts used: Components, Props (history), Lists (.map), Semantic HTML (ol/li)
-// Renders the chronological audit & action history for a grievance ticket as a semantic list.
-
 import React from 'react';
 
 /**

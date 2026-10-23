@@ -1,6 +1,3 @@
-// src/components/citizen/FileUploadDropzone.jsx
-// React concepts used: Components, Props (label, required, file, onFileSelect), State (dragActive, error), Events (dragOver, drop, change), Callbacks (onFileSelect(file))
-
 import React, { useState, useRef } from 'react';
 
 /**

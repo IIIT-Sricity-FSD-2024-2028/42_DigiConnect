@@ -1,23 +1,3 @@
-// src/components/layout/ProtectedRoute.jsx
-// React concepts used: Components, Props (allowedRoles, children), Context (useAuth),
-// Router (Navigate, useLocation), Callbacks (role checking logic)
-//
-// This component wraps dashboard routes and enforces:
-// 1. Authentication — unauthenticated users are redirected to /login
-// 2. Authorization  — users without the right role are redirected to their own dashboard
-//
-// Usage (by teammates in App.jsx routing):
-//   <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
-//     <Route path="dashboard" element={<CitizenDashboard />} />
-//   </Route>
-//
-// Or wrapping a single page:
-//   <Route path="/officer/dashboard" element={
-//     <ProtectedRoute allowedRoles={['officer']}>
-//       <OfficerDashboard />
-//     </ProtectedRoute>
-//   } />
-
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

@@ -1,20 +1,3 @@
-// src/pages/officer/ReviewApplicationPage.jsx
-// Complete Department Field Officer Application Review & Decision Page.
-//
-// React Concepts Demonstrated:
-//  [Component]     — ReviewApplicationPage composable container with Hero, Info Blocks, and Action Panel
-//  [Props]         — Pass application details, event callbacks, and decision states to sub-sections
-//  [State]         — useState for queue, currentIdx, decision ('approve'|'query'|'reject'), form inputs, modal visibility, and toast
-//  [Events]        — onClick (decision cards, queue nav, pagination, modal triggers), onChange (select, textareas)
-//  [Lists]         — Mapped rendering of applicant fields, service fields, uploaded documents, timeline events, and queue items
-//  [Hooks]         — useState, useEffect (data fetching & URL param syncing), useMemo (SLA & derived stats)
-//  [Forms]         — Controlled form elements for decision selection, rejection reason dropdown, query textarea, and officer remarks
-//  [Context]       — useAuth to read logged-in officer information and department
-//  [Router]        — useParams to inspect active application ID, useNavigate for redirecting back to queue or next app
-//  [API calls]     — apiGetOfficerQueue, apiGetApplicationById, apiOfficerApprove, apiOfficerReject, apiOfficerRaiseQuery
-//  [Prop Drilling] — Passing callback handlers and form state down to nested sections
-//  [Callbacks]     — handleSelectDecision, handleConfirmSubmit, handleNavigateApp, handleFieldChange
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

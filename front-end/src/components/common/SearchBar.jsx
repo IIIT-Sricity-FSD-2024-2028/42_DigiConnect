@@ -1,7 +1,3 @@
-// src/components/common/SearchBar.jsx
-// Universal SearchBar filter input component for DigiConnect.
-// React concepts: Components, Props, State/Controlled Input, Events (onChange, onKeyDown), Callbacks
-
 import React from 'react';
 
 /**

@@ -1,7 +1,3 @@
-// src/components/common/StatusBadge.jsx
-// Universal Status Badge component and status helper for DigiConnect.
-// React concepts: Components, Props
-
 import React from 'react';
 
 /**

@@ -1,7 +1,3 @@
-// src/components/central-admin/StatesTable.jsx
-// Directory Table for State Governments registered in the DigiConnect federation
-// React concepts: Components, Props, Callbacks, Conditional Rendering, Number/Currency formatting
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import StatusBadge from '../common/StatusBadge';

@@ -1,14 +1,3 @@
-// src/components/layout/Sidebar.jsx
-// Dynamic role-aware navigation sidebar mirroring front-end/js/navigation.js and role-manager.js
-//
-// React Concepts Demonstrated:
-//  [Component] — Reusable responsive Sidebar layout component
-//  [Hooks]     — useAuth for user role & session info, useNavigate for routing
-//  [Context]   — Reads authenticated officer/citizen/admin state from AuthContext
-//  [Router]    — NavLink for active tab styling, Link for brand & profile navigation
-//  [Lists]     — Maps dynamic role-specific navSections and items with unique keys
-//  [Events]    — onClick for sign-out and profile handlers
-
 import React from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';

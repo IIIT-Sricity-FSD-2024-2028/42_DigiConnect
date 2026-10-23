@@ -1,12 +1,3 @@
-// src/components/common/Toast.jsx
-// Reusable Toast notification component.
-//
-// React Concepts Demonstrated:
-//  [Component]  — Toast is a pure presentational component
-//  [Props]      — Receives `toast` (data) and `onClose` (callback) as props
-//  [Events]     — onClick on the close button calls the `onClose` callback
-//  [Callbacks]  — `onClose` is passed from the parent to dismiss the toast
-
 import React from 'react';
 
 // Icons for each toast type

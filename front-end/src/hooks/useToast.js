@@ -1,14 +1,3 @@
-// src/hooks/useToast.js
-// Custom hook that encapsulates toast notification state and logic.
-//
-// React Concepts Demonstrated:
-//  [Hooks]  — useState for storing the current toast message
-//  [State]  — toast state holds { message, type } or null when no toast is shown
-//
-// Usage:
-//   const { toast, showToast, hideToast } = useToast();
-//   showToast('Done!', 'success');   // type: 'success' | 'error' | 'warning' | 'info'
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 function useToast(duration = 3500) {
