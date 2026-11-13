@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { closeSidebar, selectSidebarOpen } from '../../store/slices/uiSlice';
 
 // ── SVG Icon Registry (mirrors svgIcons from front-end/js/role-manager.js) ──
 const ICONS = {
@@ -239,7 +241,20 @@ const ROLE_NAV_CONFIGS = {
   },
 };
 
-export default function Sidebar({ isOpen = false, onClose }) {
+export default function Sidebar({ isOpen: propIsOpen, onClose: propOnClose }) {
+  const dispatch = useAppDispatch();
+  const reduxSidebarOpen = useAppSelector(selectSidebarOpen);
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : reduxSidebarOpen;
+
+  const handleClose = () => {
+    if (propOnClose) {
+      propOnClose();
+    } else {
+      dispatch(closeSidebar());
+    }
+  };
+
   // [Context] Extract logged in user and logout callback
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -302,7 +317,7 @@ export default function Sidebar({ isOpen = false, onClose }) {
             backgroundColor: 'rgba(15, 23, 42, 0.45)',
             zIndex: 39,
           }}
-          onClick={onClose}
+          onClick={handleClose}
         />
       )}
       <aside className={`sidebar${isOpen ? ' open' : ''}`} id="sidebar">

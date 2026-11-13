@@ -1,7 +1,14 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  showToast as showToastAction,
+  hideToast as hideToastAction,
+  selectToast,
+} from '../store/slices/uiSlice';
 
 function useToast(duration = 3500) {
-  const [toast, setToast] = useState(null);
+  const dispatch = useAppDispatch();
+  const reduxToast = useAppSelector(selectToast);
   const timerRef = useRef(null);
 
   const clearTimer = useCallback(() => {
@@ -11,28 +18,54 @@ function useToast(duration = 3500) {
     }
   }, []);
 
-  useEffect(() => {
-    return () => clearTimer();
-  }, [clearTimer]);
-
-  // Show a toast message — auto-dismisses after `duration` ms
-  const showToast = useCallback((message, type = 'success', customDuration) => {
-    clearTimer();
-    setToast({ message, type });
-    const delay = customDuration !== undefined ? customDuration : duration;
-    if (delay > 0) {
-      timerRef.current = setTimeout(() => {
-        setToast(null);
-        timerRef.current = null;
-      }, delay);
-    }
-  }, [duration, clearTimer]);
-
-  // Manually hide the toast (used by the close button callback)
   const hideToast = useCallback(() => {
     clearTimer();
-    setToast(null);
-  }, [clearTimer]);
+    dispatch(hideToastAction());
+  }, [clearTimer, dispatch]);
+
+  const showToast = useCallback(
+    (message, type = 'success', customDuration) => {
+      clearTimer();
+      const delay = customDuration !== undefined ? customDuration : duration;
+      dispatch(showToastAction({ message, type, duration: delay }));
+    },
+    [clearTimer, dispatch, duration]
+  );
+
+  // Auto-dismissal effect triggered when Redux toast is visible or when a new toast is shown (id increments)
+  useEffect(() => {
+    if (reduxToast.visible) {
+      clearTimer();
+      const delay =
+        reduxToast.duration !== undefined ? reduxToast.duration : duration;
+      if (delay > 0) {
+        timerRef.current = setTimeout(() => {
+          dispatch(hideToastAction());
+          timerRef.current = null;
+        }, delay);
+      }
+    } else {
+      clearTimer();
+    }
+
+    return () => clearTimer();
+  }, [
+    reduxToast.id,
+    reduxToast.visible,
+    reduxToast.duration,
+    duration,
+    clearTimer,
+    dispatch,
+  ]);
+
+  // Derived toast object: null when not visible, object when visible (matching legacy useToast return value)
+  const toast = reduxToast.visible
+    ? {
+        id: reduxToast.id,
+        message: reduxToast.message,
+        type: reduxToast.type,
+      }
+    : null;
 
   return { toast, showToast, hideToast };
 }

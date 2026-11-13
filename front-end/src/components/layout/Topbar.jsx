@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch } from '../../store/hooks';
+import { toggleSidebar } from '../../store/slices/uiSlice';
 import {
   apiGetNotifications,
   apiGetUnreadCount,
@@ -57,6 +59,7 @@ function getNotificationIcon(type = '') {
 }
 
 export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggleSidebar }) {
+  const dispatch = useAppDispatch();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -247,6 +250,7 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
           className="sidebar-toggle"
           aria-label="Toggle Sidebar"
           onClick={() => {
+            dispatch(toggleSidebar());
             if (onToggleSidebar) onToggleSidebar();
           }}
         >

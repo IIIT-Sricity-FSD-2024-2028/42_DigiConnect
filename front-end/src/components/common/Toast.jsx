@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { hideToast as hideToastAction, selectToast } from '../../store/slices/uiSlice';
 
 // Icons for each toast type
 function ToastIcon({ type }) {
@@ -43,13 +45,33 @@ function getBorderColor(type) {
 }
 
 // Props:
-//   toast    — { message: string, type: 'success'|'error'|'warning'|'info' } or null
-//   onClose  — callback function to dismiss the toast
-function Toast({ toast, onClose }) {
-  // [Component] render nothing when there is no toast
-  if (!toast) return null;
+//   toast    — optional { message: string, type: 'success'|'error'|'warning'|'info' }
+//              If omitted, toast state is read directly from Redux store.
+//   onClose  — optional callback function to dismiss the toast.
+//              If omitted, dispatches hideToast action to Redux store.
+function Toast({ toast: propToast, onClose: propOnClose }) {
+  const dispatch = useAppDispatch();
+  const reduxToast = useAppSelector(selectToast);
 
-  const cssType = toast.type === 'error' ? 'danger' : (toast.type || 'info');
+  const activeToast =
+    propToast !== undefined
+      ? propToast
+      : reduxToast?.visible
+      ? { id: reduxToast.id, message: reduxToast.message, type: reduxToast.type }
+      : null;
+
+  const handleClose = () => {
+    if (propOnClose) {
+      propOnClose();
+    } else {
+      dispatch(hideToastAction());
+    }
+  };
+
+  // [Component] render nothing when there is no toast or visible is false
+  if (!activeToast || activeToast.visible === false) return null;
+
+  const cssType = activeToast.type === 'error' ? 'danger' : (activeToast.type || 'info');
 
   return (
     <div
@@ -70,6 +92,7 @@ function Toast({ toast, onClose }) {
       }}
     >
       <div
+        key={activeToast.id !== undefined ? activeToast.id : activeToast.message}
         className={`toast toast-${cssType}`}
         style={{
           display: 'flex',
@@ -81,7 +104,7 @@ function Toast({ toast, onClose }) {
           fontWeight: 600,
           boxShadow: '0 12px 30px rgba(0,0,0,0.18), 0 4px 10px rgba(0,0,0,0.08)',
           backgroundColor: '#ffffff',
-          borderLeft: `5px solid ${getBorderColor(toast.type)}`,
+          borderLeft: `5px solid ${getBorderColor(activeToast.type)}`,
           color: 'var(--navy-900, #0f172a)',
           minWidth: '280px',
           maxWidth: '100%',
@@ -89,20 +112,20 @@ function Toast({ toast, onClose }) {
           wordBreak: 'break-word',
         }}
       >
-        {/* Status Icon — [Props] toast.type drives which icon renders */}
+        {/* Status Icon */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-          <ToastIcon type={toast.type} />
+          <ToastIcon type={activeToast.type} />
         </div>
 
         {/* Toast Text */}
         <span style={{ flex: 1, lineHeight: 1.4, color: 'var(--navy-900, #0f172a)' }}>
-          {toast.message}
+          {activeToast.message}
         </span>
 
-        {/* Close Button — [Events + Callbacks] calls onClose from parent */}
+        {/* Close Button */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Dismiss notification"
           style={{
             background: 'none',
