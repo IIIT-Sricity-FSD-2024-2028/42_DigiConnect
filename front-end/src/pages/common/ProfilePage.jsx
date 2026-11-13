@@ -8,8 +8,9 @@
 // 6. Feedback & Toasts (useToast, Toast)
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { apiGetUserById, apiUpdateProfile, apiChangePassword } from '../../api/authApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { updateUserProfile, changeUserPassword } from '../../store/slices/authSlice';
+import { apiGetUserById } from '../../api/authApi';
 import useToast from '../../hooks/useToast';
 import Toast from '../../components/common/Toast';
 
@@ -28,7 +29,8 @@ const STATES = [
 ];
 
 export default function ProfilePage() {
-  const { user, login } = useAuth();
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
   const { toast, showToast, hideToast } = useToast();
 
   // ── Tab State ('personal' | 'contact' | 'documents' | 'security' | 'notifications') ──
@@ -251,16 +253,8 @@ export default function ProfilePage() {
         pincode: profileData.pincode.trim(),
       };
 
-      await apiUpdateProfile(userId, payload);
-
-      // Synchronize AuthContext and local storage so Topbar/Sidebar show updated info
-      login({
-        ...user,
-        name: fullName,
-        email: payload.email,
-        phone: payload.phone,
-      });
-
+      // Dispatch updateUserProfile thunk (which updates Redux store & localStorage)
+      await dispatch(updateUserProfile({ id: userId, data: payload })).unwrap();
       showToast('Profile updated successfully!', 'success');
     } catch (err) {
       showToast(err.message || 'Failed to update profile.', 'error');
@@ -290,7 +284,8 @@ export default function ProfilePage() {
     setUpdatingPassword(true);
     try {
       const userId = user.id || user.sub;
-      await apiChangePassword(userId, currentPassword, newPassword);
+      // Dispatch changeUserPassword thunk
+      await dispatch(changeUserPassword({ id: userId, currentPassword, newPassword })).unwrap();
       showToast('Password updated successfully!', 'success');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordModal(false);

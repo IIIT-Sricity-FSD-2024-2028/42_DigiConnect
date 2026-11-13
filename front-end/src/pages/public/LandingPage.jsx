@@ -1,7 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAppSelector } from '../../store/hooks';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+
+const ROLE_DASHBOARD_MAP = {
+  citizen: '/citizen/dashboard',
+  officer: '/officer/dashboard',
+  department_head: '/department-head/dashboard',
+  state_admin: '/state-admin/dashboard',
+  central_admin: '/central-admin/dashboard',
+  grievance: '/grievance/dashboard',
+};
 
 
 // Feature cards (from index.html lines 307-382)
@@ -73,6 +83,9 @@ const HOW_STEPS = [
 // ── Main Landing Page ─────────────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const { isLoggedIn, role } = useAppSelector((state) => state.auth);
+  const dashboardUrl = ROLE_DASHBOARD_MAP[role?.toLowerCase()] || '/citizen/dashboard';
+
   return (
     <div data-page="landing">
 
@@ -105,18 +118,29 @@ export default function LandingPage() {
 
             <div className="hero-actions">
               {/* [Events] Router Links using React Router */}
-              <Link to="/register" className="hero-cta-primary">
-                Get Started
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </Link>
-              <Link to="/login" className="hero-cta-secondary">
-                Track Application
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+              {isLoggedIn ? (
+                <Link to={dashboardUrl} className="hero-cta-primary">
+                  Go to Dashboard
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              ) : (
+                <>
+                  <Link to="/register" className="hero-cta-primary">
+                    Get Started
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </Link>
+                  <Link to="/login" className="hero-cta-secondary">
+                    Sign In / Track
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Hero Stats */}

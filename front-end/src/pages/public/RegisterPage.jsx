@@ -10,8 +10,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { apiRequestOtp, apiRegister } from '../../api/authApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { requestOtp, registerUser } from '../../store/slices/authSlice';
 import { apiFetch } from '../../api/client';
 import useToast from '../../hooks/useToast';
 import Toast from '../../components/common/Toast';
@@ -56,7 +56,8 @@ const SECURITY_QUESTIONS = [
 ];
 
 export default function RegisterPage() {
-  const { isLoggedIn, login } = useAuth();
+  const dispatch = useAppDispatch();
+  const { isLoggedIn } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const { toast, showToast, hideToast } = useToast();
 
@@ -344,9 +345,9 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      // Call request-otp simulation API
+      // Call request-otp via Redux thunk
       const plainAadhaar = formData.aadhaar.replace(/\s/g, '');
-      const otpRes = await apiRequestOtp(formData.phone, plainAadhaar);
+      const otpRes = await dispatch(requestOtp({ phone: formData.phone, aadhaar: plainAadhaar })).unwrap();
       const generatedOtp = otpRes.otp || '123456';
       setSimulatedOtp(generatedOtp);
       setOtp(generatedOtp.split('')); // Auto-fill the simulated OTP for smooth testing!
@@ -354,7 +355,7 @@ export default function RegisterPage() {
 
       setCurrentStep(4);
       showToast(otpRes.message || `OTP sent to mobile ${formData.phone}`, 'info');
-    } catch (err) {
+    } catch {
       // Fallback for offline/simulation
       const fallbackOtp = Math.floor(100000 + Math.random() * 900000).toString();
       setSimulatedOtp(fallbackOtp);
@@ -391,7 +392,7 @@ export default function RegisterPage() {
     if (otpTimer > 0) return;
     try {
       const plainAadhaar = formData.aadhaar.replace(/\s/g, '');
-      const res = await apiRequestOtp(formData.phone, plainAadhaar);
+      const res = await dispatch(requestOtp({ phone: formData.phone, aadhaar: plainAadhaar })).unwrap();
       const code = res.otp || '123456';
       setSimulatedOtp(code);
       setOtp(code.split(''));
@@ -430,23 +431,10 @@ export default function RegisterPage() {
         role: 'CITIZEN',
       };
 
-      const res = await apiRegister(payload);
+      // Dispatch registerUser thunk (which also saves to store & localStorage)
+      await dispatch(registerUser(payload)).unwrap();
       showToast('Account created and verified successfully!', 'success');
 
-      // Auto-login into session
-      const userSession = res.data || {
-        id: `USR-${Math.floor(1000 + Math.random() * 9000)}`,
-        name: payload.name,
-        email: payload.email,
-        phone: payload.phone,
-        role: 'citizen',
-        roleKey: 'citizen',
-        jurisdiction: payload.jurisdiction,
-        selectedJurisdictionNodeId: payload.selectedJurisdictionNodeId,
-        stateId: payload.stateId,
-      };
-
-      login(userSession);
       setTimeout(() => {
         navigate('/citizen/dashboard');
       }, 700);

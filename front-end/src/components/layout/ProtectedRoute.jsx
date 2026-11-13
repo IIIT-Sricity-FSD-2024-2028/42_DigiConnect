@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAppSelector } from '../../store/hooks';
 
 // ── Role → dashboard redirect map (same map used in LoginPage for consistency) ──
 const ROLE_DASHBOARD_MAP = {
@@ -29,8 +29,8 @@ const ROLE_DASHBOARD_MAP = {
  *   • Authorized     → Render children or <Outlet />
  */
 export default function ProtectedRoute({ allowedRoles = [], children }) {
-  // [Context] Read auth state via useAuth hook
-  const { isLoggedIn, role, user } = useAuth();
+  // [Redux] Read auth state directly from Redux store
+  const { isLoggedIn, role, user } = useAppSelector((state) => state.auth);
 
   // [Router hook] Get current location for redirect-back after login
   const location = useLocation();
