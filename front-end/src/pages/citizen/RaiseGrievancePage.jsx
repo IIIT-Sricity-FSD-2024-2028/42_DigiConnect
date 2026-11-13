@@ -11,7 +11,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetMyApplications, apiRaiseGrievance } from '../../api/citizenApi';
+import { apiGetMyApplications } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  raiseGrievance,
+  selectRaiseLoading,
+  selectRaiseError,
+  selectLastSubmittedGrievance,
+  fetchGrievanceEligibility,
+  selectGrievanceEligibility,
+  selectEligibilityLoading,
+  selectEligibilityError,
+  clearLastSubmitted,
+} from '../../store/slices/grievanceSlice';
 import FormStepper from '../../components/citizen/FormStepper';
 import FileUploadDropzone from '../../components/citizen/FileUploadDropzone';
 import useToast from '../../hooks/useToast';
@@ -110,6 +122,15 @@ export default function RaiseGrievancePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast, showToast, hideToast } = useToast();
+  const dispatch = useAppDispatch();
+
+  // ── Redux Grievance State ──
+  const submitting = useAppSelector(selectRaiseLoading);
+  const raiseError = useAppSelector(selectRaiseError);
+  const submittedGrievance = useAppSelector(selectLastSubmittedGrievance);
+  const backendEligibility = useAppSelector(selectGrievanceEligibility);
+  const eligibilityLoading = useAppSelector(selectEligibilityLoading);
+  const eligibilityError = useAppSelector(selectEligibilityError);
 
   // ── Step Navigation State (1: Category, 2: Details, 3: Evidence, 4: Review, 5: Success) ──
   const [currentStep, setCurrentStep] = useState(1);
@@ -137,9 +158,27 @@ export default function RaiseGrievancePage() {
   // ── Supporting Data & Feedback State ──
   const [myApplications, setMyApplications] = useState([]);
   const [formErrors, setFormErrors] = useState({});
-  const [submitting, setSubmitting] = useState(false);
   const [errorBanner, setErrorBanner] = useState('');
-  const [submittedGrievance, setSubmittedGrievance] = useState(null);
+
+  // Clear previous submission on mount
+  useEffect(() => {
+    dispatch(clearLastSubmitted());
+  }, [dispatch]);
+
+  // Sync Redux raise error with banner if present
+  useEffect(() => {
+    if (raiseError) {
+      setErrorBanner(raiseError);
+    }
+  }, [raiseError]);
+
+  // Dispatch backend eligibility check whenever an application ID is selected
+  useEffect(() => {
+    const rawId = (formData.relatedAppId || '').trim();
+    if (rawId) {
+      dispatch(fetchGrievanceEligibility(rawId));
+    }
+  }, [dispatch, formData.relatedAppId]);
 
   // ── Step 1: Fetch Citizen Applications for Validation & Prefill ──
   useEffect(() => {
@@ -188,19 +227,27 @@ export default function RaiseGrievancePage() {
   }, [myApplications, formData.relatedAppId]);
 
   // Compute real-time eligibility map for all 6 grievance categories
-  const eligibilityMap = useMemo(() => {
+  // (uses backend eligibility if loaded from Redux, falling back to client evaluation)
+  const clientEligibilityMap = useMemo(() => {
     return evaluateAllGrievanceEligibility(selectedApp);
   }, [selectedApp]);
+
+  const eligibilityMap = useMemo(() => {
+    if (backendEligibility && typeof backendEligibility === 'object' && Object.keys(backendEligibility).length > 0) {
+      return backendEligibility;
+    }
+    return clientEligibilityMap;
+  }, [backendEligibility, clientEligibilityMap]);
 
   // If application change causes currently selected category to become ineligible, reset selection
   useEffect(() => {
     if (category && selectedApp) {
-      const currentElig = evaluateCategoryEligibility(category, selectedApp);
+      const currentElig = eligibilityMap[category] || evaluateCategoryEligibility(category, selectedApp);
       if (!currentElig.isEligible) {
         setCategory('');
       }
     }
-  }, [selectedApp, category]);
+  }, [selectedApp, category, eligibilityMap]);
 
   // Compute dynamic department choices from citizen applications & state departments
   const departmentOptions = useMemo(() => {
@@ -312,7 +359,7 @@ export default function RaiseGrievancePage() {
       return;
     }
     if (selectedApp) {
-      const elig = evaluateCategoryEligibility(category, selectedApp);
+      const elig = eligibilityMap[category] || evaluateCategoryEligibility(category, selectedApp);
       if (!elig.isEligible) {
         setFormErrors({ category: elig.reason });
         showToast(elig.reason, 'error');
@@ -346,7 +393,7 @@ export default function RaiseGrievancePage() {
       if (!found) {
         errors.relatedAppId = 'Application ID not found in your records.';
       } else {
-        const elig = evaluateCategoryEligibility(category, found);
+        const elig = eligibilityMap[category] || evaluateCategoryEligibility(category, found);
         if (!elig.isEligible) {
           errors.relatedAppId = `Category '${selectedCategoryObj?.label || category}' is not eligible for this application: ${elig.reason}`;
         }
@@ -394,14 +441,13 @@ export default function RaiseGrievancePage() {
       return;
     }
 
-    const elig = evaluateCategoryEligibility(category, matchedApp);
+    const elig = eligibilityMap[category] || evaluateCategoryEligibility(category, matchedApp);
     if (!elig.isEligible) {
       showToast(elig.reason, 'error');
       setErrorBanner(`Ineligible Category: ${elig.reason}`);
       return;
     }
 
-    setSubmitting(true);
     setErrorBanner('');
 
     try {
@@ -428,16 +474,14 @@ export default function RaiseGrievancePage() {
         };
       }
 
-      const res = await apiRaiseGrievance(payload);
-      setSubmittedGrievance(res.data);
+      await dispatch(raiseGrievance(payload)).unwrap();
       showToast('Grievance submitted successfully!', 'success');
       setCurrentStep(5);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
-      showToast(err.message || 'Failed to submit grievance', 'error');
-      setErrorBanner(err.message || 'Failed to submit grievance. Please try again.');
-    } finally {
-      setSubmitting(false);
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to submit grievance. Please try again.';
+      showToast(errorMsg, 'error');
+      setErrorBanner(errorMsg);
     }
   };
 

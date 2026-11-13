@@ -2,6 +2,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
+import grievanceReducer from './slices/grievanceSlice';
 
 // Placeholder reducers so the app never shows a blank screen while teammates build their slices
 const initialPlaceholder = (name) => (state = { status: 'idle' }) => state;
@@ -14,7 +15,7 @@ export const store = configureStore({
     centralAdmin: initialPlaceholder('centralAdmin'),
     deptHead: initialPlaceholder('deptHead'),
     stateAdmin: initialPlaceholder('stateAdmin'),
-    grievance: initialPlaceholder('grievance'),
+    grievance: grievanceReducer,
     ui: uiReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',
