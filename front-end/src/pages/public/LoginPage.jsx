@@ -5,8 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { apiLogin, apiGetUsers, apiUpdateProfile } from '../../api/authApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { loginUser, logout, clearAuthError, fetchUsersList } from '../../store/slices/authSlice';
+import { apiUpdateProfile } from '../../api/authApi';
 import Modal from '../../components/common/Modal';
 
 // ── Demo credentials list (rendered via .map for the quick-fill box) ──
@@ -67,8 +68,9 @@ export default function LoginPage() {
     departmentHeadName: '',
   });
 
-  // ── Context & Router hooks ──
-  const { login, logout, isLoggedIn, role, user } = useAuth();
+  // ── Redux & Router hooks ──
+  const dispatch = useAppDispatch();
+  const { user, role, isLoggedIn, loading: authLoading, error: authError } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -76,20 +78,20 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('state_deactivated') === 'true') {
-      logout();
+      dispatch(logout());
       setDeactivatedModal({
         isOpen: true,
         stateName: params.get('stateName') || 'Your State',
       });
     } else if (params.get('officer_suspended') === 'true') {
-      logout();
+      dispatch(logout());
       setSuspendedOfficerModal({
         isOpen: true,
         officerName: params.get('officerName') || '',
         departmentHeadName: params.get('deptHeadName') || 'the Department Head',
       });
     }
-  }, [location.search]);
+  }, [location.search, dispatch]);
 
   // ── Effect: redirect already-logged-in users to their dashboard ──
   useEffect(() => {
@@ -131,97 +133,56 @@ export default function LoginPage() {
   // ── Callback: close deactivated state modal and go to landing page ──
   const handleCloseDeactivatedModal = () => {
     setDeactivatedModal({ isOpen: false, stateName: '' });
-    logout();
+    dispatch(logout());
     navigate('/', { replace: true });
   };
 
   // ── Callback: close suspended officer modal and go to landing page ──
   const handleCloseSuspendedOfficerModal = () => {
     setSuspendedOfficerModal({ isOpen: false, officerName: '', departmentHeadName: '' });
-    logout();
+    dispatch(logout());
     navigate('/', { replace: true });
   };
 
-  // ── Callback: form submit → API call → context login → navigate ──
+  // ── Callback: form submit → Redux dispatch(loginUser) → navigate ──
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    dispatch(clearAuthError());
     setLoading(true);
 
     try {
-      // [API call] POST /users/login
-      const res = await apiLogin(email, password);
-      const user = res.data;
+      const resultAction = await dispatch(loginUser({ email, password }));
 
-      // Check if user belongs to a deactivated state
-      const isDeactivated =
-        user?.isStateDeactivated === true ||
-        (user?.stateStatus && user.stateStatus.toUpperCase() === 'INACTIVE');
-
-      if (isDeactivated) {
-        logout();
-        setDeactivatedModal({
-          isOpen: true,
-          stateName: user.deactivatedStateName || user.state || 'Your State',
-        });
-        setLoading(false);
-        return;
+      if (loginUser.fulfilled.match(resultAction)) {
+        const session = resultAction.payload;
+        const dest = ROLE_REDIRECT_MAP[session.role] || ROLE_REDIRECT_MAP[session.roleKey] || '/citizen/dashboard';
+        navigate(dest, { replace: true });
+      } else if (loginUser.rejected.match(resultAction)) {
+        const payload = resultAction.payload;
+        if (payload && typeof payload === 'object') {
+          if (payload.type === 'STATE_DEACTIVATED') {
+            dispatch(logout());
+            setDeactivatedModal({
+              isOpen: true,
+              stateName: payload.stateName || 'Your State',
+            });
+            return;
+          }
+          if (payload.type === 'OFFICER_SUSPENDED') {
+            dispatch(logout());
+            setSuspendedOfficerModal({
+              isOpen: true,
+              officerName: payload.officerName || '',
+              departmentHeadName: payload.departmentHeadName || 'the Department Head',
+            });
+            return;
+          }
+          setError(payload.message || 'Invalid credentials. Please check your email and password.');
+        } else {
+          setError(payload || 'Invalid credentials. Please check your email and password.');
+        }
       }
-
-      // Check if officer has been suspended / deactivated by department head
-      const isSuspendedOfficer =
-        (user?.role === 'officer' || (user?.backendRole || '').toLowerCase() === 'officer') &&
-        (user?.isSuspended === true || user?.status === 'Suspended' || user?.status === 'Inactive');
-
-      if (isSuspendedOfficer) {
-        logout();
-        setSuspendedOfficerModal({
-          isOpen: true,
-          officerName: user.name || '',
-          departmentHeadName: user.suspendedBy || 'the Department Head',
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Build session object (matches original auth.js structure)
-      const rawRole = (user.role || '').toLowerCase();
-      const rawBackend = (user.backendRole || '').toLowerCase();
-      const normalizedRole =
-        rawRole === 'super_user' || rawRole === 'central_admin' || rawBackend === 'central_admin'
-          ? 'central_admin'
-          : rawRole === 'state_admin' || rawBackend === 'state_admin'
-          ? 'state_admin'
-          : rawRole === 'department_head' || rawBackend === 'department_head'
-          ? 'department_head'
-          : rawRole;
-
-      const session = {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: normalizedRole,
-        roleKey: normalizedRole,
-        backendRole: user.backendRole || user.role,
-        actualRole: user.role,
-        stateId: user.stateId || '',
-        state: user.state || '',
-        stateStatus: user.stateStatus || 'ACTIVE',
-        isStateDeactivated: false,
-        departmentId: user.departmentId || '',
-        assignedNodeId: user.assignedNodeId || user.jurisdiction || '',
-        designationId: user.designationId || '',
-        title: user.title,
-        phone: user.phone,
-        loginTime: new Date().toISOString(),
-      };
-
-      // [Context] Store session in AuthContext (which syncs to localStorage)
-      login(session);
-
-      // [Router] Navigate to the role-specific dashboard
-      const dest = ROLE_REDIRECT_MAP[session.role] || ROLE_REDIRECT_MAP[session.roleKey] || '/citizen/dashboard';
-      navigate(dest, { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid credentials. Please check your email and password.');
     } finally {
@@ -237,9 +198,8 @@ export default function LoginPage() {
       return;
     }
     try {
-      // Search account by fetching users
-      const res = await apiGetUsers();
-      const users = res.data || res;
+      // Search account by fetching users via Redux thunk
+      const users = await dispatch(fetchUsersList()).unwrap();
       const found = (Array.isArray(users) ? users : []).find(
         (u) =>
           (u.email && u.email.toLowerCase() === fpIdentity.trim().toLowerCase()) ||
@@ -472,9 +432,9 @@ export default function LoginPage() {
             )}
 
             {/* Submit button with loading spinner */}
-            <button type="submit" className="auth-submit-btn" disabled={loading}>
-              <span>{loading ? 'Signing in...' : 'Sign In'}</span>
-              {loading && (
+            <button type="submit" className="auth-submit-btn" disabled={loading || authLoading}>
+              <span>{loading || authLoading ? 'Signing in...' : 'Sign In'}</span>
+              {(loading || authLoading) && (
                 <div
                   className="spinner"
                   style={{ borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }}
