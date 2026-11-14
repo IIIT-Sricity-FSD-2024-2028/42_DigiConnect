@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useAppDispatch } from '../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { toggleSidebar } from '../../store/slices/uiSlice';
 import {
-  apiGetNotifications,
-  apiGetUnreadCount,
-  apiMarkAsRead,
-  apiMarkAllAsRead,
-} from '../../api/notificationApi';
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  selectNotifications,
+  selectUnreadCount,
+  selectNotificationLoading,
+  selectNotificationError,
+} from '../../store/slices/notificationSlice';
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return '';
@@ -66,10 +70,10 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifError, setNotifError] = useState(null);
+  const notifications = useAppSelector(selectNotifications);
+  const unreadCount = useAppSelector(selectUnreadCount);
+  const notifLoading = useAppSelector(selectNotificationLoading);
+  const notifError = useAppSelector(selectNotificationError);
 
   const notifRef = useRef(null);
   const userRef = useRef(null);
@@ -136,47 +140,19 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
     return title;
   }, [title, completeOfficerName]);
 
-  // Fetch unread count initially and periodically
-  const fetchUnreadCount = async () => {
-    if (!user) return;
-    try {
-      const res = await apiGetUnreadCount();
-      if (res && res.data && typeof res.data.count === 'number') {
-        setUnreadCount(res.data.count);
-      }
-    } catch {
-      // Quiet fail on count check to avoid disrupting UX
-    }
-  };
-
-  // Fetch full notification list
-  const fetchNotifications = async () => {
-    if (!user) return;
-    try {
-      setNotifLoading(true);
-      setNotifError(null);
-      const res = await apiGetNotifications();
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setNotifications(list);
-      const unread = list.filter((n) => !n.read).length;
-      setUnreadCount(unread);
-    } catch (err) {
-      setNotifError(err.message || 'Failed to load notifications');
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
+  // Fetch unread count initially and when user changes
   useEffect(() => {
-    fetchUnreadCount();
-  }, [user]);
-
-  // Load notifications whenever panel is opened
-  useEffect(() => {
-    if (notifOpen) {
-      fetchNotifications();
+    if (user) {
+      dispatch(fetchUnreadCount());
     }
-  }, [notifOpen]);
+  }, [user, dispatch]);
+
+  // Load full notifications list whenever panel is opened
+  useEffect(() => {
+    if (notifOpen && user) {
+      dispatch(fetchNotifications());
+    }
+  }, [notifOpen, user, dispatch]);
 
   // Click outside listener
   useEffect(() => {
@@ -192,17 +168,9 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleNotificationClick = async (notif) => {
+  const handleNotificationClick = (notif) => {
     if (!notif.read) {
-      try {
-        await apiMarkAsRead(notif.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch {
-        // Continue even if network error
-      }
+      dispatch(markNotificationAsRead(notif.id));
     }
 
     setNotifOpen(false);
@@ -226,14 +194,8 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
     }
   };
 
-  const handleMarkAllRead = async () => {
-    try {
-      await apiMarkAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch (err) {
-      setNotifError(err.message || 'Failed to mark all as read');
-    }
+  const handleMarkAllRead = () => {
+    dispatch(markAllNotificationsAsRead());
   };
 
   const handleLogout = () => {
@@ -354,7 +316,7 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
                     <button
                       type="button"
                       className="btn btn-sm btn-outline"
-                      onClick={fetchNotifications}
+                      onClick={() => dispatch(fetchNotifications())}
                       style={{ fontSize: '0.75rem' }}
                     >
                       Retry
