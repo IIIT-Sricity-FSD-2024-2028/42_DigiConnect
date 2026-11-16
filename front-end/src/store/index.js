@@ -2,6 +2,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
+import notificationReducer from './slices/notificationSlice';
 import grievanceReducer from './slices/grievanceSlice';
 
 // Placeholder reducers so the app never shows a blank screen while teammates build their slices
@@ -17,6 +18,8 @@ export const store = configureStore({
     stateAdmin: initialPlaceholder('stateAdmin'),
     grievance: grievanceReducer,
     ui: uiReducer,
+    notification: notificationReducer,
+    notifications: notificationReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',
 });
