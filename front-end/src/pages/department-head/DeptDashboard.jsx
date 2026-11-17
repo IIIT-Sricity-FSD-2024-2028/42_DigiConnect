@@ -4,81 +4,42 @@
 // React concepts: Components, Props, State (useState), Hooks (useEffect), Events (onClick),
 // Lists (map), Context (useAuth), Router (useNavigate, Link), API calls (apiGetDeptAnalytics, apiGetDeptServices)
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetDeptAnalytics, apiGetDeptServices } from '../../api/departmentHeadApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchDeptAnalytics,
+  fetchDeptServices,
+  selectDeptHeadStats,
+  selectDeptHeadServices,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import StatCard from '../../components/common/StatCard';
 // import StatusBadge from '../../components/common/StatusBadge';
 
 export default function DeptDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const departmentId = user?.departmentId || '';
   const departmentName = user?.dept || 'Department';
   const officerName = user?.name || 'Department Head';
   const officerTitle = user?.title || 'Head of Department';
 
-  // ── States ──
-  const [stats, setStats] = useState({
-    activeServices: 0,
-    totalServices: 0,
-    totalDesignations: 0,
-    totalOfficers: 0,
-    totalApplications: 0,
-    totalRevenue: 0,
-  });
+  // ── Redux Store State (Strict 1:1 binding, no local state bypass) ──
+  const stats = useAppSelector(selectDeptHeadStats);
+  const services = useAppSelector(selectDeptHeadServices);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
 
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // ── Hook: Fetch Data on Component Mount ──
+  // ── Hook: Dispatch Redux Thunks on Component Mount ──
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboardData() {
-      setLoading(true);
-      setError('');
-
-      try {
-        // Parallel API calls for analytics and services
-        const [analyticsRes, servicesRes] = await Promise.all([
-          apiGetDeptAnalytics(departmentId).catch(() => ({ data: {} })),
-          apiGetDeptServices(departmentId).catch(() => ({ data: [] })),
-        ]);
-
-        if (!isMounted) return;
-
-        if (analyticsRes?.data) {
-          setStats((prev) => ({
-            ...prev,
-            ...analyticsRes.data,
-          }));
-        }
-
-        const sList = servicesRes?.data || [];
-        setServices(sList);
-        if (sList.length > 0 && !analyticsRes?.data?.activeServices) {
-          setStats((prev) => ({ ...prev, activeServices: sList.length, totalServices: sList.length }));
-        }
-      } catch (err) {
-        if (isMounted) {
-          console.error('Failed to load department dashboard data:', err);
-          setError('Failed to load dashboard data. Please try again.');
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-
-    loadDashboardData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [departmentId]);
+    dispatch(fetchDeptAnalytics(departmentId));
+    dispatch(fetchDeptServices(departmentId));
+  }, [dispatch, departmentId]);
 
   return (
     <div className="dept-dashboard">
