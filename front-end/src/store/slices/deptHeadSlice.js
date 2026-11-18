@@ -3,6 +3,11 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
   apiGetDeptAnalytics,
   apiGetDeptServices,
+  apiGetDeptOfficers,
+  apiOnboardOfficer,
+  apiUpdateOfficerStatus,
+  apiGetDesignations,
+  apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 
 /**
@@ -78,6 +83,102 @@ export const fetchDeptServices = createAsyncThunk(
   }
 );
 
+/**
+ * 3. Fetch Department Officers (Read)
+ * GET /department-head/officers?departmentId=...
+ */
+export const fetchDeptOfficers = createAsyncThunk(
+  'deptHead/fetchOfficers',
+  async (departmentId, { rejectWithValue }) => {
+    try {
+      const res = await apiGetDeptOfficers(departmentId);
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to fetch department officers.'
+      );
+    }
+  }
+);
+
+/**
+ * 4. Onboard Field Officer (Create)
+ * POST /department-head/officers
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const onboardOfficer = createAsyncThunk(
+  'deptHead/onboardOfficer',
+  async (officerData, { rejectWithValue }) => {
+    try {
+      const res = await apiOnboardOfficer(officerData);
+      return res?.data || res;
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to onboard field officer.'
+      );
+    }
+  }
+);
+
+/**
+ * 5. Update Officer Status (Update)
+ * PATCH /department-head/officers/:id/status
+ * State updates strictly after positive DB response in .fulfilled (no optimistic updates)
+ */
+export const updateOfficerStatus = createAsyncThunk(
+  'deptHead/updateOfficerStatus',
+  async ({ officerId, status }, { rejectWithValue }) => {
+    try {
+      const res = await apiUpdateOfficerStatus(officerId, status);
+      const updated = res?.data || res;
+      return { officerId, status, officer: updated };
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || `Failed to update status for officer ${officerId}.`
+      );
+    }
+  }
+);
+
+/**
+ * 6. Fetch Department Designations
+ * GET /department-head/designations?departmentId=...
+ */
+export const fetchDesignations = createAsyncThunk(
+  'deptHead/fetchDesignations',
+  async (departmentId, { rejectWithValue }) => {
+    try {
+      const res = await apiGetDesignations(departmentId);
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to fetch department designations.'
+      );
+    }
+  }
+);
+
+/**
+ * 7. Fetch Jurisdiction Nodes (Scoping)
+ * GET /geography/nodes?stateId=...
+ */
+export const fetchJurisdictionNodes = createAsyncThunk(
+  'deptHead/fetchJurisdictionNodes',
+  async (stateId, { rejectWithValue }) => {
+    try {
+      const res = await apiGetStateJurisdictionNodes(stateId);
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      return Array.isArray(list) ? list : [];
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to fetch jurisdiction nodes.'
+      );
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const deptHeadSlice = createSlice({
@@ -118,7 +219,6 @@ export const deptHeadSlice = createSlice({
       .addCase(fetchDeptServices.fulfilled, (state, action) => {
         state.loading = false;
         state.services = action.payload;
-        // Keep activeServices metric aligned if analytics returned 0
         if (action.payload.length > 0 && !state.stats.activeServices) {
           state.stats.activeServices = action.payload.length;
           state.stats.totalServices = action.payload.length;
@@ -127,6 +227,91 @@ export const deptHeadSlice = createSlice({
       })
       .addCase(fetchDeptServices.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── fetchDeptOfficers ──
+    builder
+      .addCase(fetchDeptOfficers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDeptOfficers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.officers = action.payload;
+        state.stats.totalOfficers = action.payload.length;
+        state.error = null;
+      })
+      .addCase(fetchDeptOfficers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── onboardOfficer (CRUD: Create -> DB success -> Redux) ──
+    builder
+      .addCase(onboardOfficer.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(onboardOfficer.fulfilled, (state, action) => {
+        const newOff = action.payload;
+        if (newOff && newOff.id) {
+          const exists = state.officers.some((o) => o.id === newOff.id);
+          if (!exists) {
+            state.officers.push(newOff);
+          }
+          state.stats.totalOfficers = state.officers.length;
+        }
+        state.error = null;
+      })
+      .addCase(onboardOfficer.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── updateOfficerStatus (CRUD: Update -> DB success -> Redux) ──
+    builder
+      .addCase(updateOfficerStatus.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(updateOfficerStatus.fulfilled, (state, action) => {
+        const { officerId, status, officer } = action.payload;
+        const idx = state.officers.findIndex((o) => o.id === officerId);
+        if (idx !== -1) {
+          state.officers[idx] = {
+            ...state.officers[idx],
+            ...(officer || {}),
+            status,
+          };
+        }
+        state.error = null;
+      })
+      .addCase(updateOfficerStatus.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── fetchDesignations ──
+    builder
+      .addCase(fetchDesignations.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(fetchDesignations.fulfilled, (state, action) => {
+        state.designations = action.payload;
+        state.stats.totalDesignations = action.payload.length;
+        state.error = null;
+      })
+      .addCase(fetchDesignations.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── fetchJurisdictionNodes ──
+    builder
+      .addCase(fetchJurisdictionNodes.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(fetchJurisdictionNodes.fulfilled, (state, action) => {
+        state.jurisdictionNodes = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchJurisdictionNodes.rejected, (state, action) => {
         state.error = action.payload;
       });
   },
