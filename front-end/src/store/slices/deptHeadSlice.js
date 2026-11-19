@@ -7,6 +7,8 @@ import {
   apiOnboardOfficer,
   apiUpdateOfficerStatus,
   apiGetDesignations,
+  apiCreateDesignation,
+  apiDeleteDesignation,
   apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 
@@ -179,6 +181,44 @@ export const fetchJurisdictionNodes = createAsyncThunk(
   }
 );
 
+/**
+ * 8. Create Designation (Create)
+ * POST /department-head/designations
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const createDesignation = createAsyncThunk(
+  'deptHead/createDesignation',
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await apiCreateDesignation(data);
+      return res?.data || res;
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to create designation.'
+      );
+    }
+  }
+);
+
+/**
+ * 9. Delete Designation (Delete)
+ * DELETE /department-head/designations/:id
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const deleteDesignation = createAsyncThunk(
+  'deptHead/deleteDesignation',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await apiDeleteDesignation(id);
+      return { id, response: res };
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to delete designation.'
+      );
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const deptHeadSlice = createSlice({
@@ -291,14 +331,52 @@ export const deptHeadSlice = createSlice({
     // ── fetchDesignations ──
     builder
       .addCase(fetchDesignations.pending, (state) => {
+        state.loading = true;
         state.error = null;
       })
       .addCase(fetchDesignations.fulfilled, (state, action) => {
+        state.loading = false;
         state.designations = action.payload;
         state.stats.totalDesignations = action.payload.length;
         state.error = null;
       })
       .addCase(fetchDesignations.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── createDesignation (CRUD: Create -> DB success -> Redux) ──
+    builder
+      .addCase(createDesignation.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(createDesignation.fulfilled, (state, action) => {
+        const created = action.payload;
+        if (created && created.id) {
+          const exists = state.designations.some((d) => d.id === created.id);
+          if (!exists) {
+            state.designations.push(created);
+          }
+          state.stats.totalDesignations = state.designations.length;
+        }
+        state.error = null;
+      })
+      .addCase(createDesignation.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── deleteDesignation (CRUD: Delete -> DB success -> Redux) ──
+    builder
+      .addCase(deleteDesignation.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(deleteDesignation.fulfilled, (state, action) => {
+        const { id } = action.payload;
+        state.designations = state.designations.filter((d) => d.id !== id);
+        state.stats.totalDesignations = state.designations.length;
+        state.error = null;
+      })
+      .addCase(deleteDesignation.rejected, (state, action) => {
         state.error = action.payload;
       });
 
