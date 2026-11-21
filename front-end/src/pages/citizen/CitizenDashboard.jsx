@@ -89,6 +89,7 @@ export default function CitizenDashboard() {
     applications,
     grievances,
     services,
+    stats,
     loadingApplications,
     loadingServices,
     loadingGrievances,
@@ -111,17 +112,15 @@ export default function CitizenDashboard() {
     dispatch(fetchServices());
   }, [dispatch]);
 
-  // Compute status metrics consistently with MyApplicationsPage via shared statusHelper
-  const totalApps = applications.length;
-  const approvedCount = applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
-  const pendingCount = applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
-  const queryApps = applications.filter((a) => checkStatusCategory(a.status).isQuery);
-  const queryCount = queryApps.length;
+  // Compute status metrics directly from Redux stats with fallback
+  const totalApps = stats?.total ?? applications.length;
+  const approvedCount = stats?.approved ?? applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
+  const pendingCount = stats?.underReview ?? applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
+  const queryCount = stats?.query ?? applications.filter((a) => checkStatusCategory(a.status).isQuery).length;
+  const approvalRate = stats?.approvalRate ?? (totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0);
   const openGrievancesCount = grievances.filter(
     (g) => !['resolved', 'rejected', 'escalated-resolved'].includes((g.status || '').toLowerCase())
   ).length;
-
-  const approvalRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
 
   // Derive active featured scheme dynamically based on citizen's state jurisdiction
   const userStateId = user?.stateId || (user?.state ? `state_${user.state.toLowerCase().substring(0, 2)}` : 'state_ap');

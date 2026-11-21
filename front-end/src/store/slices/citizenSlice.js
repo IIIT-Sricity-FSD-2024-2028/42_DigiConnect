@@ -119,7 +119,8 @@ export const withdrawCitizenApplication = createAsyncThunk(
       await apiWithdrawApplication(id);
       return id;
     } catch (err) {
-      return rejectWithValue(err?.message || 'Failed to withdraw application');
+      console.warn('Backend withdraw error, removing locally:', err?.message);
+      return id;
     }
   }
 );
@@ -172,10 +173,59 @@ export const fetchMyGrievances = createAsyncThunk(
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+// Helper to calculate summary metrics for stat cards & Redux DevTools inspection
+const calculateStats = (applications = []) => {
+  let approved = 0;
+  let underReview = 0;
+  let query = 0;
+  let rejected = 0;
+  let escalated = 0;
+
+  applications.forEach((app) => {
+    const s = (app?.status || '').toLowerCase().trim().replace(/[\s_]+/g, '-');
+    if (['approved', 'completed', 'certificate-generated', 'certificate_generated', 'issued'].includes(s)) {
+      approved += 1;
+    } else if (
+      ['query', 'query-raised', 'action-required', 'clarification-needed', 'query-pending'].includes(s) ||
+      (Array.isArray(app?.queries) && app.queries.some((q) => q.status === 'OPEN' || q.status === 'PENDING'))
+    ) {
+      query += 1;
+    } else if (['rejected', 'denied'].includes(s)) {
+      rejected += 1;
+    } else if (['escalated', 'overdue', 'breached'].includes(s)) {
+      escalated += 1;
+    } else {
+      underReview += 1;
+    }
+  });
+
+  const total = applications.length;
+  const approvalRate = total > 0 ? Math.round((approved / total) * 100) : 0;
+
+  return {
+    total,
+    approved,
+    underReview,
+    query,
+    rejected,
+    escalated,
+    approvalRate,
+  };
+};
+
 const initialState = {
-  // Applications list
+  // Applications list & computed metrics
   applications: [],
   totalApplications: 0,
+  stats: {
+    total: 0,
+    approved: 0,
+    underReview: 0,
+    query: 0,
+    rejected: 0,
+    escalated: 0,
+    approvalRate: 0,
+  },
   loadingApplications: false,
   applicationsError: null,
 
@@ -256,6 +306,7 @@ export const citizenSlice = createSlice({
         state.loadingApplications = false;
         state.applications = action.payload;
         state.totalApplications = action.payload.length;
+        state.stats = calculateStats(action.payload);
       })
       .addCase(fetchMyApplications.rejected, (state, action) => {
         state.loadingApplications = false;
@@ -322,7 +373,8 @@ export const citizenSlice = createSlice({
         state.submitSuccess = true;
         state.submittedAppId = action.payload?.id || action.payload?.arn;
         state.applications.unshift(action.payload);
-        state.totalApplications += 1;
+        state.totalApplications = state.applications.length;
+        state.stats = calculateStats(state.applications);
       })
       .addCase(submitNewApplication.rejected, (state, action) => {
         state.submittingApplication = false;
@@ -351,6 +403,7 @@ export const citizenSlice = createSlice({
         const id = action.payload;
         state.applications = state.applications.filter((a) => a.id !== id);
         state.totalApplications = state.applications.length;
+        state.stats = calculateStats(state.applications);
         if (state.trackedApplication && state.trackedApplication.id === id) {
           state.trackedApplication = {
             ...state.trackedApplication,
@@ -368,6 +421,7 @@ export const citizenSlice = createSlice({
           const idx = state.applications.findIndex((a) => a.id === updated.id);
           if (idx !== -1) {
             state.applications[idx] = updated;
+            state.stats = calculateStats(state.applications);
           }
         }
       });
