@@ -9,6 +9,7 @@ import {
   apiGetDesignations,
   apiCreateDesignation,
   apiDeleteDesignation,
+  apiDeleteService,
   apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 
@@ -219,6 +220,25 @@ export const deleteDesignation = createAsyncThunk(
   }
 );
 
+/**
+ * 10. Delete Department Dynamic Service (Delete)
+ * DELETE /department-head/services/:id
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const deleteService = createAsyncThunk(
+  'deptHead/deleteService',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await apiDeleteService(id);
+      return { id, response: res };
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to delete dynamic service.'
+      );
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const deptHeadSlice = createSlice({
@@ -377,6 +397,22 @@ export const deptHeadSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteDesignation.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── deleteService (CRUD: Delete -> DB success -> Redux) ──
+    builder
+      .addCase(deleteService.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(deleteService.fulfilled, (state, action) => {
+        const { id } = action.payload;
+        state.services = state.services.filter((s) => s.id !== id);
+        state.stats.activeServices = state.services.length;
+        state.stats.totalServices = state.services.length;
+        state.error = null;
+      })
+      .addCase(deleteService.rejected, (state, action) => {
         state.error = action.payload;
       });
 
