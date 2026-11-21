@@ -2,23 +2,27 @@
 // Federation State Governments Management for Central Administrator
 // React concepts: useState, useEffect, useMemo, Controlled inputs, Modals, Callbacks
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import StatCard from '../../components/common/StatCard';
 import Modal from '../../components/common/Modal';
 import CreateStateModal from '../../components/central-admin/CreateStateModal';
 import StatesTable from '../../components/central-admin/StatesTable';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetCentralStates,
-  apiSetCentralStateStatus,
-  apiResetCentralStateAdminPassword,
-} from '../../api/centralAdminApi';
-import { getNationalAnalyticsData } from '../../api/nationalAnalyticsService';
+  fetchNationalAnalytics,
+  setCentralStateStatus,
+  resetCentralStateAdminPassword,
+  selectCentralStates,
+  selectCentralAdminLoading,
+  selectCentralAdminError,
+} from '../../store/slices/centralAdminSlice';
+import { showToast } from '../../store/slices/uiSlice';
 
 export default function ManageStatesPage() {
-  const [states, setStates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState(null);
+  const dispatch = useAppDispatch();
+  const states = useAppSelector(selectCentralStates);
+  const loading = useAppSelector(selectCentralAdminLoading);
+  const error = useAppSelector(selectCentralAdminError);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,28 +44,20 @@ export default function ManageStatesPage() {
     tempPassword: '',
   });
 
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const notify = useCallback(
+    (message, type = 'info') => {
+      dispatch(showToast({ message, type }));
+    },
+    [dispatch]
+  );
 
-  const loadStates = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const national = await getNationalAnalyticsData();
-      setStates(national?.states || []);
-    } catch (err) {
-      console.error('Failed to load state records:', err);
-      setError('Could not load State Governments list.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadStates = useCallback(() => {
+    dispatch(fetchNationalAnalytics());
+  }, [dispatch]);
 
   useEffect(() => {
     loadStates();
-  }, []);
+  }, [loadStates]);
 
   // Summary counts
   const totalCount = states.length;
@@ -113,7 +109,7 @@ export default function ManageStatesPage() {
 
   // Handle Onboarding Created
   const handleStateCreated = (newState) => {
-    showToast(`State Government '${newState.name || 'new'}' created successfully!`, 'success');
+    notify(`State Government '${newState?.name || 'new'}' onboarded successfully!`, 'success');
     loadStates();
   };
 
@@ -129,67 +125,48 @@ export default function ManageStatesPage() {
     });
   };
 
-  // Confirm Status Toggle Action
+  // Confirm Status Toggle Action (Redux Thunk with immediate in-memory update)
   const handleConfirmStatusToggle = async () => {
     if (!statusModal.state) return;
     setStatusModal((prev) => ({ ...prev, loading: true }));
     try {
       const stateId = statusModal.state.id || statusModal.state.code;
-      await apiSetCentralStateStatus(stateId, statusModal.targetStatus);
-      showToast(
+      await dispatch(
+        setCentralStateStatus({ id: stateId, status: statusModal.targetStatus })
+      ).unwrap();
+      notify(
         `State Government '${statusModal.state.name}' status updated to ${statusModal.targetStatus}.`,
         'success'
       );
       setStatusModal({ isOpen: false, state: null, targetStatus: '', loading: false });
-      await loadStates();
     } catch (err) {
-      showToast(err.message || 'Failed to update state status', 'error');
+      notify(err?.message || 'Failed to update state status', 'error');
       setStatusModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  // Reset Admin Credentials
+  // Reset Admin Credentials (Redux Thunk)
   const handleResetPassword = async (st) => {
-    const adminName = st.stateAdminName || st.stateAdmin?.name || st.name;
     const adminEmail = st.stateAdminEmail || st.stateAdmin?.email || `admin@${(st.code || '').toLowerCase()}.gov.in`;
 
     try {
       const stateId = st.id || st.code;
-      const res = await apiResetCentralStateAdminPassword(stateId);
-      const tempPass = res?.tempPass || res?.data?.tempPass || `Gov@${st.code || 'SEC'}9821`;
+      const res = await dispatch(resetCentralStateAdminPassword(stateId)).unwrap();
+      const tempPass = res?.tempPass || res?.res?.tempPass || res?.data?.tempPass || `Gov@${st.code || 'SEC'}9821`;
 
       setPasswordModal({
         isOpen: true,
         adminEmail,
         tempPassword: tempPass,
       });
+      notify('State Administrator credentials reset successfully.', 'info');
     } catch (err) {
-      showToast(err.message || 'Failed to reset admin credentials', 'error');
+      notify(err?.message || 'Failed to reset admin credentials', 'error');
     }
   };
 
   return (
     <div className="manage-states-page" style={{ padding: '4px 0 32px 0' }}>
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 99999,
-            background: toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#dc2626' : '#2563eb',
-            color: '#ffffff',
-            padding: '12px 20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-          }}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* Page Header */}
       <div

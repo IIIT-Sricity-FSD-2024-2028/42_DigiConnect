@@ -2,17 +2,23 @@
 // Detailed State Government Monitoring & Governance for Central Administrator
 // React concepts: useParams, useState, useEffect, Modals, Controlled Forms, API calls
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import StatusBadge from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetCentralStateById,
-  apiGetCentralStateDetails,
-  apiUpdateCentralState,
-  apiSetCentralStateStatus,
-  apiResetCentralStateAdminPassword,
-} from '../../api/centralAdminApi';
+  fetchCentralStateById,
+  fetchCentralStateDetails,
+  updateCentralState,
+  setCentralStateStatus,
+  resetCentralStateAdminPassword,
+  selectCurrentCentralState,
+  selectCurrentCentralStateDetails,
+  selectCentralAdminLoading,
+  selectCentralAdminError,
+} from '../../store/slices/centralAdminSlice';
+import { showToast } from '../../store/slices/uiSlice';
 import {
   formatINR,
   formatNum,
@@ -22,13 +28,15 @@ import {
 export default function StateDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState(null);
+  const reduxState = useAppSelector(selectCurrentCentralState);
+  const reduxDetails = useAppSelector(selectCurrentCentralStateDetails);
+  const loading = useAppSelector(selectCentralAdminLoading);
+  const error = useAppSelector(selectCentralAdminError);
 
-  const [stateData, setStateData] = useState(null);
-  const [detailsData, setDetailsData] = useState(null);
+  const stateData = reduxState || (reduxDetails?.state || reduxDetails);
+  const detailsData = reduxDetails;
 
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -44,26 +52,20 @@ export default function StateDetailPage() {
     tempPassword: '',
   });
 
-  const showToast = (message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
+  const notify = useCallback(
+    (message, type = 'info') => {
+      dispatch(showToast({ message, type }));
+    },
+    [dispatch]
+  );
 
-  const loadData = async () => {
-    setLoading(true);
-    setError('');
+  const loadData = useCallback(async () => {
     try {
-      const [basicRes, detailRes] = await Promise.all([
-        apiGetCentralStateById(id).catch(() => null),
-        apiGetCentralStateDetails(id).catch(() => null),
-      ]);
+      const detailRes = await dispatch(fetchCentralStateDetails(id)).unwrap();
+      await dispatch(fetchCentralStateById(id)).unwrap();
 
-      const data = detailRes || basicRes;
-      if (!data) {
-        setError(`Could not find state government record for '${id}'.`);
-      } else {
-        setStateData(data.state || data);
-        setDetailsData(data);
+      const data = detailRes;
+      if (data) {
         const admin = data.stateAdmin || data.admin || {};
         setEditForm({
           stateAdminName: admin.name || data.stateAdminName || '',
@@ -73,29 +75,31 @@ export default function StateDetailPage() {
       }
     } catch (err) {
       console.error('Failed to load state details:', err);
-      setError('Error loading state details.');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [dispatch, id]);
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [loadData]);
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await apiUpdateCentralState(id, {
-        stateAdminName: editForm.stateAdminName.trim(),
-        stateAdminEmail: editForm.stateAdminEmail.trim(),
-        stateAdminPhone: editForm.stateAdminPhone.trim(),
-      });
-      showToast('State Administrator details updated successfully.', 'success');
+      await dispatch(
+        updateCentralState({
+          id,
+          updateData: {
+            stateAdminName: editForm.stateAdminName.trim(),
+            stateAdminEmail: editForm.stateAdminEmail.trim(),
+            stateAdminPhone: editForm.stateAdminPhone.trim(),
+          },
+        })
+      ).unwrap();
+      notify('State Administrator details updated successfully.', 'success');
       setIsEditModalOpen(false);
       await loadData();
     } catch (err) {
-      showToast(err.message || 'Failed to update administrator details', 'error');
+      notify(err?.message || 'Failed to update administrator details', 'error');
     }
   };
 
@@ -103,25 +107,27 @@ export default function StateDetailPage() {
     const isCurrentlyActive = (stateData?.status || '').toUpperCase() === 'ACTIVE';
     const target = isCurrentlyActive ? 'INACTIVE' : 'ACTIVE';
     try {
-      await apiSetCentralStateStatus(id, target);
-      showToast(`State status updated to ${target}.`, 'success');
+      await dispatch(setCentralStateStatus({ id, status: target })).unwrap();
+      notify(`State status updated to ${target}.`, 'success');
       setStatusConfirmOpen(false);
       await loadData();
     } catch (err) {
-      showToast(err.message || 'Failed to toggle status', 'error');
+      notify(err?.message || 'Failed to toggle status', 'error');
     }
   };
 
   const handleResetCredentials = async () => {
     try {
-      const res = await apiResetCentralStateAdminPassword(id);
-      const tempPass = res?.tempPass || res?.data?.tempPass || `Gov@${stateData?.code || 'SEC'}9821`;
+      const res = await dispatch(resetCentralStateAdminPassword(id)).unwrap();
+      const tempPass =
+        res?.tempPass || res?.res?.tempPass || res?.data?.tempPass || `Gov@${stateData?.code || 'SEC'}9821`;
       setTempPassModal({
         isOpen: true,
         tempPassword: tempPass,
       });
+      notify('State Administrator credentials reset successfully.', 'info');
     } catch (err) {
-      showToast(err.message || 'Failed to reset credentials', 'error');
+      notify(err?.message || 'Failed to reset credentials', 'error');
     }
   };
 
@@ -213,27 +219,6 @@ export default function StateDetailPage() {
 
   return (
     <div className="state-detail-page" style={{ padding: '4px 0 32px 0' }}>
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 99999,
-            background: toast.type === 'success' ? '#16a34a' : toast.type === 'error' ? '#dc2626' : '#2563eb',
-            color: '#ffffff',
-            padding: '12px 20px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-          }}
-        >
-          {toast.message}
-        </div>
-      )}
-
       {/* Back Link & Header */}
       <div style={{ marginBottom: '20px' }}>
         <Link
