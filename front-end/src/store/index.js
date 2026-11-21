@@ -1,6 +1,7 @@
 
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
+import citizenReducer from './slices/citizenSlice';
 import uiReducer from './slices/uiSlice';
 import notificationReducer from './slices/notificationSlice';
 import officerReducer from './slices/officerSlice';
@@ -10,7 +11,7 @@ const initialPlaceholder = (name) => (state = { status: 'idle' }) => state;
 
 export const store = configureStore({
   reducer: {
-    citizen: initialPlaceholder('citizen'),
+    citizen: citizenReducer,
     auth: authReducer,
     officer: officerReducer,
     centralAdmin: initialPlaceholder('centralAdmin'),
