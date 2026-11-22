@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import notificationReducer from './slices/notificationSlice';
 import officerReducer from './slices/officerSlice';
+import stateAdminReducer from './slices/stateAdminSlice';
 
 // Placeholder reducers so the app never shows a blank screen while teammates build their slices
 const initialPlaceholder = (name) => (state = { status: 'idle' }) => state;
@@ -15,7 +16,7 @@ export const store = configureStore({
     officer: officerReducer,
     centralAdmin: initialPlaceholder('centralAdmin'),
     deptHead: initialPlaceholder('deptHead'),
-    stateAdmin: initialPlaceholder('stateAdmin'),
+    stateAdmin: stateAdminReducer,
     grievance: initialPlaceholder('grievance'),
     ui: uiReducer,
     notification: notificationReducer,
