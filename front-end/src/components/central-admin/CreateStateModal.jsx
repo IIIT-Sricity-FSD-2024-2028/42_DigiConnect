@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
-import { apiCreateCentralState } from '../../api/centralAdminApi';
+import { useAppDispatch } from '../../store/hooks';
+import { createCentralState } from '../../store/slices/centralAdminSlice';
 
 export default function CreateStateModal({
   isOpen,
@@ -8,6 +9,7 @@ export default function CreateStateModal({
   onCreated,
   existingStates = [],
 }) {
+  const dispatch = useAppDispatch();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -109,13 +111,13 @@ export default function CreateStateModal({
         stateAdminPassword: formData.stateAdminPassword.trim() || 'GovAdmin@2026',
       };
 
-      const result = await apiCreateCentralState(payload);
+      const result = await dispatch(createCentralState(payload)).unwrap();
       if (onCreated) {
         onCreated(result);
       }
       onClose();
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to create State Government');
+      setErrorMessage(err?.message || 'Failed to create State Government');
       setStep(1);
     } finally {
       setIsSubmitting(false);

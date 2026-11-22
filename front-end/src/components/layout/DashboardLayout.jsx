@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  closeSidebar,
+  toggleSidebar,
+  selectSidebarOpen,
+} from '../../store/slices/uiSlice';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
@@ -437,12 +443,13 @@ function resolveRouteConfig(pathname, hash = '', user = null) {
 export default function DashboardLayout() {
   const location = useLocation();
   const { user } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const sidebarOpen = useAppSelector(selectSidebarOpen);
 
   // Auto-close mobile sidebar when navigating routes
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+    dispatch(closeSidebar());
+  }, [location.pathname, dispatch]);
 
   const currentConfig = resolveRouteConfig(
     location.pathname,
@@ -452,12 +459,12 @@ export default function DashboardLayout() {
 
   return (
     <div className="app-layout">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => dispatch(closeSidebar())} />
 
       <Topbar
         title={currentConfig.title}
         breadcrumbs={currentConfig.breadcrumbs}
-        onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+        onToggleSidebar={() => dispatch(toggleSidebar())}
       />
 
       <main className="main-content">

@@ -7,31 +7,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetDeptOfficers,
-  apiOnboardOfficer,
-  apiUpdateOfficerStatus,
-  apiGetDesignations,
-  apiGetStateJurisdictionNodes,
-} from '../../api/departmentHeadApi';
+  fetchDeptOfficers,
+  fetchDesignations,
+  fetchJurisdictionNodes,
+  onboardOfficer,
+  updateOfficerStatus,
+  selectDeptHeadOfficers,
+  selectDeptHeadDesignations,
+  selectJurisdictionNodes,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import Modal from '../../components/common/Modal';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
 
 export default function OfficersManagementPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { user } = useAuth();
   const departmentId = user?.departmentId || '';
   const departmentName = user?.dept || 'Department';
   const stateId = user?.stateId || '';
 
-  const [officers, setOfficers] = useState([]);
-  const [designations, setDesignations] = useState([]);
-  const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // ── Redux Store State (Strict 1:1 binding, no local data state bypassing) ──
+  const officers = useAppSelector(selectDeptHeadOfficers);
+  const designations = useAppSelector(selectDeptHeadDesignations);
+  const jurisdictionNodes = useAppSelector(selectJurisdictionNodes);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
 
-  // Onboard Modal State
+  // Onboard Modal Ephemeral State
   const [onboardModalOpen, setOnboardModalOpen] = useState(false);
   const [newOfficer, setNewOfficer] = useState({
     name: '',
@@ -44,39 +52,24 @@ export default function OfficersManagementPage() {
   const { toast, showToast, hideToast } = useToast();
   const [formErrors, setFormErrors] = useState({});
 
-  const fetchOfficers = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [offRes, desigRes, nodesRes] = await Promise.all([
-        apiGetDeptOfficers(departmentId).catch(() => ({ data: [] })),
-        apiGetDesignations(departmentId).catch(() => ({ data: [] })),
-        apiGetStateJurisdictionNodes(stateId).catch(() => ({ data: [] })),
-      ]);
-
-      setOfficers(offRes?.data || []);
-      const desigs = desigRes?.data || [];
-      setDesignations(desigs);
-      const nodes = nodesRes?.data || [];
-      setJurisdictionNodes(nodes);
-
-      if (desigs.length > 0 && !newOfficer.designationId) {
-        setNewOfficer((prev) => ({ ...prev, designationId: desigs[0].id }));
-      }
-      if (nodes.length > 0 && !newOfficer.assignedNodeId) {
-        setNewOfficer((prev) => ({ ...prev, assignedNodeId: nodes[0].id }));
-      }
-    } catch (err) {
-      console.error('Error fetching officers:', err);
-      setError('Failed to load field officers.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ── Hook: Fetch Officers & Scoping Metadata on Mount ──
+  useEffect(() => {
+    dispatch(fetchDeptOfficers(departmentId));
+    dispatch(fetchDesignations(departmentId));
+    dispatch(fetchJurisdictionNodes(stateId));
+  }, [dispatch, departmentId, stateId]);
 
   useEffect(() => {
-    fetchOfficers();
-  }, [departmentId, stateId]);
+    if (designations.length > 0 && !newOfficer.designationId) {
+      setNewOfficer((prev) => ({ ...prev, designationId: designations[0].id }));
+    }
+  }, [designations]);
+
+  useEffect(() => {
+    if (jurisdictionNodes.length > 0 && !newOfficer.assignedNodeId) {
+      setNewOfficer((prev) => ({ ...prev, assignedNodeId: jurisdictionNodes[0].id }));
+    }
+  }, [jurisdictionNodes]);
 
   const handleOpenOnboardModal = () => {
     setNewOfficer({
@@ -101,6 +94,7 @@ export default function OfficersManagementPage() {
     }
   };
 
+  // ── CRUD: Onboard Field Officer (Create -> DB success -> Redux Store) ──
   const handleOnboardSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
@@ -122,11 +116,13 @@ export default function OfficersManagementPage() {
         ...newOfficer,
         departmentId,
       };
-      await apiOnboardOfficer(payload);
-      showToast(`Officer "${newOfficer.name}" onboarded successfully!`, 'success');
-      setOnboardModalOpen(false);
-      // Refetch upon successful mutation
-      fetchOfficers();
+      const resultAction = await dispatch(onboardOfficer(payload));
+      if (onboardOfficer.fulfilled.match(resultAction)) {
+        showToast(`Officer "${newOfficer.name}" onboarded successfully!`, 'success');
+        setOnboardModalOpen(false);
+      } else {
+        showToast(resultAction.payload || 'Error onboarding officer', 'error');
+      }
     } catch (err) {
       showToast(err.message || 'Error onboarding officer', 'error');
     } finally {
@@ -134,26 +130,24 @@ export default function OfficersManagementPage() {
     }
   };
 
-  // Optimistic UI Update: Flip status immediately in state, revert if API fails
+  // ── CRUD: Update Officer Status (Update -> DB success -> Redux Store; No optimistic updates) ──
   const handleToggleStatus = async (officer) => {
     const isAct = officer.status === 'Active' || officer.status === 'ACTIVE';
     const nextStatus = isAct ? 'Suspended' : 'Active';
-    const previousStatus = officer.status;
 
-    // 1. Optimistic update (Immediate UI feedback)
-    setOfficers((prev) =>
-      prev.map((o) => (o.id === officer.id ? { ...o, status: nextStatus } : o))
-    );
-
-    // 2. Perform backend mutation
     try {
-      await apiUpdateOfficerStatus(officer.id, nextStatus);
-      showToast(`Status for ${officer.name} updated to ${nextStatus}.`, 'success');
-    } catch (err) {
-      // 3. Rollback on failure
-      setOfficers((prev) =>
-        prev.map((o) => (o.id === officer.id ? { ...o, status: previousStatus } : o))
+      const resultAction = await dispatch(
+        updateOfficerStatus({ officerId: officer.id, status: nextStatus })
       );
+      if (updateOfficerStatus.fulfilled.match(resultAction)) {
+        showToast(`Status for ${officer.name} updated to ${nextStatus}.`, 'success');
+      } else {
+        showToast(
+          resultAction.payload || `Failed to update status for ${officer.name}`,
+          'error'
+        );
+      }
+    } catch (err) {
       showToast(err.message || `Failed to update status for ${officer.name}`, 'error');
     }
   };

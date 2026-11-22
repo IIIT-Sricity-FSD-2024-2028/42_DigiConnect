@@ -6,11 +6,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetDesignations,
-  apiCreateDesignation,
-  apiDeleteDesignation,
-} from '../../api/departmentHeadApi';
+  fetchDesignations,
+  createDesignation,
+  deleteDesignation,
+  selectDeptHeadDesignations,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import Modal from '../../components/common/Modal';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import Toast from '../../components/common/Toast';
@@ -18,17 +22,19 @@ import useToast from '../../hooks/useToast';
 
 export default function DesignationsPage() {
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
   const departmentId = user?.departmentId || '';
   const departmentName = user?.dept || 'Department';
 
-  const [designations, setDesignations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // ── Redux Store State (Strict 1:1 binding, no local data bypassing) ──
+  const designations = useAppSelector(selectDeptHeadDesignations);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
 
   // Toast feedback state
   const { toast, showToast, hideToast } = useToast();
 
-  // Create Modal State
+  // Create Modal Ephemeral UI State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -36,28 +42,16 @@ export default function DesignationsPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  // Delete Confirmation State
+  // Delete Confirmation Ephemeral UI State
   const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
   const [deleting, setDeleting] = useState(false);
 
-  const fetchDesignations = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await apiGetDesignations(departmentId);
-      setDesignations(res?.data || []);
-    } catch (err) {
-      console.error('Error fetching designations:', err);
-      setError('Failed to load designations.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ── Hook: Fetch Designations on Mount ──
   useEffect(() => {
-    fetchDesignations();
-  }, [departmentId]);
+    dispatch(fetchDesignations(departmentId));
+  }, [dispatch, departmentId]);
 
+  // ── CRUD: Create Designation (Create -> DB success -> Redux Store) ──
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     const errors = {};
@@ -73,18 +67,22 @@ export default function DesignationsPage() {
 
     setSubmitting(true);
     try {
-      await apiCreateDesignation({
+      const payload = {
         departmentId,
         title: newTitle.trim(),
         code: newCode.trim().toUpperCase(),
         description: newDesc.trim() || `${newTitle.trim()} for ${departmentName}`,
-      });
-      showToast(`Designation "${newTitle}" created successfully!`, 'success');
-      setIsModalOpen(false);
-      setNewTitle('');
-      setNewCode('');
-      setNewDesc('');
-      fetchDesignations();
+      };
+      const resultAction = await dispatch(createDesignation(payload));
+      if (createDesignation.fulfilled.match(resultAction)) {
+        showToast(`Designation "${newTitle}" created successfully!`, 'success');
+        setIsModalOpen(false);
+        setNewTitle('');
+        setNewCode('');
+        setNewDesc('');
+      } else {
+        showToast(resultAction.payload || 'Error creating designation', 'error');
+      }
     } catch (err) {
       showToast(err.message || 'Error creating designation', 'error');
     } finally {
@@ -96,14 +94,18 @@ export default function DesignationsPage() {
     setDeleteTarget({ id, title });
   };
 
+  // ── CRUD: Delete Designation (Delete -> DB success -> Redux Store) ──
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
-      await apiDeleteDesignation(deleteTarget.id);
-      setDesignations((prev) => prev.filter((d) => d.id !== deleteTarget.id));
-      showToast(`Designation "${deleteTarget.title}" deleted.`, 'success');
-      setDeleteTarget(null);
+      const resultAction = await dispatch(deleteDesignation(deleteTarget.id));
+      if (deleteDesignation.fulfilled.match(resultAction)) {
+        showToast(`Designation "${deleteTarget.title}" deleted.`, 'success');
+        setDeleteTarget(null);
+      } else {
+        showToast(resultAction.payload || 'Failed to delete designation', 'error');
+      }
     } catch (err) {
       showToast(err.message || 'Failed to delete designation', 'error');
     } finally {

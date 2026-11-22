@@ -1,52 +1,40 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { logout as reduxLogout, setSession, updateUserLocal } from '../store/slices/authSlice';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  // [State] Read initial user from localStorage
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('DigiConnect_session');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const dispatch = useAppDispatch();
+  const { user, role, isLoggedIn, loading, error } = useAppSelector((state) => state.auth);
 
-  // [Hooks / useEffect] Synchronize state with localStorage
-  // Mirrors the 3 localStorage keys from front-end/js/auth.js:
-  //   DigiConnect_session, active_role, current_user
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('DigiConnect_session', JSON.stringify(user));
-      localStorage.setItem('active_role', user.roleKey || user.role || 'citizen');
-      localStorage.setItem('current_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('DigiConnect_session');
-      localStorage.removeItem('active_role');
-      localStorage.removeItem('current_user');
-    }
-  }, [user]);
+  const login = useCallback(
+    (sessionData) => {
+      dispatch(setSession(sessionData));
+    },
+    [dispatch]
+  );
 
-  const login = (sessionData) => {
-    setUser(sessionData);
-  };
+  const logout = useCallback(() => {
+    dispatch(reduxLogout());
+  }, [dispatch]);
 
-  const logout = () => {
-    setUser(null);
-  };
-
-  const updateUser = (updatedData) => {
-    setUser((prev) => (prev ? { ...prev, ...updatedData } : updatedData));
-  };
+  const updateUser = useCallback(
+    (updatedData) => {
+      dispatch(updateUserLocal(updatedData));
+    },
+    [dispatch]
+  );
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        role: user?.role?.toLowerCase() || '',
-        isLoggedIn: !!user,
+        role: role || user?.role?.toLowerCase() || '',
+        isLoggedIn,
+        loading,
+        error,
         login,
         logout,
         updateUser,
@@ -64,3 +52,4 @@ export function useAuth() {
   }
   return context;
 }
+

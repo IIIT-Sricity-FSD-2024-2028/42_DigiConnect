@@ -1,11 +1,17 @@
 // src/pages/department-head/RevenuePage.jsx
 // Department Revenue & Financial Collections Page
 // Reference: front-end/department-head/revenue.html
-// React concepts: Components, Props, State (useState), Hooks (useEffect), Lists (map), Context (useAuth), API calls (apiGetDeptRevenue)
+// Integrated with Redux store (deptHeadSlice)
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetDeptRevenue } from '../../api/departmentHeadApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchDeptRevenue,
+  selectDeptHeadRevenue,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import StatCard from '../../components/common/StatCard';
 
 export default function RevenuePage() {
@@ -13,39 +19,25 @@ export default function RevenuePage() {
   const departmentId = user?.departmentId || '';
   const departmentName = user?.dept || 'Department';
 
-  const [revData, setRevData] = useState({
+  const dispatch = useAppDispatch();
+  const revenueState = useAppSelector(selectDeptHeadRevenue);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
+
+  const revData = revenueState || {
     totalRevenue: 0,
     totalServiceFee: 0,
     totalPlatformFee: 0,
     paidTransactionsCount: 0,
     serviceBreakdown: [],
     transactions: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    async function loadRevenue() {
-      setLoading(true);
-      setError('');
-      try {
-        const res = await apiGetDeptRevenue(departmentId);
-        if (isMounted && res?.data) {
-          setRevData(res.data);
-        }
-      } catch (err) {
-        console.error('Error fetching department revenue:', err);
-        if (isMounted) setError('Failed to load revenue analytics.');
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+    if (departmentId) {
+      dispatch(fetchDeptRevenue(departmentId));
     }
-    loadRevenue();
-    return () => {
-      isMounted = false;
-    };
-  }, [departmentId]);
+  }, [dispatch, departmentId]);
 
   return (
     <div className="dept-revenue-page">

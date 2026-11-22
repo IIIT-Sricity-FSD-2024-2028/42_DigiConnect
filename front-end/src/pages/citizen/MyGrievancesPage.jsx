@@ -13,7 +13,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiGetMyGrievances } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchMyGrievances,
+  selectMyGrievances,
+  selectMyGrievancesLoading,
+  selectMyGrievancesError,
+} from '../../store/slices/grievanceSlice';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import SearchBar from '../../components/common/SearchBar';
@@ -30,10 +36,14 @@ const CATEGORY_LABELS = {
 };
 
 export default function MyGrievancesPage() {
-  // ── 1. State ──
-  const [grievances, setGrievances] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+
+  // ── 1. Redux State ──
+  const grievances = useAppSelector(selectMyGrievances);
+  const loading = useAppSelector(selectMyGrievancesLoading);
+  const error = useAppSelector(selectMyGrievancesError);
+
+  // ── 2. Local UI State ──
   const [filter, setFilter] = useState('all'); // 'all' | 'open' | 'resolved'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
@@ -41,32 +51,20 @@ export default function MyGrievancesPage() {
   // Router search params (support linking directly via ?id=GRV-...)
   const [searchParams] = useSearchParams();
 
-  // ── 2. Side Effect: Fetch Data on Mount ──
+  // ── 3. Side Effect: Fetch Data on Mount ──
   useEffect(() => {
-    async function loadGrievances() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await apiGetMyGrievances();
-        const list = Array.isArray(res) ? res : res?.data || res?.items || [];
-        setGrievances(list);
+    dispatch(fetchMyGrievances());
+  }, [dispatch]);
 
-        // Auto-select grievance from URL query or default to first item
-        const urlId = searchParams.get('id');
-        if (urlId && list.some((g) => g.id === urlId)) {
-          setSelectedId(urlId);
-        } else if (list.length > 0) {
-          setSelectedId(list[0].id);
-        }
-      } catch (err) {
-        setError(err.message || 'Failed to load grievances');
-      } finally {
-        setLoading(false);
-      }
+  // Auto-select grievance from URL query or default to first item
+  useEffect(() => {
+    const urlId = searchParams.get('id');
+    if (urlId && grievances.some((g) => g.id === urlId)) {
+      setSelectedId(urlId);
+    } else if (!selectedId && grievances.length > 0) {
+      setSelectedId(grievances[0].id);
     }
-
-    loadGrievances();
-  }, [searchParams]);
+  }, [searchParams, grievances]);
 
   // ── 3. Derived Metrics (Calculated dynamically from state) ──
   const TERMINAL_STATUSES = ['resolved', 'rejected', 'escalated-resolved'];
