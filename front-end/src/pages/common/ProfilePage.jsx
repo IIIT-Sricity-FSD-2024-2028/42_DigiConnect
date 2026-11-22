@@ -9,8 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { updateUserProfile, changeUserPassword } from '../../store/slices/authSlice';
-import { apiGetUserById } from '../../api/authApi';
+import { updateUserProfile, changeUserPassword, fetchUserProfile } from '../../store/slices/authSlice';
 import useToast from '../../hooks/useToast';
 import Toast from '../../components/common/Toast';
 
@@ -182,12 +181,13 @@ export default function ProfilePage() {
       district: user.district || user.assignedNodeId || '',
     }));
 
-    // Fetch extended user data from backend
+    // Fetch extended user data via Redux thunk
     const userId = user.id || user.sub;
-    apiGetUserById(userId)
+    dispatch(fetchUserProfile(userId))
+      .unwrap()
       .then((res) => {
         if (!isMounted) return;
-        const u = res.data || res || {};
+        const u = res?.data || res || {};
         const parts = (u.name || user.name || '').split(' ');
         setProfileData({
           firstName: parts[0] || '',

@@ -11,8 +11,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetMyApplications } from '../../api/citizenApi';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchMyApplications } from '../../store/slices/citizenSlice';
 import {
   raiseGrievance,
   selectRaiseLoading,
@@ -180,40 +180,36 @@ export default function RaiseGrievancePage() {
     }
   }, [dispatch, formData.relatedAppId]);
 
-  // ── Step 1: Fetch Citizen Applications for Validation & Prefill ──
+  const reduxApps = useAppSelector((state) => state.citizen?.applications || []);
+
+  // ── Step 1: Fetch Citizen Applications via Redux for Validation & Prefill ──
   useEffect(() => {
-    let isMounted = true;
-    apiGetMyApplications()
-      .then((res) => {
-        if (isMounted) {
-          const list = Array.isArray(res) ? res : res?.data || res?.items || [];
-          setMyApplications(list);
+    if (!reduxApps || reduxApps.length === 0) {
+      dispatch(fetchMyApplications());
+    }
+  }, [dispatch, reduxApps]);
 
-          const prefillAppId = searchParams.get('appId');
-          if (!prefillAppId && list.length > 0) {
-            setFormData((prev) => {
-              if (!prev.relatedAppId) {
-                const first = list[0];
-                return {
-                  ...prev,
-                  relatedAppId: first.id,
-                  department: first.dept || first.departmentName || first.department || prev.department,
-                  officerNames: first.officerName || first.assignedOfficerName || prev.officerNames,
-                };
-              }
-              return prev;
-            });
+  useEffect(() => {
+    if (reduxApps.length > 0) {
+      setMyApplications(reduxApps);
+
+      const prefillAppId = searchParams.get('appId');
+      if (!prefillAppId) {
+        setFormData((prev) => {
+          if (!prev.relatedAppId) {
+            const first = reduxApps[0];
+            return {
+              ...prev,
+              relatedAppId: first.id,
+              department: first.dept || first.departmentName || first.department || prev.department,
+              officerNames: first.officerName || first.assignedOfficerName || prev.officerNames,
+            };
           }
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load applications for verification:', err);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [searchParams]);
+          return prev;
+        });
+      }
+    }
+  }, [reduxApps, searchParams]);
 
   // Resolve selected application object from active application list
   const selectedApp = useMemo(() => {

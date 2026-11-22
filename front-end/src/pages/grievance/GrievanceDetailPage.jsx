@@ -25,7 +25,7 @@ import {
   selectActionLoading,
   selectActionError,
 } from '../../store/slices/grievanceSlice';
-import { apiCreateNotification } from '../../api/notificationApi';
+import { createNotification } from '../../store/slices/notificationSlice';
 import GrievanceTimeline from '../../components/grievance/GrievanceTimeline';
 
 const JURISDICTION_NAMES = {
@@ -306,13 +306,15 @@ export default function GrievanceDetailPage() {
       // Dispatch real push notification to the assigned officer
       try {
         const targetOfficerId = grievance.assignedOfficerId || grievance.officerId || 'USR-OFF-AP-REV-01';
-        await apiCreateNotification({
-          userId: targetOfficerId,
-          title: `Grievance Reminder (${suffix}) — #${grievance.id}`,
-          message: `Expedited action requested for Grievance #${grievance.id} (${grievance.subject || 'Citizen Complaint'}). Please submit inquiry findings promptly.`,
-          type: 'GRIEVANCE_REMINDER',
-          link: `/grievance/detail/${grievance.id}`,
-        });
+        await dispatch(
+          createNotification({
+            userId: targetOfficerId,
+            title: `Grievance Reminder (${suffix}) — #${grievance.id}`,
+            message: `Expedited action requested for Grievance #${grievance.id} (${grievance.subject || 'Citizen Complaint'}). Please submit inquiry findings promptly.`,
+            type: 'GRIEVANCE_REMINDER',
+            link: `/grievance/detail/${grievance.id}`,
+          })
+        ).unwrap();
       } catch (notifErr) {
         console.warn('Notification delivery fallback:', notifErr);
       }
@@ -328,13 +330,15 @@ export default function GrievanceDetailPage() {
     if (!grievance) return;
     try {
       const targetCitizenId = grievance.citizenId || grievance.userId || 'USR-CIT-01';
-      await apiCreateNotification({
-        userId: targetCitizenId,
-        title: `Update on Grievance #${grievance.id}`,
-        message: `Official Notice: Your grievance #${grievance.id} (${grievance.subject || 'Complaint'}) is actively under review by Grievance Redressal Authority.`,
-        type: 'GRIEVANCE_NOTICE',
-        link: `/citizen/grievances`,
-      });
+      await dispatch(
+        createNotification({
+          userId: targetCitizenId,
+          title: `Update on Grievance #${grievance.id}`,
+          message: `Official Notice: Your grievance #${grievance.id} (${grievance.subject || 'Complaint'}) is actively under review by Grievance Redressal Authority.`,
+          type: 'GRIEVANCE_NOTICE',
+          link: `/citizen/grievances`,
+        })
+      ).unwrap();
       showToast(`Official notice dispatched to citizen ${grievance.citizenName || 'Applicant'}!`, 'success');
     } catch (err) {
       showToast(getErrorMessage(err, 'Failed to send notification to citizen'), 'error');

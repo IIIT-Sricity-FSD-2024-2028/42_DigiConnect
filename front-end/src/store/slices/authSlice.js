@@ -7,6 +7,7 @@ import {
   apiGetUsers,
   apiUpdateProfile,
   apiChangePassword,
+  apiGetUserById,
 } from '../../api/authApi';
 
 // Helper to safely load initial session from localStorage
@@ -226,6 +227,19 @@ export const fetchUsersList = createAsyncThunk(
   }
 );
 
+// 7. Fetch User Profile by ID
+export const fetchUserProfile = createAsyncThunk(
+  'auth/fetchUserProfile',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const res = await apiGetUserById(userId);
+      return res?.data || res;
+    } catch (err) {
+      return rejectWithValue(err?.message || 'Failed to fetch user profile.');
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const authSlice = createSlice({
@@ -363,6 +377,25 @@ export const authSlice = createSlice({
         state.usersList = action.payload;
       })
       .addCase(fetchUsersList.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── fetchUserProfile ──
+    builder
+      .addCase(fetchUserProfile.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload) {
+          state.user = {
+            ...state.user,
+            ...action.payload,
+          };
+        }
+      })
+      .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

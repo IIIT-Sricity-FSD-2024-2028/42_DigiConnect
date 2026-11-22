@@ -17,10 +17,10 @@ import {
   selectOfficerWeekChart,
   selectOfficerLoading,
   selectOfficerError,
+  fetchApplicationById,
 } from '../../store/slices/officerSlice';
-import { apiGetApplicationById } from '../../api/officerApi';
-import { apiGetStateJurisdictionNodes } from '../../api/departmentHeadApi';
-import { apiGetServices } from '../../api/citizenApi';
+import { fetchJurisdictionNodes } from '../../store/slices/deptHeadSlice';
+import { fetchServices } from '../../store/slices/citizenSlice';
 
 function formatJurisdictionNode(nodeId, nodes = []) {
   if (!nodeId) return 'Assigned Hierarchy Scope';
@@ -119,7 +119,7 @@ export default function OfficerDashboard() {
         dispatch(fetchOfficerWeekChart()),
         (async () => {
           try {
-            const nodesRes = await apiGetStateJurisdictionNodes(user?.stateId);
+            const nodesRes = await dispatch(fetchJurisdictionNodes(user?.stateId)).unwrap();
             if (nodesRes?.data) {
               setJurisdictionNodes(nodesRes.data);
             } else if (Array.isArray(nodesRes)) {
@@ -129,7 +129,7 @@ export default function OfficerDashboard() {
         })(),
         (async () => {
           try {
-            const servicesRes = await apiGetServices();
+            const servicesRes = await dispatch(fetchServices()).unwrap();
             const sData = servicesRes?.data || servicesRes;
             setAllServices(Array.isArray(sData) ? sData : []);
           } catch (e) {}
@@ -246,7 +246,7 @@ export default function OfficerDashboard() {
           targetCitizenId = matchedInQueue.citizenId;
         } else {
           try {
-            const appRes = await apiGetApplicationById(appId);
+            const appRes = await dispatch(fetchApplicationById(appId)).unwrap();
             const appData = appRes?.data || appRes;
             targetCitizenId = appData?.citizenId;
           } catch (e) {

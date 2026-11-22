@@ -6,8 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { loginUser, logout, clearAuthError, fetchUsersList } from '../../store/slices/authSlice';
-import { apiUpdateProfile } from '../../api/authApi';
+import { loginUser, logout, clearAuthError, fetchUsersList, updateUserProfile } from '../../store/slices/authSlice';
 import Modal from '../../components/common/Modal';
 
 // ── Demo credentials list (rendered via .map for the quick-fill box) ──
@@ -240,7 +239,7 @@ export default function LoginPage() {
       return;
     }
     try {
-      await apiUpdateProfile(fpUserId, { password: fpNewPassword });
+      await dispatch(updateUserProfile({ id: fpUserId, data: { password: fpNewPassword } })).unwrap();
       // Close modal and show success
       setFpOpen(false);
       setFpStep(1);
