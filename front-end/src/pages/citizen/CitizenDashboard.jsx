@@ -116,6 +116,7 @@ export default function CitizenDashboard() {
   const totalApps = stats?.total ?? applications.length;
   const approvedCount = stats?.approved ?? applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
   const pendingCount = stats?.underReview ?? applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
+  const queryApps = applications.filter((a) => checkStatusCategory(a.status).isQuery);
   const queryCount = stats?.query ?? applications.filter((a) => checkStatusCategory(a.status).isQuery).length;
   const approvalRate = stats?.approvalRate ?? (totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0);
   const openGrievancesCount = grievances.filter(

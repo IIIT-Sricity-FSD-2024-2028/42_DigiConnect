@@ -2,7 +2,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import citizenReducer from './slices/citizenSlice';
 import authReducer from './slices/authSlice';
-import citizenReducer from './slices/citizenSlice';
 import uiReducer from './slices/uiSlice';
 import notificationReducer from './slices/notificationSlice';
 import grievanceReducer from './slices/grievanceSlice';

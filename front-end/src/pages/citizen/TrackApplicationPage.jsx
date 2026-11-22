@@ -20,14 +20,6 @@ export default function TrackApplicationPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ── Redux Tracking State ──
-  const trackedApplication = useSelector((state) => state.citizen.trackedApplication);
-  const loadingTrack = useSelector((state) => state.citizen.loadingTrack);
-  const trackError = useSelector((state) => state.citizen.trackError);
-  const [validationError, setValidationError] = useState(null);
-
-  // Alias for backward compatibility with existing detail rendering
-  const app = trackedApplication;
 
   const [searchId, setSearchId] = useState(() => {
     const initialId = searchParams.get('id');
@@ -83,7 +75,7 @@ export default function TrackApplicationPage() {
     const cleanId = searchId.trim();
 
     if (cleanId) {
-      setValidationError(null);
+      setLocalError(null);
 
       const upperId = cleanId.toUpperCase();
       setSearchParams({ id: upperId });
@@ -356,7 +348,7 @@ export default function TrackApplicationPage() {
       </div>
 
       {/* ── Loading Spinner ── */}
-      {loadingTrack && (
+      {loading && (
         <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           Loading tracking information...
         </div>
@@ -383,7 +375,7 @@ export default function TrackApplicationPage() {
       )}
 
       {/* ── Application Detail (When Loaded) ── */}
-      {!loadingTrack && trackedApplication && (
+      {!loading && app && (
         <div>
           {/* 1. Header Overview Card */}
           <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
