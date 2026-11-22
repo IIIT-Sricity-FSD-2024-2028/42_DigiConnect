@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '../../components/common/StatCard';
 import TrendChart from '../../components/common/charts/TrendChart';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  getNationalAnalyticsData,
+  fetchNationalAnalytics,
+  selectNationalData,
+  selectCentralAdminLoading,
+} from '../../store/slices/centralAdminSlice';
+import {
   getMetricsForPeriod,
   formatINR,
   formatNum,
@@ -13,23 +18,14 @@ import {
 export default function CentralDashboard() {
   const [period, setPeriod] = useState('month');
   const [appTrendPeriod, setAppTrendPeriod] = useState('daily');
-  const [loading, setLoading] = useState(true);
-  const [nationalData, setNationalData] = useState(null);
+
+  const dispatch = useAppDispatch();
+  const nationalData = useAppSelector(selectNationalData);
+  const loading = useAppSelector(selectCentralAdminLoading);
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const data = await getNationalAnalyticsData();
-        setNationalData(data);
-      } catch (err) {
-        console.error('Failed to load national data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+    dispatch(fetchNationalAnalytics());
+  }, [dispatch]);
 
   const baseData = nationalData || {
     totalStates: 0,

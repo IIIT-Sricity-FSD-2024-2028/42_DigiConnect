@@ -6,6 +6,7 @@ import uiReducer from './slices/uiSlice';
 import notificationReducer from './slices/notificationSlice';
 import grievanceReducer from './slices/grievanceSlice';
 import officerReducer from './slices/officerSlice';
+import centralAdminReducer from './slices/centralAdminSlice';
 import stateAdminReducer from './slices/stateAdminSlice';
 
 // Placeholder reducers for modules still under development
@@ -16,7 +17,7 @@ export const store = configureStore({
     citizen: citizenReducer,
     auth: authReducer,
     officer: officerReducer,
-    centralAdmin: initialPlaceholder('centralAdmin'),
+    centralAdmin: centralAdminReducer,
     deptHead: initialPlaceholder('deptHead'),
     stateAdmin: stateAdminReducer,
 

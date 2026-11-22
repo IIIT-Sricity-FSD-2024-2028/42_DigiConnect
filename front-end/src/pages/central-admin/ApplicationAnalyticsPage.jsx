@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom';
 import StatCard from '../../components/common/StatCard';
 import TrendChart from '../../components/common/charts/TrendChart';
 import BarChart from '../../components/common/charts/BarChart';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  getNationalAnalyticsData,
-  formatNum,
-} from '../../api/nationalAnalyticsService';
+  fetchNationalAnalytics,
+  selectNationalData,
+  selectCentralAdminLoading,
+} from '../../store/slices/centralAdminSlice';
+import { formatNum } from '../../api/nationalAnalyticsService';
 
 const STATE_COLORS = [
   '#2563eb', // Blue
@@ -21,23 +24,15 @@ const STATE_COLORS = [
 
 export default function ApplicationAnalyticsPage() {
   const [velocityPeriod, setVelocityPeriod] = useState('monthly');
-  const [loading, setLoading] = useState(true);
-  const [nationalData, setNationalData] = useState(null);
+  const dispatch = useAppDispatch();
+  const nationalData = useAppSelector(selectNationalData);
+  const loading = useAppSelector(selectCentralAdminLoading);
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const data = await getNationalAnalyticsData();
-        setNationalData(data);
-      } catch (err) {
-        console.error('Failed to load application analytics data:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!nationalData) {
+      dispatch(fetchNationalAnalytics());
     }
-    loadData();
-  }, []);
+  }, [dispatch, nationalData]);
 
   const states = nationalData?.states || [];
   const totalApplications = nationalData?.totalApplications ?? 0;
