@@ -8,8 +8,14 @@ import StatCard from '../../components/common/StatCard';
 import BarChart from '../../components/common/charts/BarChart';
 import DonutChart from '../../components/common/charts/DonutChart';
 import TrendChart from '../../components/common/charts/TrendChart';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  getNationalAnalyticsData,
+  fetchNationalAnalytics,
+  fetchCentralRevenueAnalytics,
+  selectNationalData,
+  selectCentralAdminLoading,
+} from '../../store/slices/centralAdminSlice';
+import {
   getMetricsForPeriod,
   formatINR,
   formatNum,
@@ -35,23 +41,17 @@ export default function RevenueAnalysisPage() {
   const [selectedStateCodes, setSelectedStateCodes] = useState(['AP', 'KA', 'TN', 'KL']);
   const [stateToAdd, setStateToAdd] = useState('');
   const [tableLimit, setTableLimit] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [nationalData, setNationalData] = useState(null);
+
+  const dispatch = useAppDispatch();
+  const nationalData = useAppSelector(selectNationalData);
+  const loading = useAppSelector(selectCentralAdminLoading);
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const data = await getNationalAnalyticsData();
-        setNationalData(data);
-      } catch (err) {
-        console.error('Failed to load national analytics:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!nationalData) {
+      dispatch(fetchNationalAnalytics());
     }
-    loadData();
-  }, []);
+    dispatch(fetchCentralRevenueAnalytics());
+  }, [dispatch, nationalData]);
 
   const baseData = nationalData || {
     totalRevenue: 0,
