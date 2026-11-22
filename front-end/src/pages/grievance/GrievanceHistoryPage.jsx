@@ -2,10 +2,16 @@
 // Grievance History Archive page matching front-end/grievance/grievance-history.html exactly
 // React concepts: Components, State, Effects, Controlled Inputs, Filtering, Pagination, Modals, CSV Export
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetGrievances } from '../../api/grievanceApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchGrievances,
+  selectGrievanceQueue,
+  selectGrievanceLoading,
+  selectGrievanceError,
+} from '../../store/slices/grievanceSlice';
 import SearchBar from '../../components/common/SearchBar';
 
 const TERMINAL_STATUSES = ['resolved', 'rejected', 'escalated-resolved', 'escalated', 'closed'];
@@ -104,9 +110,12 @@ function getOutcomeDisplay(status = '') {
 
 export default function GrievanceHistoryPage() {
   const { user } = useAuth();
-  const [allGrievances, setAllGrievances] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+
+  // Redux Source of Truth
+  const allGrievances = useAppSelector(selectGrievanceQueue);
+  const loading = useAppSelector(selectGrievanceLoading);
+  const error = useAppSelector(selectGrievanceError);
 
   // Filters & Controls
   const [statusFilter, setStatusFilter] = useState('all');
@@ -133,24 +142,24 @@ export default function GrievanceHistoryPage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const loadHistory = async () => {
+  const handleRefresh = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const res = await apiGetGrievances(1, 200);
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setAllGrievances(list);
+      await dispatch(fetchGrievances({ page: 1, limit: 200 })).unwrap();
     } catch (err) {
-      setError(err.message || 'Failed to load grievance history.');
-      showToast('Failed to load grievance history archive', 'error');
-    } finally {
-      setLoading(false);
+      showToast(err || 'Failed to load grievance history archive', 'error');
     }
   };
+  const loadHistory = handleRefresh;
 
+  const fetchedRef = useRef(false);
   useEffect(() => {
-    loadHistory();
-  }, []);
+    if (!fetchedRef.current) {
+      fetchedRef.current = true;
+      if (!allGrievances || allGrievances.length === 0) {
+        dispatch(fetchGrievances({ page: 1, limit: 200 }));
+      }
+    }
+  }, [dispatch, allGrievances]);
 
   // Filter only closed / terminal records
   const terminalGrievances = useMemo(() => {

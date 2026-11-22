@@ -1,22 +1,27 @@
 
 import { configureStore } from '@reduxjs/toolkit';
+import citizenReducer from './slices/citizenSlice';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import notificationReducer from './slices/notificationSlice';
 import deptHeadReducer from './slices/deptHeadSlice';
+import grievanceReducer from './slices/grievanceSlice';
+import officerReducer from './slices/officerSlice';
+import stateAdminReducer from './slices/stateAdminSlice';
 
-// Placeholder reducers so the app never shows a blank screen while teammates build their slices
+// Placeholder reducers for modules still under development
 const initialPlaceholder = (name) => (state = { status: 'idle' }) => state;
 
 export const store = configureStore({
   reducer: {
-    citizen: initialPlaceholder('citizen'),
+    citizen: citizenReducer,
     auth: authReducer,
-    officer: initialPlaceholder('officer'),
+    officer: officerReducer,
     centralAdmin: initialPlaceholder('centralAdmin'),
     deptHead: deptHeadReducer,
-    stateAdmin: initialPlaceholder('stateAdmin'),
-    grievance: initialPlaceholder('grievance'),
+    stateAdmin: stateAdminReducer,
+
+    grievance: grievanceReducer,
     ui: uiReducer,
     notification: notificationReducer,
     notifications: notificationReducer,

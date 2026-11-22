@@ -5,13 +5,21 @@ import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
 import DecisionModal from '../../components/officer/DecisionModal';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetOfficerQueue,
-  apiGetApplicationById,
-  apiApproveApplication,
-  apiRejectApplication,
-  apiRaiseQueryApplication,
-} from '../../api/officerApi';
+  fetchOfficerQueue,
+  fetchApplicationById,
+  approveApplication,
+  rejectApplication,
+  raiseQueryApplication,
+  setCarouselIndex,
+  selectOfficerQueue,
+  selectOfficerCarouselIndex,
+  selectOfficerLoading,
+  selectOfficerActionLoading,
+  selectOfficerError,
+  selectCurrentApplication,
+} from '../../store/slices/officerSlice';
 
 // Rejection reason options
 const REJECTION_REASONS = [
@@ -31,99 +39,78 @@ export default function ReviewApplicationPage() {
   const { id: routeAppId } = useParams();
   const navigate = useNavigate();
 
-  // ── [State] Queue & Current Selection State ──
-  const [queue, setQueue] = useState([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ── [Redux Hooks] Dispatch & Selectors from officerSlice ──
+  const dispatch = useAppDispatch();
+  const queue = useAppSelector(selectOfficerQueue);
+  const currentIdx = useAppSelector(selectOfficerCarouselIndex);
+  const loading = useAppSelector(selectOfficerLoading);
+  const submitting = useAppSelector(selectOfficerActionLoading);
+  const error = useAppSelector(selectOfficerError);
+  const fetchedCurrentApp = useAppSelector(selectCurrentApplication);
 
   // ── [State] Decision & Form States ──
   const [currentDecision, setCurrentDecision] = useState('approve'); // 'approve' | 'query' | 'reject'
   const [rejectReason, setRejectReason] = useState('');
   const [queryText, setQueryText] = useState('');
   const [officerRemarks, setOfficerRemarks] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // ── [Hooks] Toast notification via shared useToast hook ──
   const { toast, showToast, hideToast } = useToast(4000);
 
-  // ── [Hooks + API calls] Fetch Officer Queue and Application Details ──
+  // ── [Hooks + Redux Thunk calls] Fetch Officer Queue and Application Details ──
   useEffect(() => {
     let isMounted = true;
 
     async function loadQueueData() {
-      // If queue is already present in state and contains routeAppId, just sync selection index
+      // If queue is already present in Redux and contains routeAppId, just sync selection index
       if (queue.length > 0 && routeAppId) {
         const inMemoryIdx = queue.findIndex(
           (a) => String(a.id).toLowerCase() === String(routeAppId).toLowerCase()
         );
         if (inMemoryIdx !== -1) {
-          setCurrentIdx(inMemoryIdx);
+          dispatch(setCarouselIndex(inMemoryIdx));
           return;
         }
       }
 
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await apiGetOfficerQueue();
-        const rawQueue = res?.data || (Array.isArray(res) ? res : []);
-
-        // Filter active applications only
-        const activeQueue = rawQueue.filter(
-          (a) => !['approved', 'rejected', 'completed'].includes(a.status)
-        );
-
-        if (!isMounted) return;
-
-        // If a specific ID is provided in the URL route, find its index
-        if (routeAppId) {
-          const foundIdx = activeQueue.findIndex(
-            (a) => String(a.id).toLowerCase() === String(routeAppId).toLowerCase()
+      // If queue is empty in Redux store, fetch it
+      if (!queue || queue.length === 0) {
+        try {
+          const res = await dispatch(fetchOfficerQueue()).unwrap();
+          const activeQueue = (Array.isArray(res) ? res : res?.data || []).filter(
+            (a) => !['approved', 'rejected', 'completed'].includes(a.status)
           );
-          if (foundIdx !== -1) {
-            setQueue(activeQueue);
-            setCurrentIdx(foundIdx);
-          } else {
-            // Fallback: fetch single application and merge into existing queue
-            try {
-              const singleRes = await apiGetApplicationById(routeAppId);
-              if (singleRes?.data && isMounted) {
-                const singleApp = singleRes.data;
-                setQueue((prevQueue) => {
-                  const source = activeQueue.length > 0 ? activeQueue : prevQueue;
-                  return [
-                    singleApp,
-                    ...source.filter(
-                      (a) => String(a.id).toLowerCase() !== String(singleApp.id).toLowerCase()
-                    ),
-                  ];
-                });
-                setCurrentIdx(0);
-              } else if (isMounted) {
-                setQueue(activeQueue);
-                setCurrentIdx(0);
-              }
-            } catch (err) {
-              console.warn('Single app fetch fallback:', err.message);
-              if (isMounted) {
-                setQueue(activeQueue);
-                setCurrentIdx(0);
+
+          if (!isMounted) return;
+
+          if (routeAppId) {
+            const foundIdx = activeQueue.findIndex(
+              (a) => String(a.id).toLowerCase() === String(routeAppId).toLowerCase()
+            );
+            if (foundIdx !== -1) {
+              dispatch(setCarouselIndex(foundIdx));
+            } else {
+              try {
+                await dispatch(fetchApplicationById(routeAppId)).unwrap();
+                dispatch(setCarouselIndex(0));
+              } catch (err) {
+                console.warn('Single app fetch fallback:', err);
+                dispatch(setCarouselIndex(0));
               }
             }
+          } else {
+            dispatch(setCarouselIndex(0));
           }
-        } else {
-          setQueue(activeQueue);
-          setCurrentIdx(0);
+        } catch (err) {
+          console.error('Failed to load application queue:', err);
         }
-      } catch (err) {
-        if (isMounted) {
-          setError(err.message || 'Failed to load application queue');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+      } else if (routeAppId) {
+        // Queue is present in Redux, but routeAppId is not in active queue (e.g. approved or direct URL)
+        try {
+          await dispatch(fetchApplicationById(routeAppId)).unwrap();
+        } catch (err) {
+          console.warn('Single app fetch fallback:', err);
         }
       }
     }
@@ -133,10 +120,15 @@ export default function ReviewApplicationPage() {
     return () => {
       isMounted = false;
     };
-  }, [routeAppId]);
+  }, [dispatch, routeAppId, queue.length]);
 
-  // Current active application
-  const currentApp = queue[currentIdx] || null;
+  // Current active application: from active queue carousel or single fetched application
+  const currentApp =
+    queue[currentIdx] ||
+    (fetchedCurrentApp && String(fetchedCurrentApp.id).toLowerCase() === String(routeAppId).toLowerCase()
+      ? fetchedCurrentApp
+      : null) ||
+    null;
 
   // ── [Hooks] SLA Calculations for Hero Banner ──
   const slaStats = useMemo(() => {
@@ -170,7 +162,7 @@ export default function ReviewApplicationPage() {
   // ── [Callbacks + Events] Navigation between applications in queue ──
   const handleNavigateApp = (newIndex) => {
     if (newIndex >= 0 && newIndex < queue.length) {
-      setCurrentIdx(newIndex);
+      dispatch(setCarouselIndex(newIndex));
       const nextApp = queue[newIndex];
       if (nextApp) {
         navigate(`/officer/review/${nextApp.id}`, { replace: true });
@@ -208,42 +200,58 @@ export default function ReviewApplicationPage() {
   // ── [State] Track approvals made in this review session ──
   const [sessionApprovals, setSessionApprovals] = useState(0);
 
-  // ── [Callbacks + API calls] Final submission after modal confirmation ──
+  // ── [Callbacks + Redux Thunks] Final submission after modal confirmation ──
   const handleFinalConfirm = async () => {
     if (!currentApp) return;
 
     setShowConfirmModal(false);
-    setSubmitting(true);
 
     try {
       const wasApproval = currentDecision === 'approve';
       const updatedApprovals = wasApproval ? sessionApprovals + 1 : sessionApprovals;
 
-      // [API calls] Wire decision triggers to apiApproveApplication, apiRejectApplication, apiRaiseQueryApplication
+      // [Redux Thunk calls] Wire decision triggers to approveApplication, rejectApplication, raiseQueryApplication
       if (wasApproval) {
-        await apiApproveApplication(
-          currentApp.id,
-          officerRemarks || 'Verified and approved by field officer.'
-        );
+        await dispatch(
+          approveApplication({
+            appId: currentApp.id,
+            remarks: officerRemarks || 'Verified and approved by field officer.',
+          })
+        ).unwrap();
         setSessionApprovals(updatedApprovals);
-        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'approve', appId: currentApp.id } }));
-        // [Feedback alert/toast]
+        window.dispatchEvent(
+          new CustomEvent('digiconnect:application-updated', {
+            detail: { action: 'approve', appId: currentApp.id },
+          })
+        );
         showToast(`Application ${currentApp.id} approved successfully!`, 'success');
       } else if (currentDecision === 'reject') {
-        await apiRejectApplication(currentApp.id, rejectReason);
-        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'reject', appId: currentApp.id } }));
-        // [Feedback alert/toast]
+        await dispatch(
+          rejectApplication({
+            appId: currentApp.id,
+            reason: rejectReason,
+          })
+        ).unwrap();
+        window.dispatchEvent(
+          new CustomEvent('digiconnect:application-updated', {
+            detail: { action: 'reject', appId: currentApp.id },
+          })
+        );
         showToast(`Application ${currentApp.id} rejected. Citizen notified.`, 'warning');
       } else if (currentDecision === 'query') {
-        await apiRaiseQueryApplication(currentApp.id, queryText);
-        window.dispatchEvent(new CustomEvent('digiconnect:application-updated', { detail: { action: 'query', appId: currentApp.id } }));
-        // [Feedback alert/toast]
+        await dispatch(
+          raiseQueryApplication({
+            appId: currentApp.id,
+            queryText,
+          })
+        ).unwrap();
+        window.dispatchEvent(
+          new CustomEvent('digiconnect:application-updated', {
+            detail: { action: 'query', appId: currentApp.id },
+          })
+        );
         showToast(`Query sent to ${currentApp.citizen || currentApp.citizenName || 'citizen'} successfully.`, 'info');
       }
-
-      // [Synchronize State] Remove processed application from local queue
-      const updatedQueue = queue.filter((_, idx) => idx !== currentIdx);
-      setQueue(updatedQueue);
 
       // Reset decision form state
       setCurrentDecision('approve');
@@ -252,24 +260,26 @@ export default function ReviewApplicationPage() {
       setOfficerRemarks('');
 
       // [Update queue counts and redirect or load next application in queue]
-      if (updatedQueue.length === 0) {
+      const remainingQueue = queue.filter(
+        (a) => String(a.id).toLowerCase() !== String(currentApp.id).toLowerCase()
+      );
+
+      if (remainingQueue.length === 0) {
         // Queue is finished: redirect to /officer/dashboard after brief toast display
         setTimeout(() => {
           navigate('/officer/dashboard');
         }, 1200);
       } else {
         // Queue has remaining items: load the next application in queue
-        const nextIdx = Math.min(currentIdx, updatedQueue.length - 1);
-        setCurrentIdx(nextIdx);
-        const nextApp = updatedQueue[nextIdx];
+        const nextIdx = Math.min(currentIdx, remainingQueue.length - 1);
+        dispatch(setCarouselIndex(nextIdx));
+        const nextApp = remainingQueue[nextIdx];
         if (nextApp) {
           navigate(`/officer/review/${nextApp.id}`, { replace: true });
         }
       }
     } catch (err) {
-      showToast(err.message || 'Failed to submit decision. Please retry.', 'error');
-    } finally {
-      setSubmitting(false);
+      showToast(err?.message || 'Failed to submit decision. Please retry.', 'error');
     }
   };
 

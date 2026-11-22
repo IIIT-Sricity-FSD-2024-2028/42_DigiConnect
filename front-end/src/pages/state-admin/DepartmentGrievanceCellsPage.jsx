@@ -16,27 +16,39 @@
 import React, { useState, useEffect } from 'react';
 // Context: consuming existing AuthContext
 import { useAuth } from '../../context/AuthContext';
-// API calls: State Admin API functions
+// Redux: store hooks, state admin thunks/selectors, and UI toast actions
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetGrievanceCells,
-  apiGetDepartments,
-  apiConfigureGrievanceCell,
-} from '../../api/stateAdminApi';
+  fetchGrievanceCells,
+  fetchDepartments,
+  configureGrievanceCell,
+  selectGrievanceCells,
+  selectDepartments,
+  selectGrievanceCellsLoading,
+  selectGrievanceCellsError,
+  selectGrievanceCellActionLoading,
+} from '../../store/slices/stateAdminSlice';
+import { showToast, hideToast, selectToast } from '../../store/slices/uiSlice';
 // Component reuse: Modal dialog from common components
 import Modal from '../../components/common/Modal';
 // Component reuse: StatusBadge from common components
 import StatusBadge from '../../components/common/StatusBadge';
+import Toast from '../../components/common/Toast';
 
 export default function DepartmentGrievanceCellsPage() {
   // Context: AuthContext provides current admin session
   const { user } = useAuth();
   const stateId = user?.stateId || user?.state_id || user?.state;
 
-  // State: grievance cells list, departments list, loading, and error states
-  const [cells, setCells] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+  const toast = useAppSelector(selectToast);
+
+  // Redux: grievance cells list, departments list, loading, and error states
+  const cells = useAppSelector(selectGrievanceCells);
+  const departments = useAppSelector(selectDepartments);
+  const loading = useAppSelector(selectGrievanceCellsLoading);
+  const error = useAppSelector(selectGrievanceCellsError);
+  const cellActionLoading = useAppSelector(selectGrievanceCellActionLoading);
 
   // State: Configure Cell Modal visibility and controlled form state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,50 +61,13 @@ export default function DepartmentGrievanceCellsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  // Hooks / useEffect: fetch cells and departments on component mount
-  const loadData = async () => {
-    if (!stateId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-
-      // API Call: fetch grievance cells for state
-      const cellsRes = await apiGetGrievanceCells(stateId);
-      const cellsList = Array.isArray(cellsRes) ? cellsRes : cellsRes?.data || [];
-      setCells(cellsList);
-
-      // API Call: fetch state departments to populate department selection dropdown
-      const deptsRes = await apiGetDepartments(stateId);
-      const deptsList = Array.isArray(deptsRes) ? deptsRes : deptsRes?.data || [];
-      setDepartments(deptsList);
-
-      // Initialize default selected department in form if available
-      if (deptsList.length > 0 && !formData.departmentId) {
-        setFormData((prev) => ({
-          ...prev,
-          departmentId: deptsList[0].id,
-          cellName: `${deptsList[0].name} Appellate Authority`,
-        }));
-      }
-    } catch (err) {
-      // State: capture error message
-      setError(err.message || 'Failed to load department grievance cells');
-    } finally {
-      // State: stop loading spinner
-      setLoading(false);
-    }
-  };
-
+  // Fetch grievance cells and departments on component mount via Redux
   useEffect(() => {
     if (stateId) {
-      loadData();
-    } else {
-      setLoading(false);
+      dispatch(fetchGrievanceCells(stateId));
+      dispatch(fetchDepartments(stateId));
     }
-  }, [stateId]);
+  }, [stateId, dispatch]);
 
   // ── Controlled input change handler ──
   const handleInputChange = (e) => {
@@ -148,14 +123,27 @@ export default function DepartmentGrievanceCellsPage() {
         slaDays: Number(formData.slaDays) || 7,
       };
 
-      // API Call: post grievance cell configuration
-      await apiConfigureGrievanceCell(payload);
+      // Redux Thunk: post grievance cell configuration & update store on DB success
+      const resultAction = await dispatch(configureGrievanceCell(payload));
 
-      // Close modal and refresh list
-      setIsModalOpen(false);
-      await loadData();
+      if (configureGrievanceCell.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast(
+            `Grievance cell "${payload.cellName}" configured successfully!`,
+            'success'
+          )
+        );
+        // Close modal
+        setIsModalOpen(false);
+      } else {
+        const msg = resultAction.payload || 'Failed to configure grievance cell.';
+        setSubmitError(msg);
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
-      setSubmitError(err.message || 'Failed to configure grievance cell.');
+      const msg = err.message || 'Failed to configure grievance cell.';
+      setSubmitError(msg);
+      dispatch(showToast(msg, 'error'));
     } finally {
       setSubmitting(false);
     }
@@ -493,6 +481,9 @@ export default function DepartmentGrievanceCellsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={() => dispatch(hideToast())} />
     </div>
   );
 }

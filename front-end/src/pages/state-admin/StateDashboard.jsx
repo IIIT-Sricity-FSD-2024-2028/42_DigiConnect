@@ -16,8 +16,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 // Context: consuming existing AuthContext
 import { useAuth } from '../../context/AuthContext';
-// API calls: importing State Admin API functions
-import { apiGetStateDashboard, apiGetJurisdictionStats } from '../../api/stateAdminApi';
+// Redux: store hooks and State Admin slice thunk & selectors
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchStateDashboard,
+  selectStateDashboardData,
+  selectStateDashboardLoading,
+  selectStateDashboardError,
+} from '../../store/slices/stateAdminSlice';
 // Component reuse: reusing shared StatCard component
 import StatCard from '../../components/common/StatCard';
 // Component reuse: reusing shared StatusBadge component
@@ -43,51 +49,22 @@ export default function StateDashboard() {
   const { user } = useAuth();
   const stateId = user?.stateId || user?.state_id || user?.state;
 
-  // State: tracking dashboard data, loading state, error state, and table row toggle
-  const [dashboardData, setDashboardData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+  const dashboardData = useAppSelector(selectStateDashboardData);
+  const loading = useAppSelector(selectStateDashboardLoading);
+  const error = useAppSelector(selectStateDashboardError);
   const [showAllDepts, setShowAllDepts] = useState(false);
 
-  // Hooks / useCallback: fetch dashboard data for current state
-  const loadData = useCallback(async () => {
-    if (!stateId) {
-      setLoading(false);
-      return;
+  // Redux thunk dispatch: fetch dashboard data for current state
+  const loadData = useCallback(() => {
+    if (stateId) {
+      dispatch(fetchStateDashboard(stateId));
     }
-    try {
-      setLoading(true);
-      setError(null);
-
-      // API Call: fetch dashboard data for current state
-      const res = await apiGetStateDashboard(stateId);
-      const data = res?.data || res || {};
-
-      // API Call: fetch aggregated jurisdiction tier stats
-      try {
-        const statsRes = await apiGetJurisdictionStats(stateId);
-        if (statsRes?.data || statsRes) {
-          data.jurisdiction = statsRes.data || statsRes;
-        }
-      } catch (_err) {
-        // Fallback gracefully if stats endpoint is unavailable
-      }
-
-      setDashboardData(data);
-    } catch (err) {
-      // State: set error message if API fails
-      setError(err.message || 'Failed to load State Administration Dashboard');
-    } finally {
-      // State: end loading indicator
-      setLoading(false);
-    }
-  }, [stateId]);
+  }, [stateId, dispatch]);
 
   useEffect(() => {
     if (stateId) {
       loadData();
-    } else {
-      setLoading(false);
     }
   }, [stateId, loadData]);
 

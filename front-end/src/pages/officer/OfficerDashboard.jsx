@@ -4,14 +4,21 @@ import { useAuth } from '../../context/AuthContext';
 import OfficerQueueTable from '../../components/officer/OfficerQueueTable';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetOfficerQueue,
-  apiGetOfficerQueries,
-  apiGetOfficerSlaRisks,
-  apiGetOfficerWeekChart,
-  apiCreateNotification,
-  apiGetApplicationById,
-} from '../../api/officerApi';
+  fetchOfficerQueue,
+  fetchOfficerQueries,
+  fetchOfficerSlaRisks,
+  fetchOfficerWeekChart,
+  sendCitizenReminder,
+  selectOfficerQueue,
+  selectOfficerQueries,
+  selectOfficerSlaRisks,
+  selectOfficerWeekChart,
+  selectOfficerLoading,
+  selectOfficerError,
+} from '../../store/slices/officerSlice';
+import { apiGetApplicationById } from '../../api/officerApi';
 import { apiGetStateJurisdictionNodes } from '../../api/departmentHeadApi';
 import { apiGetServices } from '../../api/citizenApi';
 
@@ -48,18 +55,46 @@ export default function OfficerDashboard() {
   // ── [State] Tab State ──
   const [activeTab, setActiveTab] = useState('queue'); // 'queue' | 'breach' | 'queries'
 
-  // ── [State] API Data States ──
-  const [queue, setQueue] = useState([]);
-  const [queries, setQueries] = useState([]);
-  const [slaRisks, setSlaRisks] = useState([]);
-  const [weekChart, setWeekChart] = useState(null); // null until API responds
-  const [approvedTodayCount, setApprovedTodayCount] = useState(null);
+  // ── [Redux Hooks] Dispatch & Selectors from officerSlice ──
+  const dispatch = useAppDispatch();
+  const queue = useAppSelector(selectOfficerQueue);
+  const queries = useAppSelector(selectOfficerQueries);
+  const slaRisks = useAppSelector(selectOfficerSlaRisks);
+  const reduxWeekChart = useAppSelector(selectOfficerWeekChart);
+  const officerLoading = useAppSelector(selectOfficerLoading);
+  const officerError = useAppSelector(selectOfficerError);
+
+  // ── [State] Local Auxiliary & UI States ──
   const [jurisdictionNodes, setJurisdictionNodes] = useState([]);
   const [allServices, setAllServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [localLoading, setLocalLoading] = useState(false);
   const [sendingReminderId, setSendingReminderId] = useState(null);
   const [remindedQueryIds, setRemindedQueryIds] = useState(new Set());
+
+  const loading = officerLoading || localLoading;
+  const error = officerError;
+
+  // Format week chart and approvedToday count from Redux store
+  const weekChart = useMemo(() => {
+    if (!reduxWeekChart) return null;
+    const raw = reduxWeekChart?.data || reduxWeekChart;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return {
+        days: raw.map((d) => d.day),
+        vals: raw.map((d) => d.approved || 0),
+      };
+    }
+    if (raw?.days && raw?.vals) return raw;
+    return null;
+  }, [reduxWeekChart]);
+
+  const approvedTodayCount = useMemo(() => {
+    if (!reduxWeekChart) return null;
+    if (reduxWeekChart.approvedToday !== undefined && reduxWeekChart.approvedToday !== null) {
+      return reduxWeekChart.approvedToday;
+    }
+    return null;
+  }, [reduxWeekChart]);
 
   // ── [Hooks] Toast notification via shared useToast hook ──
   const { toast, showToast, hideToast } = useToast();
@@ -72,74 +107,40 @@ export default function OfficerDashboard() {
     } catch (e) {}
   }, [user]);
 
-  // ── [Hooks + API calls] Fetch Officer Data Function ──
+  // ── [Hooks + API calls] Fetch Officer Data Function via Redux Thunks ──
   const loadDashboardData = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    setLocalLoading(true);
     try {
-      // [API calls] Fetch parallel datasets for the officer dashboard
-      const [queueRes, queriesRes, slaRes, chartRes, nodesRes, servicesRes] = await Promise.allSettled([
-        apiGetOfficerQueue(),
-        apiGetOfficerQueries(),
-        apiGetOfficerSlaRisks(),
-        apiGetOfficerWeekChart(),
-        apiGetStateJurisdictionNodes(user?.stateId),
-        apiGetServices(),
+      // Dispatch Redux thunks in parallel + auxiliary catalog calls
+      await Promise.allSettled([
+        dispatch(fetchOfficerQueue()),
+        dispatch(fetchOfficerQueries()),
+        dispatch(fetchOfficerSlaRisks()),
+        dispatch(fetchOfficerWeekChart()),
+        (async () => {
+          try {
+            const nodesRes = await apiGetStateJurisdictionNodes(user?.stateId);
+            if (nodesRes?.data) {
+              setJurisdictionNodes(nodesRes.data);
+            } else if (Array.isArray(nodesRes)) {
+              setJurisdictionNodes(nodesRes);
+            }
+          } catch (e) {}
+        })(),
+        (async () => {
+          try {
+            const servicesRes = await apiGetServices();
+            const sData = servicesRes?.data || servicesRes;
+            setAllServices(Array.isArray(sData) ? sData : []);
+          } catch (e) {}
+        })(),
       ]);
-
-      if (nodesRes.status === 'fulfilled' && nodesRes.value?.data) {
-        setJurisdictionNodes(nodesRes.value.data);
-      } else if (nodesRes.status === 'fulfilled' && Array.isArray(nodesRes.value)) {
-        setJurisdictionNodes(nodesRes.value);
-      }
-
-      // Populate queue
-      if (queueRes.status === 'fulfilled' && queueRes.value?.data) {
-        setQueue(queueRes.value.data);
-      } else if (queueRes.status === 'fulfilled' && Array.isArray(queueRes.value)) {
-        setQueue(queueRes.value);
-      }
-
-      // Populate queries
-      if (queriesRes.status === 'fulfilled' && queriesRes.value?.data) {
-        setQueries(queriesRes.value.data);
-      } else if (queriesRes.status === 'fulfilled' && Array.isArray(queriesRes.value)) {
-        setQueries(queriesRes.value);
-      }
-
-      // Populate SLA risks
-      if (slaRes.status === 'fulfilled' && slaRes.value?.data) {
-        setSlaRisks(slaRes.value.data);
-      }
-
-      // Populate weekly chart & today's approved count
-      if (chartRes.status === 'fulfilled') {
-        const resVal = chartRes.value;
-        const raw = resVal?.data || resVal;
-        if (resVal?.approvedToday !== undefined && resVal.approvedToday !== null) {
-          setApprovedTodayCount(resVal.approvedToday);
-        }
-        if (Array.isArray(raw) && raw.length > 0) {
-          setWeekChart({
-            days: raw.map(d => d.day),
-            vals: raw.map(d => d.approved || 0),
-          });
-        } else if (raw?.days && raw?.vals) {
-          setWeekChart(raw);
-        }
-      }
-
-      // Populate catalog services
-      if (servicesRes.status === 'fulfilled') {
-        const sData = servicesRes.value?.data || servicesRes.value;
-        setAllServices(Array.isArray(sData) ? sData : []);
-      }
     } catch (err) {
-      setError(err.message || 'Failed to load officer dashboard');
+      console.error('Failed to load officer dashboard:', err);
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
     }
-  }, [user]);
+  }, [dispatch, user]);
 
   // Load dashboard data on mount and whenever officer changes
   useEffect(() => {
@@ -259,13 +260,15 @@ export default function OfficerDashboard() {
         return;
       }
 
-      await apiCreateNotification({
-        userId: targetCitizenId,
-        title: 'Query Clarification Reminder',
-        message: `Reminder: Please respond to the pending query for application ${appId} to resume review.`,
-        type: 'warning',
-        link: `/citizen/track?id=${appId}`,
-      });
+      await dispatch(
+        sendCitizenReminder({
+          userId: targetCitizenId,
+          title: 'Query Clarification Reminder',
+          message: `Reminder: Please respond to the pending query for application ${appId} to resume review.`,
+          type: 'warning',
+          link: `/citizen/track?id=${appId}`,
+        })
+      ).unwrap();
 
       setRemindedQueryIds((prev) => new Set([...prev, appId]));
       showToast(`Reminder sent successfully to ${queryItem.citizen || queryItem.citizenName || 'citizen'}.`, 'success');
