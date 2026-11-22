@@ -13,6 +13,7 @@ import {
   apiCreateDesignation,
   apiDeleteDesignation,
   apiDeleteService,
+  apiGetDeptRevenue,
   apiGetStateJurisdictionNodes,
 } from '../../api/departmentHeadApi';
 
@@ -299,6 +300,24 @@ export const updateService = createAsyncThunk(
   }
 );
 
+/**
+ * 14. Fetch Department Revenue Analytics & Ledger (Read)
+ * GET /department-head/revenue?departmentId=...
+ */
+export const fetchDeptRevenue = createAsyncThunk(
+  'deptHead/fetchRevenue',
+  async (departmentId, { rejectWithValue }) => {
+    try {
+      const res = await apiGetDeptRevenue(departmentId);
+      return res?.data || res || null;
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to fetch department revenue analytics.'
+      );
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const deptHeadSlice = createSlice({
@@ -554,6 +573,25 @@ export const deptHeadSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchJurisdictionNodes.rejected, (state, action) => {
+        state.error = action.payload;
+      });
+
+    // ── fetchDeptRevenue ──
+    builder
+      .addCase(fetchDeptRevenue.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDeptRevenue.fulfilled, (state, action) => {
+        state.loading = false;
+        state.revenue = action.payload || null;
+        if (action.payload?.totalRevenue != null) {
+          state.stats.totalRevenue = action.payload.totalRevenue;
+        }
+        state.error = null;
+      })
+      .addCase(fetchDeptRevenue.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
       });
   },
