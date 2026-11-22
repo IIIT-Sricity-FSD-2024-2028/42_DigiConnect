@@ -1,20 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { apiTrackApplication, apiRespondToQuery } from '../../api/citizenApi';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  trackApplicationById,
+  clearTrackedApplication,
+} from '../../store/slices/citizenSlice';
+import { apiRespondToQuery } from '../../api/citizenApi';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
-import { normalizeApplication } from '../../utils/applicationMapper';
 
 export default function TrackApplicationPage() {
+  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ── Redux Tracking State ──
+  const trackedApplication = useSelector((state) => state.citizen.trackedApplication);
+  const loadingTrack = useSelector((state) => state.citizen.loadingTrack);
+  const trackError = useSelector((state) => state.citizen.trackError);
+  const [validationError, setValidationError] = useState(null);
+
+  // Alias for backward compatibility with existing detail rendering
+  const app = trackedApplication;
+
   const [searchId, setSearchId] = useState(() => {
     const initialId = searchParams.get('id');
     return initialId && initialId.trim() ? initialId.trim().toUpperCase() : '';
   });
-  const [app, setApp] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   // Track last loaded ID to allow URL parameter navigation without infinite re-renders
   const lastLoadedIdRef = useRef('');
@@ -39,50 +51,48 @@ export default function TrackApplicationPage() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const loadApplication = async (idToLoad) => {
-    if (!idToLoad || !idToLoad.trim()) return;
-    const cleanId = idToLoad.trim().toUpperCase();
+  // Clear stale tracking data on unmount
+  useEffect(() => {
+    return () => {
+      dispatch(clearTrackedApplication());
+    };
+  }, [dispatch]);
 
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await apiTrackApplication(cleanId);
-      const data = res?.data || res;
-      if (data && data.id) {
-        setApp(normalizeApplication(data));
-        lastLoadedIdRef.current = cleanId;
-      } else {
-        throw new Error('Application not found. Please verify the Application ID.');
-      }
-    } catch (err) {
-      setApp(null);
-      setError(err.message || 'Application not found. Please verify the ID.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Synchronize with URL query parameter
   useEffect(() => {
     const urlId = searchParams.get('id');
     if (urlId && urlId.trim()) {
       const cleanId = urlId.trim().toUpperCase();
       if (cleanId !== lastLoadedIdRef.current) {
         setSearchId(cleanId);
-        loadApplication(cleanId);
+        lastLoadedIdRef.current = cleanId;
+        dispatch(trackApplicationById(cleanId));
       }
+    } else {
+      lastLoadedIdRef.current = '';
+      dispatch(clearTrackedApplication());
     }
-  }, [searchParams]);
+  }, [searchParams, dispatch]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+
     const cleanId = searchId.trim();
+
     if (cleanId) {
+      setValidationError(null);
+
       const upperId = cleanId.toUpperCase();
       setSearchParams({ id: upperId });
-      loadApplication(upperId);
+      lastLoadedIdRef.current = upperId;
+
+      dispatch(trackApplicationById(upperId));
     } else {
-      setError('Please enter a valid Application ID.');
-      setApp(null);
+      lastLoadedIdRef.current = '';
+      setValidationError('Please enter a valid Application ID.');
+
+      setSearchParams({});
+      dispatch(clearTrackedApplication());
     }
   };
 
@@ -237,8 +247,8 @@ export default function TrackApplicationPage() {
 
       await apiRespondToQuery(app.id, queryNote.trim(), queryFiles);
 
-      // Reload fresh enriched application state from backend
-      await loadApplication(app.id);
+      // Reload fresh enriched application state from backend via Redux
+      await dispatch(trackApplicationById(app.id)).unwrap();
 
       setQuerySuccessMsg('Documents and response submitted successfully. Review resumed by department officer.');
       setTimeout(() => {
@@ -339,21 +349,21 @@ export default function TrackApplicationPage() {
       </div>
 
       {/* ── Loading Spinner ── */}
-      {loading && (
+      {loadingTrack && (
         <div style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           Loading tracking information...
         </div>
       )}
 
       {/* ── Error / Not Found Alert ── */}
-      {!loading && error && (
+      {!loadingTrack && (validationError || trackError) && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>
-          {error}
+          {validationError || trackError}
         </div>
       )}
 
       {/* ── Empty State ── */}
-      {!loading && !app && !error && (
+      {!loadingTrack && !trackedApplication && !trackError && !validationError && (
         <div className="card" style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🔍</div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--navy-900)', marginBottom: '4px' }}>
@@ -366,7 +376,7 @@ export default function TrackApplicationPage() {
       )}
 
       {/* ── Application Detail (When Loaded) ── */}
-      {!loading && app && (
+      {!loadingTrack && trackedApplication && (
         <div>
           {/* 1. Header Overview Card */}
           <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
