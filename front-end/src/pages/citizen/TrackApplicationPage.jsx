@@ -1,20 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { apiTrackApplication, apiRespondToQuery } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  trackApplicationById,
+  respondToApplicationQuery,
+  clearTrackedApplication,
+} from '../../store/slices/citizenSlice';
+import useToast from '../../hooks/useToast';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
-import { normalizeApplication } from '../../utils/applicationMapper';
 
 export default function TrackApplicationPage() {
+  const dispatch = useAppDispatch();
+  const { trackedApplication: app, loadingTrack: loading, trackError: error } = useAppSelector(
+    (state) => state.citizen
+  );
+  const { showToast } = useToast();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchId, setSearchId] = useState(() => {
     const initialId = searchParams.get('id');
     return initialId && initialId.trim() ? initialId.trim().toUpperCase() : '';
   });
-  const [app, setApp] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [localError, setLocalError] = useState(null);
 
   // Track last loaded ID to allow URL parameter navigation without infinite re-renders
   const lastLoadedIdRef = useRef('');
@@ -34,32 +43,12 @@ export default function TrackApplicationPage() {
   // Toast / notification message
   const [toastMsg, setToastMsg] = useState(null);
 
-  const showToast = (text, type = 'info') => {
-    setToastMsg({ text, type });
-    setTimeout(() => setToastMsg(null), 4000);
-  };
-
-  const loadApplication = async (idToLoad) => {
+  const loadApplication = (idToLoad) => {
     if (!idToLoad || !idToLoad.trim()) return;
     const cleanId = idToLoad.trim().toUpperCase();
-
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await apiTrackApplication(cleanId);
-      const data = res?.data || res;
-      if (data && data.id) {
-        setApp(normalizeApplication(data));
-        lastLoadedIdRef.current = cleanId;
-      } else {
-        throw new Error('Application not found. Please verify the Application ID.');
-      }
-    } catch (err) {
-      setApp(null);
-      setError(err.message || 'Application not found. Please verify the ID.');
-    } finally {
-      setLoading(false);
-    }
+    lastLoadedIdRef.current = cleanId;
+    setLocalError(null);
+    dispatch(trackApplicationById(cleanId));
   };
 
   useEffect(() => {
@@ -71,7 +60,7 @@ export default function TrackApplicationPage() {
         loadApplication(cleanId);
       }
     }
-  }, [searchParams]);
+  }, [searchParams, dispatch]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -81,8 +70,8 @@ export default function TrackApplicationPage() {
       setSearchParams({ id: upperId });
       loadApplication(upperId);
     } else {
-      setError('Please enter a valid Application ID.');
-      setApp(null);
+      setLocalError('Please enter a valid Application ID.');
+      dispatch(clearTrackedApplication());
     }
   };
 
@@ -235,10 +224,16 @@ export default function TrackApplicationPage() {
       setQueryErrorMsg('');
       setQuerySuccessMsg('Submitting response and documents to officer...');
 
-      await apiRespondToQuery(app.id, queryNote.trim(), queryFiles);
+      await dispatch(
+        respondToApplicationQuery({
+          id: app.id,
+          response: queryNote.trim(),
+          files: queryFiles,
+        })
+      ).unwrap();
 
-      // Reload fresh enriched application state from backend
-      await loadApplication(app.id);
+      // Reload fresh enriched application state from backend via Redux thunk
+      await dispatch(trackApplicationById(app.id)).unwrap();
 
       setQuerySuccessMsg('Documents and response submitted successfully. Review resumed by department officer.');
       setTimeout(() => {
@@ -248,6 +243,7 @@ export default function TrackApplicationPage() {
         setQueryFiles([]);
         setQueryNote('');
         showToast('Query response submitted to officer. Review resumed.', 'success');
+        setToastMsg({ text: 'Query response submitted to officer. Review resumed.', type: 'success' });
       }, 1000);
     } catch (err) {
       console.error('Query response API error:', err);
@@ -255,7 +251,7 @@ export default function TrackApplicationPage() {
       setQuerySuccessMsg('');
       setQueryErrorMsg(errorText);
       showToast(errorText, 'error');
-      // Keep modal open so citizen can inspect and retry
+      setToastMsg({ text: errorText, type: 'error' });
     } finally {
       setIsSubmittingQuery(false);
     }
@@ -346,14 +342,14 @@ export default function TrackApplicationPage() {
       )}
 
       {/* ── Error / Not Found Alert ── */}
-      {!loading && error && (
+      {!loading && (localError || error) && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>
-          {error}
+          {localError || error}
         </div>
       )}
 
       {/* ── Empty State ── */}
-      {!loading && !app && !error && (
+      {!loading && !app && !(localError || error) && (
         <div className="card" style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🔍</div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--navy-900)', marginBottom: '4px' }}>
