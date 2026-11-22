@@ -5,7 +5,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetGrievances } from '../../api/grievanceApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchGrievances,
+  selectGrievanceQueue,
+  selectGrievanceLoading,
+  selectGrievanceError,
+} from '../../store/slices/grievanceSlice';
 import SearchBar from '../../components/common/SearchBar';
 
 function formatDate(dateStr) {
@@ -80,10 +86,12 @@ export default function GrievanceDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
 
-  const [grievances, setGrievances] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Redux Source of Truth
+  const grievances = useAppSelector(selectGrievanceQueue);
+  const loading = useAppSelector(selectGrievanceLoading);
+  const error = useAppSelector(selectGrievanceError);
 
   // Filters
   const [currentFilter, setCurrentFilter] = useState('all');
@@ -109,24 +117,17 @@ export default function GrievanceDashboard() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const fetchGrievances = async () => {
+  const handleRefresh = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const res = await apiGetGrievances(1, 200);
-      const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      setGrievances(list);
+      await dispatch(fetchGrievances({ page: 1, limit: 200 })).unwrap();
     } catch (err) {
-      setError(err.message || 'Failed to load grievance data.');
-      showToast('Failed to load grievance queue', 'error');
-    } finally {
-      setLoading(false);
+      showToast(err || 'Failed to refresh grievance queue', 'error');
     }
   };
 
   useEffect(() => {
-    fetchGrievances();
-  }, []);
+    dispatch(fetchGrievances({ page: 1, limit: 200 }));
+  }, [dispatch]);
 
   const queueRef = useRef(null);
 
@@ -320,7 +321,7 @@ export default function GrievanceDashboard() {
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={fetchGrievances}
+              onClick={handleRefresh}
               disabled={loading}
               style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >

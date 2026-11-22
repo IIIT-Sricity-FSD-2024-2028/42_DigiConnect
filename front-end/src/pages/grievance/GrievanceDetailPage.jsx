@@ -7,13 +7,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetGrievances,
-  apiGetGrievanceById,
-  apiGetLinkedApplication,
-  apiResolveGrievance,
-  apiUpdateGrievanceStatus,
-} from '../../api/grievanceApi';
+  fetchGrievances,
+  fetchGrievanceById,
+  fetchLinkedApplication,
+  updateGrievanceStatus,
+  resolveGrievance,
+  clearCurrentGrievance,
+  selectGrievanceQueue,
+  selectCurrentGrievance,
+  selectDetailLoading,
+  selectDetailError,
+  selectLinkedApplication,
+  selectLinkedAppLoading,
+  selectLinkedAppError,
+  selectActionLoading,
+  selectActionError,
+} from '../../store/slices/grievanceSlice';
 import { apiCreateNotification } from '../../api/notificationApi';
 import GrievanceTimeline from '../../components/grievance/GrievanceTimeline';
 
@@ -128,16 +139,32 @@ function getStatusBadgeMeta(status = '') {
   return map[s] || { label: status || 'Open', cls: 'badge-warning', srs: 'ACTIVE' };
 }
 
+function getErrorMessage(err, fallback = 'An error occurred. Please try again.') {
+  if (typeof err === 'string' && err.trim()) return err;
+  if (err && typeof err.message === 'string' && err.message.trim()) return err.message;
+  return fallback;
+}
+
 export default function GrievanceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const dispatch = useAppDispatch();
 
-  // ── Core Data States ──
-  const [grievance, setGrievance] = useState(null);
-  const [linkedApp, setLinkedApp] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ── Redux Core Data States ──
+  const grievance = useAppSelector(selectCurrentGrievance);
+  const linkedApp = useAppSelector(selectLinkedApplication);
+  const linkedAppLoading = useAppSelector(selectLinkedAppLoading);
+  const linkedAppError = useAppSelector(selectLinkedAppError);
+  const loading = useAppSelector(selectDetailLoading);
+  const error = useAppSelector(selectDetailError);
+  const actionLoading = useAppSelector(selectActionLoading);
+  const actionError = useAppSelector(selectActionError);
+  const queue = useAppSelector(selectGrievanceQueue);
+
+  const submitting = actionLoading;
+  const savingStep = actionLoading;
+
   const [toastMessage, setToastMessage] = useState(null);
 
   // ── 4-Step Workflow State ──
@@ -174,47 +201,57 @@ export default function GrievanceDetailPage() {
   const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [appHistoryModalOpen, setAppHistoryModalOpen] = useState(false);
   const [confirmResModalOpen, setConfirmResModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [savingStep, setSavingStep] = useState(false);
 
   const showToast = (msg, type = 'info') => {
-    setToastMessage({ msg, type });
+    const safeMsg = getErrorMessage(msg, typeof msg === 'string' ? msg : 'Notice');
+    setToastMessage({ msg: safeMsg, type });
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      dispatch(clearCurrentGrievance());
+    };
+  }, [dispatch]);
+
   // ── Fetch Grievance & Linked App ──
   const loadGrievance = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      let targetId = id;
-      if (!targetId) {
-        const queueRes = await apiGetGrievances(1, 50);
-        const list = Array.isArray(queueRes?.data) ? queueRes.data : Array.isArray(queueRes) ? queueRes : [];
-        const active = list.find((g) => !['resolved', 'rejected', 'escalated-resolved', 'escalated'].includes((g.status || '').toLowerCase()));
-        const chosen = active || list[0];
-        if (chosen?.id) {
-          navigate(`/grievance/detail/${chosen.id}`, { replace: true });
+    let targetId = id;
+    if (!targetId) {
+      let list = queue;
+      if (!list || list.length === 0) {
+        try {
+          const queueRes = await dispatch(fetchGrievances({ page: 1, limit: 50 })).unwrap();
+          list = Array.isArray(queueRes?.data) ? queueRes.data : Array.isArray(queueRes) ? queueRes : [];
+        } catch (queueErr) {
           return;
-        } else {
-          throw new Error('No grievances currently found in the queue.');
         }
       }
-
-      const res = await apiGetGrievanceById(targetId);
-      const grvData = res?.data || res;
-      if (!grvData || !grvData.id) {
-        throw new Error(`Grievance record '${targetId}' not found.`);
+      const active = list.find((g) => !['resolved', 'rejected', 'escalated-resolved', 'escalated'].includes((g.status || '').toLowerCase()));
+      const chosen = active || list[0];
+      if (chosen?.id) {
+        navigate(`/grievance/detail/${chosen.id}`, { replace: true });
+        return;
       }
-      setGrievance(grvData);
+      return;
+    }
+
+    // Clear previous grievance if navigating between distinct ticket IDs
+    if (grievance && grievance.id && grievance.id !== targetId) {
+      dispatch(clearCurrentGrievance());
+    }
+
+    try {
+      const res = await dispatch(fetchGrievanceById(targetId)).unwrap();
+      const grvData = res?.data || res;
 
       // Pre-populate category & priority
-      if (grvData.category) setSelectedCat(grvData.category);
-      if (grvData.priority) setSelectedPriority(grvData.priority.toLowerCase());
+      if (grvData?.category) setSelectedCat(grvData.category);
+      if (grvData?.priority) setSelectedPriority(grvData.priority.toLowerCase());
 
       // Pre-fill completed steps based on existing status
-      const statusLower = (grvData.status || '').toLowerCase().replace(/_/g, '-');
+      const statusLower = (grvData?.status || '').toLowerCase().replace(/_/g, '-');
       const cSteps = new Set();
       if (['under-review'].includes(statusLower)) {
         cSteps.add(1);
@@ -239,22 +276,11 @@ export default function GrievanceDetailPage() {
       setCompletedSteps(cSteps);
 
       // Fetch linked application
-      if (grvData.relatedAppId) {
-        try {
-          const appRes = await apiGetLinkedApplication(grvData.relatedAppId);
-          const appData = appRes?.data || appRes;
-          setLinkedApp(appData && appData.id ? appData : null);
-        } catch (linkErr) {
-          console.warn('Linked application not found or unavailable:', linkErr.message);
-          setLinkedApp(null);
-        }
-      } else {
-        setLinkedApp(null);
+      if (grvData?.relatedAppId) {
+        dispatch(fetchLinkedApplication(grvData.relatedAppId));
       }
     } catch (err) {
-      setError(err.message || 'Failed to load grievance details.');
-    } finally {
-      setLoading(false);
+      // selectDetailError from Redux provides error state
     }
   };
 
@@ -268,13 +294,14 @@ export default function GrievanceDetailPage() {
     try {
       const count = (grievance.reminders || 0) + 1;
       const suffix = count === 1 ? '1st' : count === 2 ? '2nd' : `${count}th`;
-      const res = await apiUpdateGrievanceStatus(grievance.id, {
-        remarks: `Officer Reminded (${suffix}) — Priority expedited notice sent to assigned field officer.`,
-      });
-      const updated = res?.data || res;
-      if (updated && updated.id) {
-        setGrievance(updated);
-      }
+      await dispatch(
+        updateGrievanceStatus({
+          id: grievance.id,
+          data: {
+            remarks: `Officer Reminded (${suffix}) — Priority expedited notice sent to assigned field officer.`,
+          },
+        })
+      ).unwrap();
 
       // Dispatch real push notification to the assigned officer
       try {
@@ -292,7 +319,7 @@ export default function GrievanceDetailPage() {
 
       showToast(`Officer Reminded (${suffix}) successfully!`, 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to send reminder to officer', 'error');
+      showToast(getErrorMessage(err, 'Failed to send reminder to officer'), 'error');
     }
   };
 
@@ -310,31 +337,29 @@ export default function GrievanceDetailPage() {
       });
       showToast(`Official notice dispatched to citizen ${grievance.citizenName || 'Applicant'}!`, 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to send notification to citizen', 'error');
+      showToast(getErrorMessage(err, 'Failed to send notification to citizen'), 'error');
     }
   };
 
   // ── Step 1: Confirm Review ──
   const isReviewComplete = Object.values(reviewChecks).every(Boolean);
   const handleConfirmReview = async () => {
-    if (!isReviewComplete || savingStep) return;
+    if (!isReviewComplete || actionLoading) return;
     try {
-      setSavingStep(true);
-      const res = await apiUpdateGrievanceStatus(grievance.id, {
-        status: 'UNDER_REVIEW',
-        remarks: 'Review Phase Completed — Citizen grounds and documents verified.',
-      });
-      const updated = res?.data || res;
-      if (updated && updated.id) {
-        setGrievance(updated);
-      }
+      await dispatch(
+        updateGrievanceStatus({
+          id: grievance.id,
+          data: {
+            status: 'UNDER_REVIEW',
+            remarks: 'Review Phase Completed — Citizen grounds and documents verified.',
+          },
+        })
+      ).unwrap();
       setCompletedSteps((prev) => new Set([...prev, 1]));
       setActiveTab('categorize');
       showToast('Review completed. Proceeding to Categorize.', 'info');
     } catch (err) {
-      showToast(err.message || 'Failed to update review status. Please try again.', 'error');
-    } finally {
-      setSavingStep(false);
+      showToast(getErrorMessage(err, 'Failed to update review status. Please try again.'), 'error');
     }
   };
 
@@ -344,18 +369,21 @@ export default function GrievanceDetailPage() {
       showToast('Please select a category', 'warning');
       return;
     }
-    if (savingStep) return;
+    if (actionLoading) return;
     try {
-      setSavingStep(true);
-      const res = await apiUpdateGrievanceStatus(grievance.id, {
-        status: 'investigating',
-        category: selectedCat,
-        priority: selectedPriority,
-        remarks: `Categorized as ${getCatLabel(selectedCat)} with ${selectedPriority} priority. ${catRemarks || ''}`.trim(),
-      });
+      const res = await dispatch(
+        updateGrievanceStatus({
+          id: grievance.id,
+          data: {
+            status: 'investigating',
+            category: selectedCat,
+            priority: selectedPriority,
+            remarks: `Categorized as ${getCatLabel(selectedCat)} with ${selectedPriority} priority. ${catRemarks || ''}`.trim(),
+          },
+        })
+      ).unwrap();
       const updated = res?.data || res;
-      if (updated && updated.id) {
-        setGrievance(updated);
+      if (updated) {
         if (updated.category) setSelectedCat(updated.category);
         if (updated.priority) setSelectedPriority(updated.priority.toLowerCase());
       }
@@ -363,9 +391,7 @@ export default function GrievanceDetailPage() {
       setActiveTab('investigate');
       showToast('Categorization saved. Status → UNDER_INVESTIGATION.', 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to update categorization. Please try again.', 'error');
-    } finally {
-      setSavingStep(false);
+      showToast(getErrorMessage(err, 'Failed to update categorization. Please try again.'), 'error');
     }
   };
 
@@ -376,33 +402,47 @@ export default function GrievanceDetailPage() {
       showToast('Complete at least 3 checklist items before proceeding to resolution.', 'warning');
       return;
     }
-    if (savingStep) return;
+    if (actionLoading) return;
     try {
-      setSavingStep(true);
-      const res = await apiUpdateGrievanceStatus(grievance.id, {
-        status: 'investigating',
-        remarks: 'Investigation Phase Completed — Findings compiled and verified.',
-      });
-      const updated = res?.data || res;
-      if (updated && updated.id) {
-        setGrievance(updated);
-      }
+      await dispatch(
+        updateGrievanceStatus({
+          id: grievance.id,
+          data: {
+            status: 'investigating',
+            remarks: 'Investigation Phase Completed — Findings compiled and verified.',
+          },
+        })
+      ).unwrap();
       setCompletedSteps((prev) => new Set([...prev, 3]));
       setActiveTab('resolve');
       showToast('Investigation complete. Choose an appellate resolution outcome.', 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to update investigation status. Please try again.', 'error');
-    } finally {
-      setSavingStep(false);
+      showToast(getErrorMessage(err, 'Failed to update investigation status. Please try again.'), 'error');
     }
   };
 
   // ── Step 4: Final Submit Resolution ──
   const handleExecuteResolution = async () => {
     setConfirmResModalOpen(false);
-    setSubmitting(true);
 
     try {
+      if (selectedResType === 'escalate') {
+        const finalRemarks = `Escalated to Department Supervisor. Escalation Type: ${escalationType}. Reason: ${escalateReason || 'Requires higher statutory intervention.'}`;
+        await dispatch(
+          updateGrievanceStatus({
+            id: grievance.id,
+            data: {
+              status: 'escalated',
+              remarks: finalRemarks,
+            },
+          })
+        ).unwrap();
+
+        setCompletedSteps((prev) => new Set([...prev, 1, 2, 3, 4]));
+        showToast('Grievance successfully escalated to Department Supervisor!', 'warning');
+        return;
+      }
+
       let finalRemarks = '';
       let apiAction = 'UPHOLD_REJECTION';
 
@@ -415,31 +455,26 @@ export default function GrievanceDetailPage() {
       } else if (selectedResType === 'reject') {
         finalRemarks = `${rejectReason || 'Grievance rejected — complaint could not be substantiated.'} Root Cause: ${rootCause}`;
         apiAction = 'UPHOLD_REJECTION';
-      } else if (selectedResType === 'escalate') {
-        finalRemarks = `Escalated to Department Supervisor. Escalation Type: ${escalationType}. Reason: ${escalateReason || 'Requires higher statutory intervention.'}`;
-        apiAction = 'UPHOLD_REJECTION';
       }
 
-      const res = await apiResolveGrievance(grievance.id, {
-        action: apiAction,
-        remarks: finalRemarks,
-      });
+      await dispatch(
+        resolveGrievance({
+          id: grievance.id,
+          action: apiAction,
+          remarks: finalRemarks,
+        })
+      ).unwrap();
 
-      const resData = res?.data || res;
-      const updatedGrv = resData?.grievance || resData;
-      if (updatedGrv && updatedGrv.id) {
-        setGrievance(updatedGrv);
-      }
       setCompletedSteps((prev) => new Set([...prev, 1, 2, 3, 4]));
       showToast(`Grievance decision recorded (${selectedResType.toUpperCase()})!`, 'success');
     } catch (err) {
-      showToast(err.message || 'Failed to submit resolution decision', 'error');
-    } finally {
-      setSubmitting(false);
+      showToast(getErrorMessage(err, 'Failed to submit resolution decision'), 'error');
     }
   };
 
-  if (loading && !grievance) {
+  const isCurrentRecord = Boolean(grievance && (!id || grievance.id === id));
+
+  if (loading && !isCurrentRecord) {
     return (
       <div className="card" style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
         <div className="spinner" style={{ margin: '0 auto 12px auto' }}></div>
@@ -450,7 +485,7 @@ export default function GrievanceDetailPage() {
     );
   }
 
-  if (error && !grievance) {
+  if (error && !isCurrentRecord) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
         <div className="alert alert-danger" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -466,7 +501,7 @@ export default function GrievanceDetailPage() {
     );
   }
 
-  if (!grievance) return null;
+  if (!isCurrentRecord) return null;
 
   const statusMeta = getStatusBadgeMeta(grievance.status);
   const priority = (grievance.priority || selectedPriority || 'medium').toLowerCase();
@@ -794,44 +829,62 @@ export default function GrievanceDetailPage() {
                 </div>
 
                 {/* Linked Application Card */}
-                {linkedApp ? (
-                  <div className="info-block">
-                    <div className="info-block-header">
-                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-                      </svg>
-                      Linked Application Reference
+                {grievance.relatedAppId ? (
+                  linkedAppLoading ? (
+                    <div className="info-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl)', color: 'var(--color-text-muted)', gap: '8px' }}>
+                      <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
+                      <span>Loading linked application #{grievance.relatedAppId}...</span>
                     </div>
-                    <div className="info-block-body">
-                      <div className="info-row">
-                        <span className="info-key">App ID</span>
-                        <span className="info-val" style={{ fontFamily: 'var(--font-mono)', color: 'var(--navy-600)' }}>
-                          {linkedApp.id}
-                        </span>
+                  ) : linkedApp ? (
+                    <div className="info-block">
+                      <div className="info-block-header">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                        </svg>
+                        Linked Application Reference
                       </div>
-                      <div className="info-row">
-                        <span className="info-key">Service Name</span>
-                        <span className="info-val">{linkedApp.serviceName || 'State Government Service'}</span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-key">Current Status</span>
-                        <span className="info-val">
-                          <span className={`badge ${linkedApp.status === 'REJECTED' ? 'badge-danger' : linkedApp.status?.includes('REVERIF') ? 'badge-info' : 'badge-warning'}`}>
-                            {linkedApp.status || 'PENDING'}
+                      <div className="info-block-body">
+                        <div className="info-row">
+                          <span className="info-key">App ID</span>
+                          <span className="info-val" style={{ fontFamily: 'var(--font-mono)', color: 'var(--navy-600)' }}>
+                            {linkedApp.id}
                           </span>
-                        </span>
-                      </div>
-                      <div className="info-row">
-                        <span className="info-key">Assigned Officer</span>
-                        <span className="info-val">{linkedApp.officerName || linkedApp.assignedOfficerName || 'Field Officer'}</span>
-                      </div>
-                      <div className="info-row" style={{ border: 'none' }}>
-                        <span className="info-key">Submitted Date</span>
-                        <span className="info-val">{formatDate(linkedApp.submittedDate || linkedApp.appliedDate || linkedApp.createdAt)}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-key">Service Name</span>
+                          <span className="info-val">{linkedApp.serviceName || 'State Government Service'}</span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-key">Current Status</span>
+                          <span className="info-val">
+                            <span className={`badge ${linkedApp.status === 'REJECTED' ? 'badge-danger' : linkedApp.status?.includes('REVERIF') ? 'badge-info' : 'badge-warning'}`}>
+                              {linkedApp.status || 'PENDING'}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-key">Assigned Officer</span>
+                          <span className="info-val">{linkedApp.officerName || linkedApp.assignedOfficerName || 'Field Officer'}</span>
+                        </div>
+                        <div className="info-row" style={{ border: 'none' }}>
+                          <span className="info-key">Submitted Date</span>
+                          <span className="info-val">{formatDate(linkedApp.submittedDate || linkedApp.appliedDate || linkedApp.createdAt)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : linkedAppError ? (
+                    <div className="info-block" style={{ padding: 'var(--space-md)', color: 'var(--red-600)', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '2px' }}>
+                        Failed to load linked application #{grievance.relatedAppId}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{linkedAppError}</div>
+                    </div>
+                  ) : (
+                    <div className="info-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl)', color: 'var(--color-text-muted)' }}>
+                      <span>Linked application #{grievance.relatedAppId} not found in records.</span>
+                    </div>
+                  )
                 ) : (
                   <div className="info-block" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-xl)', color: 'var(--color-text-muted)' }}>
                     <span>No separate application linked directly to ticket #{grievance.id}.</span>

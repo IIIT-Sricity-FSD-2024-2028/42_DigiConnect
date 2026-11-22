@@ -7,7 +7,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetServices, apiSubmitApplication, apiGetGeographyTree, apiSimulatePayment } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchServices,
+  fetchGeographyTree as fetchGeographyTreeThunk,
+  submitNewApplication,
+  simulateApplicationPayment,
+} from '../../store/slices/citizenSlice';
 
 // Member 4's child components
 import ServiceCard from '../../components/citizen/ServiceCard';
@@ -169,6 +175,14 @@ function getStateDisplayName(stateId) {
 }
 
 export default function ApplyServicePage() {
+  const dispatch = useAppDispatch();
+  const {
+    services,
+    loadingServices,
+    servicesError: serviceError,
+    submittingApplication: reduxSubmitting,
+  } = useAppSelector((state) => state.citizen);
+
   // ── 1. Context & Router ──
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -176,12 +190,6 @@ export default function ApplyServicePage() {
 
   // Active Citizen State Jurisdiction
   const citizenStateId = getCitizenStateId(user);
-
-  // ── 2. State ──
-  // Backend services catalog & loading/error
-  const [services, setServices] = useState([]);
-  const [loadingServices, setLoadingServices] = useState(true);
-  const [serviceError, setServiceError] = useState(null);
 
   // Filter and search state for Step 0
   const [searchQuery, setSearchQuery] = useState('');
@@ -239,24 +247,10 @@ export default function ApplyServicePage() {
   const [docErrors, setDocErrors] = useState({});
   const [declError, setDeclError] = useState('');
 
-  // ── 3. Effects: Fetch services from backend & auto-fill citizen details ──
+  // ── 3. Effects: Fetch services from backend via Redux ──
   useEffect(() => {
-    async function loadServices() {
-      try {
-        setLoadingServices(true);
-        setServiceError(null);
-        const res = await apiGetServices();
-        const data = Array.isArray(res) ? res : res?.data || [];
-        setServices(data);
-      } catch (err) {
-        setServiceError(err.message || 'Failed to load services');
-      } finally {
-        setLoadingServices(false);
-      }
-    }
-
-    loadServices();
-  }, []);
+    dispatch(fetchServices());
+  }, [dispatch]);
 
   // Sync category filter from URL parameter (e.g. /citizen/apply?type=welfare)
   useEffect(() => {
@@ -301,8 +295,7 @@ export default function ApplyServicePage() {
     try {
       setIsLoadingJurisdictions(true);
       setJurisdictionError(null);
-      const res = await apiGetGeographyTree(targetState);
-      const tree = Array.isArray(res) ? res : res?.data || [];
+      const tree = await dispatch(fetchGeographyTreeThunk(targetState)).unwrap();
       if (tree && tree.length > 0) {
         setGeographyTree(tree);
         const parsed = extractJurisdictionsFromTree(tree, applicantInfo.areaType);
@@ -316,7 +309,7 @@ export default function ApplyServicePage() {
       console.error('Failed to load jurisdiction hierarchy:', err);
       setGeographyTree(null);
       setGeoData({ districts: [], tier4Map: {}, leavesMap: {} });
-      setJurisdictionError(err.message || 'Failed to load jurisdiction hierarchy from server.');
+      setJurisdictionError(err?.message || 'Failed to load jurisdiction hierarchy from server.');
     } finally {
       setIsLoadingJurisdictions(false);
     }
@@ -589,7 +582,14 @@ export default function ApplyServicePage() {
       if (feeAmount > 0) {
         try {
           const paymentStateId = applicantInfo.stateId || selectedService.stateId || user.stateId;
-          const payRes = await apiSimulatePayment(selectedService.id, user.id, feeAmount, paymentStateId);
+          const payRes = await dispatch(
+            simulateApplicationPayment({
+              serviceId: selectedService.id,
+              citizenId: user.id,
+              amount: feeAmount,
+              stateId: paymentStateId,
+            })
+          ).unwrap();
           transactionId = payRes?.transactionId || `TXN-${Math.floor(1000000 + Math.random() * 9000000)}A`;
         } catch (payErr) {
           console.warn('Payment simulation fallback:', payErr.message);
@@ -661,8 +661,7 @@ export default function ApplyServicePage() {
         };
       }
 
-      const res = await apiSubmitApplication(payload);
-      const createdApp = res?.data || res;
+      const createdApp = await dispatch(submitNewApplication(payload)).unwrap();
       setSubmittedAppId(createdApp?.id || 'APP-' + Math.floor(10000 + Math.random() * 90000));
 
       // Clear draft upon successful submission
