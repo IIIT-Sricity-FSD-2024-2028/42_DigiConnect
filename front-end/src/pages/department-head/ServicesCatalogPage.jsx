@@ -7,58 +7,74 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetDeptServices, apiDeleteService } from '../../api/departmentHeadApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchDeptServices,
+  deleteService,
+  selectDeptHeadServices,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import Modal from '../../components/common/Modal';
+import ConfirmModal from '../../components/common/ConfirmModal';
+import Toast from '../../components/common/Toast';
+import useToast from '../../hooks/useToast';
 // import StatusBadge from '../../components/common/StatusBadge';
 
 export default function ServicesCatalogPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
 
   const departmentId = user?.departmentId || '';
   const departmentName = user?.dept || 'Department';
 
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // ── Redux Store State (Strict 1:1 binding, no local data bypassing) ──
+  const services = useAppSelector(selectDeptHeadServices);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
 
-  // Inspect Modal State
+  // Toast feedback state
+  const { toast, showToast, hideToast } = useToast();
+
+  // Inspect Modal State (ephemeral UI)
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
   const [inspectedService, setInspectedService] = useState(null);
 
-  const fetchServices = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await apiGetDeptServices(departmentId);
-      setServices(res?.data || []);
-    } catch (err) {
-      console.error('Error fetching department services:', err);
-      setError('Failed to load services. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Delete Confirmation Modal State (ephemeral UI)
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, name }
+  const [deleting, setDeleting] = useState(false);
 
+  // ── Hook: Fetch Department Services on Mount ──
   useEffect(() => {
-    fetchServices();
-  }, [departmentId]);
+    dispatch(fetchDeptServices(departmentId));
+  }, [dispatch, departmentId]);
 
   const handleInspect = (service) => {
     setInspectedService(service);
     setInspectModalOpen(true);
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete service "${name}"?`)) {
-      return;
-    }
+  const handleDeleteClick = (service) => {
+    setDeleteTarget({ id: service.id, name: service.name });
+  };
+
+  // ── CRUD: Delete Dynamic Service (Delete -> DB success -> Redux Store) ──
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await apiDeleteService(id);
-      setServices((prev) => prev.filter((s) => s.id !== id));
-      alert(`Service "${name}" was deleted successfully.`);
+      const resultAction = await dispatch(deleteService(deleteTarget.id));
+      if (deleteService.fulfilled.match(resultAction)) {
+        showToast(`Service "${deleteTarget.name}" deleted successfully.`, 'success');
+        setDeleteTarget(null);
+      } else {
+        showToast(resultAction.payload || 'Failed to delete service', 'error');
+      }
     } catch (err) {
-      alert(`Failed to delete service: ${err.message}`);
+      showToast(err.message || 'Failed to delete service', 'error');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -197,7 +213,7 @@ export default function ServicesCatalogPage() {
                               type="button"
                               className="btn btn-ghost btn-sm"
                               style={{ color: '#ef4444' }}
-                              onClick={() => handleDelete(s.id, s.name)}
+                              onClick={() => handleDeleteClick(s)}
                             >
                               Delete
                             </button>
@@ -319,6 +335,21 @@ export default function ServicesCatalogPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Accessible Confirmation Dialog for Service Deletion ── */}
+      <ConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Dynamic Service"
+        message={`Are you sure you want to delete statutory service "${deleteTarget?.name}"? Citizens will no longer be able to apply for this service.`}
+        confirmText={deleting ? 'Deleting...' : 'Delete Service'}
+        confirmVariant="danger"
+        loading={deleting}
+      />
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 }

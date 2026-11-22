@@ -4,15 +4,21 @@
 // React concepts: Components, Props, State (useState), Hooks (useEffect), Context (useAuth),
 // Router (useSearchParams, useNavigate), API calls (apiGetDesignations, apiGetDeptServiceById, apiCreateService, apiUpdateService)
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetDesignations,
-  apiGetDeptServiceById,
-  apiCreateService,
-  apiUpdateService,
-} from '../../api/departmentHeadApi';
+  fetchDesignations,
+  fetchDeptServiceById,
+  createService,
+  updateService,
+  clearSelectedService,
+  selectDeptHeadDesignations,
+  selectSelectedService,
+  selectDeptHeadLoading,
+  selectDeptHeadError,
+} from '../../store/slices/deptHeadSlice';
 import ServiceBuilderForm from '../../components/department-head/ServiceBuilderForm';
 import Toast from '../../components/common/Toast';
 import useToast from '../../hooks/useToast';
@@ -20,58 +26,33 @@ import useToast from '../../hooks/useToast';
 export default function ServiceBuilderPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get('id');
 
   const departmentId = user?.departmentId || '';
   const stateId = user?.stateId || '';
 
-  const [availableDesignations, setAvailableDesignations] = useState([]);
-  const [initialData, setInitialData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [error, setError] = useState('');
+  // ── Redux Store State (Strict 1:1 binding, no local data bypassing) ──
+  const availableDesignations = useAppSelector(selectDeptHeadDesignations);
+  const initialData = useAppSelector(selectSelectedService);
+  const loading = useAppSelector(selectDeptHeadLoading);
+  const error = useAppSelector(selectDeptHeadError);
+
   const { toast, showToast, hideToast } = useToast();
 
+  // ── Hook: Fetch Designations & Service Details (if editing) ──
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadData() {
-      setPageLoading(true);
-      setError('');
-      try {
-        // Fetch designations for dropdown
-        const desigRes = await apiGetDesignations(departmentId).catch(() => ({ data: [] }));
-        if (isMounted) {
-          setAvailableDesignations(desigRes?.data || []);
-        }
-
-        // If edit mode, fetch existing service details
-        if (editId) {
-          const srvRes = await apiGetDeptServiceById(editId);
-          if (isMounted && srvRes?.data) {
-            setInitialData(srvRes.data);
-          }
-        }
-      } catch (err) {
-        console.error('Error initializing ServiceBuilderPage:', err);
-        if (isMounted) setError('Could not load service details or designations.');
-      } finally {
-        if (isMounted) setPageLoading(false);
-      }
+    dispatch(fetchDesignations(departmentId));
+    if (editId) {
+      dispatch(fetchDeptServiceById(editId));
+    } else {
+      dispatch(clearSelectedService());
     }
+  }, [dispatch, editId, departmentId]);
 
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [editId, departmentId]);
-
+  // ── CRUD: Create or Update Dynamic Service (Create/Update -> DB success -> Redux Store) ──
   const handleSubmit = async (formData) => {
-    setLoading(true);
-    setError('');
-
     const payload = {
       ...formData,
       departmentId,
@@ -79,23 +60,29 @@ export default function ServiceBuilderPage() {
     };
 
     try {
+      let resultAction;
       if (editId) {
-        await apiUpdateService(editId, payload);
-        showToast(`Service "${payload.name}" updated successfully!`, 'success');
+        resultAction = await dispatch(updateService({ id: editId, serviceData: payload }));
       } else {
-        await apiCreateService(payload);
-        showToast(`Service "${payload.name}" created and published successfully!`, 'success');
+        resultAction = await dispatch(createService(payload));
       }
-      setTimeout(() => {
-        navigate('/department-head/services');
-      }, 1200);
+
+      if (createService.fulfilled.match(resultAction) || updateService.fulfilled.match(resultAction)) {
+        showToast(
+          `Service "${payload.name}" ${editId ? 'updated' : 'created and published'} successfully!`,
+          'success'
+        );
+        setTimeout(() => {
+          navigate('/department-head/services');
+        }, 1200);
+      } else {
+        const msg = resultAction.payload || 'Failed to publish dynamic service. Please check your inputs.';
+        showToast(msg, 'error');
+      }
     } catch (err) {
       console.error('Error saving dynamic service:', err);
       const msg = err.message || 'Failed to publish dynamic service. Please check your inputs.';
-      setError(msg);
       showToast(msg, 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -152,7 +139,7 @@ export default function ServiceBuilderPage() {
         </div>
       )}
 
-      {pageLoading ? (
+      {loading && !initialData && editId ? (
         <div style={{ textAlign: 'center', padding: '48px', color: 'var(--slate-500)' }}>
           Loading service builder configuration...
         </div>
