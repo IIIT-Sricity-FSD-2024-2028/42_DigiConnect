@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { apiGetMyApplications, apiWithdrawApplication } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchMyApplications,
+  withdrawCitizenApplication,
+} from '../../store/slices/citizenSlice';
+import useToast from '../../hooks/useToast';
 import ApplicationRow from '../../components/citizen/ApplicationRow';
 import { checkStatusCategory } from '../../components/common/StatusBadge';
 import Modal from '../../components/common/Modal';
 import SearchBar from '../../components/common/SearchBar';
 import { downloadDigitalCertificate } from '../../utils/certificate';
-import { normalizeApplications } from '../../utils/applicationMapper';
 
 export default function MyApplicationsPage() {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+  const { applications, loadingApplications, applicationsError } = useAppSelector(
+    (state) => state.citizen
+  );
+  const { showToast } = useToast();
+
+  const loading = loadingApplications;
+  const error = applicationsError;
 
   // Filter and search states
   const [filterStatus, setFilterStatus] = useState('all');
@@ -23,24 +32,13 @@ export default function MyApplicationsPage() {
   // Withdraw modal state
   const [withdrawApp, setWithdrawApp] = useState(null);
 
-  const loadApplications = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await apiGetMyApplications(1, 100);
-      const appsList = Array.isArray(res) ? res : res?.data || res?.items || [];
-      const normalized = normalizeApplications(appsList);
-      setApplications(normalized);
-    } catch (err) {
-      setError(err.message || 'Failed to load applications');
-    } finally {
-      setLoading(false);
-    }
+  const loadApplications = () => {
+    dispatch(fetchMyApplications({ page: 1, limit: 100 }));
   };
 
   useEffect(() => {
     loadApplications();
-  }, []);
+  }, [dispatch]);
 
   // Compute summary strip counts
   const totalCount = applications.length;
@@ -99,11 +97,10 @@ export default function MyApplicationsPage() {
   const handleConfirmWithdraw = async () => {
     if (withdrawApp) {
       try {
-        await apiWithdrawApplication(withdrawApp.id);
-        setApplications((prev) => prev.filter((a) => a.id !== withdrawApp.id));
+        await dispatch(withdrawCitizenApplication(withdrawApp.id)).unwrap();
+        showToast(`Application ${withdrawApp.id} withdrawn successfully.`, 'info');
       } catch (err) {
-        console.warn('Backend withdraw error, removing locally:', err.message);
-        setApplications((prev) => prev.filter((a) => a.id !== withdrawApp.id));
+        showToast(err?.message || 'Failed to withdraw application', 'error');
       } finally {
         setWithdrawApp(null);
       }

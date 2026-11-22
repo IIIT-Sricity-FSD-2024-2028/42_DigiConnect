@@ -16,32 +16,38 @@
 import React, { useState, useEffect } from 'react';
 // Context: consuming existing AuthContext
 import { useAuth } from '../../context/AuthContext';
-// API calls: State Admin API functions
+// Redux: store hooks, state admin thunks/selectors, and UI toast actions
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetDepartments,
-  apiCreateDepartment,
-  apiAssignDepartmentHead,
-  apiUpdateDepartmentStatus,
-} from '../../api/stateAdminApi';
+  fetchDepartments,
+  createDepartment,
+  assignDepartmentHead,
+  updateDepartmentStatus,
+  selectDepartments,
+  selectDepartmentsLoading,
+  selectDepartmentsError,
+  selectDepartmentActionLoading,
+} from '../../store/slices/stateAdminSlice';
+import { showToast, hideToast, selectToast } from '../../store/slices/uiSlice';
 // Component reuse: Modal dialog from common components
 import Modal from '../../components/common/Modal';
 // Component reuse: StatusBadge from common components
 import StatusBadge from '../../components/common/StatusBadge';
 import Toast from '../../components/common/Toast';
-import useToast from '../../hooks/useToast';
 
 export default function DepartmentsManagementPage() {
   // Context: AuthContext provides current admin session
   const { user } = useAuth();
   const stateId = user?.stateId || user?.state_id || user?.state;
 
-  // Toast feedback state
-  const { toast, showToast, hideToast } = useToast();
+  const dispatch = useAppDispatch();
+  const toast = useAppSelector(selectToast);
 
-  // State: departments list, loading, error
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Redux: departments list, loading, error from stateAdminSlice
+  const departments = useAppSelector(selectDepartments);
+  const loading = useAppSelector(selectDepartmentsLoading);
+  const error = useAppSelector(selectDepartmentsError);
+  const departmentActionLoading = useAppSelector(selectDepartmentActionLoading);
 
   // State / Controlled inputs: search query and status filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,34 +79,12 @@ export default function DepartmentsManagementPage() {
   const [appointingHead, setAppointingHead] = useState(false);
   const [headError, setHeadError] = useState(null);
 
-  // Hooks / useEffect: fetch departments on component mount
-  const fetchDepartments = async () => {
-    if (!stateId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-      // API Call: fetch departments list from backend
-      const data = await apiGetDepartments(stateId);
-      setDepartments(Array.isArray(data) ? data : []);
-    } catch (err) {
-      // State: capture error message
-      setError(err.message || 'Failed to load state departments');
-    } finally {
-      // State: stop loading spinner
-      setLoading(false);
-    }
-  };
-
+  // Fetch departments on component mount via Redux thunk
   useEffect(() => {
     if (stateId) {
-      fetchDepartments();
-    } else {
-      setLoading(false);
+      dispatch(fetchDepartments(stateId));
     }
-  }, [stateId]);
+  }, [stateId, dispatch]);
 
   // ── Controlled input change handlers ──
   const handleCreateInputChange = (e) => {
@@ -154,25 +138,31 @@ export default function DepartmentsManagementPage() {
         headUserEmail: createForm.headUserEmail.trim() || undefined,
       };
 
-      // API Call: create department & appoint head in backend
-      await apiCreateDepartment(payload);
+      // Redux Thunk: create department in backend & update store on DB success
+      const resultAction = await dispatch(createDepartment(payload));
 
-      showToast(`Department "${payload.name}" created successfully!`, 'success');
-
-      // Close modal, reset form, and refresh department list
-      setIsCreateModalOpen(false);
-      setCreateForm({
-        name: '',
-        code: '',
-        description: '',
-        headUserName: '',
-        headUserEmail: '',
-      });
-      await fetchDepartments();
+      if (createDepartment.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast(`Department "${payload.name}" created successfully!`, 'success')
+        );
+        // Close modal and reset form
+        setIsCreateModalOpen(false);
+        setCreateForm({
+          name: '',
+          code: '',
+          description: '',
+          headUserName: '',
+          headUserEmail: '',
+        });
+      } else {
+        const msg = resultAction.payload || 'Failed to create department.';
+        setCreateError(msg);
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
       const msg = err.message || 'Failed to create department.';
       setCreateError(msg);
-      showToast(msg, 'error');
+      dispatch(showToast(msg, 'error'));
     } finally {
       setCreating(false);
     }
@@ -208,21 +198,34 @@ export default function DepartmentsManagementPage() {
       setAppointingHead(true);
       setHeadError(null);
 
-      // API Call: appoint department head
-      await apiAssignDepartmentHead(selectedDeptForHead.id, {
-        name: headForm.name.trim(),
-        email: headForm.email.trim(),
-      });
+      // Redux Thunk: appoint department head in backend & update store on DB success
+      const resultAction = await dispatch(
+        assignDepartmentHead({
+          departmentId: selectedDeptForHead.id,
+          headData: {
+            name: headForm.name.trim(),
+            email: headForm.email.trim(),
+          },
+        })
+      );
 
-      showToast(`Department Head for ${selectedDeptForHead.name} appointed successfully!`, 'success');
-
-      // Close modal and refresh list
-      setIsHeadModalOpen(false);
-      await fetchDepartments();
+      if (assignDepartmentHead.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast(
+            `Department Head for ${selectedDeptForHead.name} appointed successfully!`,
+            'success'
+          )
+        );
+        setIsHeadModalOpen(false);
+      } else {
+        const msg = resultAction.payload || 'Failed to appoint Department Head.';
+        setHeadError(msg);
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
       const msg = err.message || 'Failed to appoint Department Head.';
       setHeadError(msg);
-      showToast(msg, 'error');
+      dispatch(showToast(msg, 'error'));
     } finally {
       setAppointingHead(false);
     }
@@ -232,12 +235,27 @@ export default function DepartmentsManagementPage() {
   const handleToggleStatus = async (dept) => {
     const nextStatus = dept.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     try {
-      // API Call: patch department status
-      await apiUpdateDepartmentStatus(dept.id, nextStatus);
-      showToast(`Department "${dept.name}" status updated to ${nextStatus}.`, 'success');
-      await fetchDepartments();
+      // Redux Thunk: patch department status in backend & update store on DB success
+      const resultAction = await dispatch(
+        updateDepartmentStatus({
+          departmentId: dept.id,
+          status: nextStatus,
+        })
+      );
+
+      if (updateDepartmentStatus.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast(
+            `Department "${dept.name}" status updated to ${nextStatus}.`,
+            'success'
+          )
+        );
+      } else {
+        const msg = resultAction.payload || 'Failed to update department status';
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
-      showToast(err.message || `Could not update status: ${err.message}`, 'error');
+      dispatch(showToast(err.message || 'Could not update status', 'error'));
     }
   };
 
@@ -792,7 +810,7 @@ export default function DepartmentsManagementPage() {
       </Modal>
 
       {/* Global Toast Notification Container */}
-      <Toast toast={toast} onClose={hideToast} />
+      <Toast toast={toast} onClose={() => dispatch(hideToast())} />
     </div>
   );
 }

@@ -17,17 +17,25 @@
 import React, { useState, useEffect } from 'react';
 // Context: consuming existing AuthContext
 import { useAuth } from '../../context/AuthContext';
-// API calls: State Admin API helpers
+// Redux: store hooks, state admin thunks/selectors, and UI toast actions
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
-  apiGetJurisdictionsTree,
-  apiAddJurisdictionNode,
-  apiUpdateJurisdictionNode,
-  apiGetJurisdictionStats,
-} from '../../api/stateAdminApi';
+  fetchJurisdictionsTree,
+  fetchJurisdictionStats,
+  addJurisdictionNode,
+  updateJurisdictionNode,
+  selectJurisdictionTree,
+  selectJurisdictionStats,
+  selectJurisdictionLoading,
+  selectJurisdictionError,
+  selectJurisdictionActionLoading,
+} from '../../store/slices/stateAdminSlice';
+import { showToast, hideToast, selectToast } from '../../store/slices/uiSlice';
 // Base recursive component
 import JurisdictionTreeNode from '../../components/state-admin/JurisdictionTreeNode';
 // Component reuse: Modal dialog from common components
 import Modal from '../../components/common/Modal';
+import Toast from '../../components/common/Toast';
 
 // Number formatting helper
 function formatNum(val) {
@@ -75,18 +83,15 @@ export default function JurisdictionsPage() {
   const { user } = useAuth();
   const stateId = user?.stateId || user?.state_id || user?.state;
 
-  // State: tree hierarchy data & statistics
-  const [treeData, setTreeData] = useState([]);
-  const [stats, setStats] = useState({
-    districtsCount: 0,
-    subDivisionsCount: 0,
-    mandalsCount: 0,
-    villagesCount: 0,
-    municipalitiesCount: 0,
-    wardsCount: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+  const toast = useAppSelector(selectToast);
+
+  // Redux: tree hierarchy data & statistics
+  const treeData = useAppSelector(selectJurisdictionTree);
+  const stats = useAppSelector(selectJurisdictionStats);
+  const loading = useAppSelector(selectJurisdictionLoading);
+  const error = useAppSelector(selectJurisdictionError);
+  const actionLoading = useAppSelector(selectJurisdictionActionLoading);
 
   // State: Rural vs Urban toggle ('ALL', 'RURAL', 'URBAN')
   const [filterArea, setFilterArea] = useState('ALL');
@@ -113,46 +118,13 @@ export default function JurisdictionsPage() {
   const [updatingNode, setUpdatingNode] = useState(false);
   const [editError, setEditError] = useState(null);
 
-  // Hooks / useEffect: fetch jurisdiction tree & stats on component mount
-  const fetchTreeAndStats = async () => {
-    if (!stateId) {
-      setLoading(false);
-      return;
-    }
-    try {
-      setLoading(true);
-      setError(null);
-
-      // API Call: fetch full tree structure
-      const treeRes = await apiGetJurisdictionsTree(stateId);
-      const list = Array.isArray(treeRes) ? treeRes : treeRes?.data || [];
-      setTreeData(list);
-
-      // API Call: fetch aggregated stats
-      try {
-        const statsRes = await apiGetJurisdictionStats(stateId);
-        if (statsRes) {
-          setStats(statsRes);
-        }
-      } catch (_err) {
-        // Fallback silently if stats endpoint is not available
-      }
-    } catch (err) {
-      // State: capture error message
-      setError(err.message || 'Failed to load jurisdiction hierarchy');
-    } finally {
-      // State: stop loading spinner
-      setLoading(false);
-    }
-  };
-
+  // Fetch jurisdiction tree & stats on component mount via Redux
   useEffect(() => {
     if (stateId) {
-      fetchTreeAndStats();
-    } else {
-      setLoading(false);
+      dispatch(fetchJurisdictionsTree(stateId));
+      dispatch(fetchJurisdictionStats(stateId));
     }
-  }, [stateId]);
+  }, [stateId, dispatch]);
 
   // ── Callbacks: child-to-parent notification when "+ Child" is clicked ──
   // Callback: opens modal with parent node information
@@ -208,14 +180,23 @@ export default function JurisdictionsPage() {
         status: 'Active',
       };
 
-      // API Call: add new node to database
-      await apiAddJurisdictionNode(payload);
+      // Redux Thunk: add new node to database & recursively update tree on DB success
+      const resultAction = await dispatch(addJurisdictionNode(payload));
 
-      // Refresh tree data to show newly added jurisdiction node
-      setIsAddModalOpen(false);
-      await fetchTreeAndStats();
+      if (addJurisdictionNode.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast(`Jurisdiction unit "${payload.name}" added successfully!`, 'success')
+        );
+        setIsAddModalOpen(false);
+      } else {
+        const msg = resultAction.payload || 'Failed to add jurisdiction node.';
+        setAddError(msg);
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
-      setAddError(err.message || 'Failed to add jurisdiction node.');
+      const msg = err.message || 'Failed to add jurisdiction node.';
+      setAddError(msg);
+      dispatch(showToast(msg, 'error'));
     } finally {
       setAddingNode(false);
     }
@@ -238,14 +219,25 @@ export default function JurisdictionsPage() {
         code: editForm.code.trim().toUpperCase() || undefined,
       };
 
-      // API Call: update boundary properties
-      await apiUpdateJurisdictionNode(nodeToEdit.id, payload);
+      // Redux Thunk: update boundary properties in backend & update tree on DB success
+      const resultAction = await dispatch(
+        updateJurisdictionNode({ id: nodeToEdit.id, updateData: payload })
+      );
 
-      // Refresh tree data to show updated boundary name
-      setIsEditModalOpen(false);
-      await fetchTreeAndStats();
+      if (updateJurisdictionNode.fulfilled.match(resultAction)) {
+        dispatch(
+          showToast('Jurisdiction boundary updated successfully!', 'success')
+        );
+        setIsEditModalOpen(false);
+      } else {
+        const msg = resultAction.payload || 'Failed to update jurisdiction boundary.';
+        setEditError(msg);
+        dispatch(showToast(msg, 'error'));
+      }
     } catch (err) {
-      setEditError(err.message || 'Failed to update jurisdiction boundary.');
+      const msg = err.message || 'Failed to update jurisdiction boundary.';
+      setEditError(msg);
+      dispatch(showToast(msg, 'error'));
     } finally {
       setUpdatingNode(false);
     }
@@ -732,6 +724,9 @@ export default function JurisdictionsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Global Toast Notification Container */}
+      <Toast toast={toast} onClose={() => dispatch(hideToast())} />
     </div>
   );
 }

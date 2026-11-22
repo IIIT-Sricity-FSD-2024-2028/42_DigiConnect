@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { apiGetMyApplications, apiGetMyGrievances, apiGetServices } from '../../api/citizenApi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  fetchMyApplications,
+  fetchMyGrievances,
+  fetchServices,
+} from '../../store/slices/citizenSlice';
 import StatCard from '../../components/common/StatCard';
 import StatusBadge, { checkStatusCategory, getStatusBadgeClass } from '../../components/common/StatusBadge';
 import { downloadDigitalCertificate } from '../../utils/certificate';
-import { normalizeApplications } from '../../utils/applicationMapper';
 
 // Sub-component for individual application item in the list
 // Demonstrates: Components, Props, Prop Drilling, Events, and Callbacks
@@ -78,11 +82,22 @@ function RecentApplicationItem({ app, onTrack, formatDate }) {
 export default function CitizenDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [applications, setApplications] = useState([]);
-  const [grievances, setGrievances] = useState([]);
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useAppDispatch();
+
+  // Read data and loading flags from citizenSlice
+  const {
+    applications,
+    grievances,
+    services,
+    stats,
+    loadingApplications,
+    loadingServices,
+    loadingGrievances,
+    applicationsError,
+  } = useAppSelector((state) => state.citizen);
+
+  const loading = loadingApplications || loadingServices || loadingGrievances;
+  const error = applicationsError;
 
   // Callback function to navigate to track application page with the application ID
   const handleTrackApplication = (applicationId) => {
@@ -92,61 +107,21 @@ export default function CitizenDashboard() {
   };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
+    dispatch(fetchMyApplications({ page: 1, limit: 100 }));
+    dispatch(fetchMyGrievances());
+    dispatch(fetchServices());
+  }, [dispatch]);
 
-        // Fetch real data from backend APIs with consistent limit (100)
-        const [appsRes, grievRes, servRes] = await Promise.all([
-          apiGetMyApplications(1, 100).catch((err) => {
-            console.error('Error fetching applications:', err);
-            return { data: [] };
-          }),
-          apiGetMyGrievances().catch((err) => {
-            console.error('Error fetching grievances:', err);
-            return { data: [] };
-          }),
-          apiGetServices().catch((err) => {
-            console.error('Error fetching services:', err);
-            return { data: [] };
-          }),
-        ]);
-
-        const appsList = Array.isArray(appsRes)
-          ? appsRes
-          : appsRes?.data || appsRes?.items || [];
-        const grievList = Array.isArray(grievRes)
-          ? grievRes
-          : grievRes?.data || grievRes?.items || [];
-        const servList = Array.isArray(servRes)
-          ? servRes
-          : servRes?.data || servRes?.items || [];
-
-        setApplications(normalizeApplications(appsList));
-        setGrievances(grievList);
-        setServices(servList);
-      } catch (err) {
-        setError(err.message || 'Failed to load dashboard data');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  // Compute status metrics consistently with MyApplicationsPage via shared statusHelper
-  const totalApps = applications.length;
-  const approvedCount = applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
-  const pendingCount = applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
+  // Compute status metrics directly from Redux stats with fallback
+  const totalApps = stats?.total ?? applications.length;
+  const approvedCount = stats?.approved ?? applications.filter((a) => checkStatusCategory(a.status).isApproved).length;
+  const pendingCount = stats?.underReview ?? applications.filter((a) => checkStatusCategory(a.status).isUnderReview).length;
   const queryApps = applications.filter((a) => checkStatusCategory(a.status).isQuery);
-  const queryCount = queryApps.length;
+  const queryCount = stats?.query ?? applications.filter((a) => checkStatusCategory(a.status).isQuery).length;
+  const approvalRate = stats?.approvalRate ?? (totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0);
   const openGrievancesCount = grievances.filter(
     (g) => !['resolved', 'rejected', 'escalated-resolved'].includes((g.status || '').toLowerCase())
   ).length;
-
-  const approvalRate = totalApps > 0 ? Math.round((approvedCount / totalApps) * 100) : 0;
 
   // Derive active featured scheme dynamically based on citizen's state jurisdiction
   const userStateId = user?.stateId || (user?.state ? `state_${user.state.toLowerCase().substring(0, 2)}` : 'state_ap');
