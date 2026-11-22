@@ -1,4 +1,4 @@
-﻿// src/store/slices/citizenSlice.js
+// src/store/slices/citizenSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
   apiGetServices,
@@ -15,9 +15,9 @@ import {
 import { normalizeApplications, normalizeApplication } from '../../utils/applicationMapper';
 
 /**
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ * ─────────────────────────────────────────────────────────────────────────────
  * ASYNC THUNKS (createAsyncThunk + rejectWithValue + existing citizenApi)
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 // 1. Fetch Citizen's Applications List
@@ -168,9 +168,9 @@ export const fetchMyGrievances = createAsyncThunk(
 );
 
 /**
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ * ─────────────────────────────────────────────────────────────────────────────
  * CITIZEN SLICE INITIAL STATE & REDUCERS
- * ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 // Helper to calculate summary metrics for stat cards & Redux DevTools inspection
@@ -296,7 +296,7 @@ export const citizenSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // ΓöÇΓöÇ fetchMyApplications ΓöÇΓöÇ
+    // ── fetchMyApplications ──
     builder
       .addCase(fetchMyApplications.pending, (state) => {
         state.loadingApplications = true;
@@ -313,7 +313,7 @@ export const citizenSlice = createSlice({
         state.applicationsError = action.payload;
       });
 
-    // ΓöÇΓöÇ fetchServices ΓöÇΓöÇ
+    // ── fetchServices ──
     builder
       .addCase(fetchServices.pending, (state) => {
         state.loadingServices = true;
@@ -328,7 +328,7 @@ export const citizenSlice = createSlice({
         state.servicesError = action.payload;
       });
 
-    // ΓöÇΓöÇ fetchServiceById ΓöÇΓöÇ
+    // ── fetchServiceById ──
     builder
       .addCase(fetchServiceById.pending, (state) => {
         state.loadingServices = true;
@@ -343,7 +343,7 @@ export const citizenSlice = createSlice({
         state.servicesError = action.payload;
       });
 
-    // ΓöÇΓöÇ trackApplicationById ΓöÇΓöÇ
+    // ── trackApplicationById ──
     builder
       .addCase(trackApplicationById.pending, (state) => {
         state.loadingTrack = true;
@@ -360,7 +360,7 @@ export const citizenSlice = createSlice({
         state.trackError = action.payload;
       });
 
-    // ΓöÇΓöÇ submitNewApplication ΓöÇΓöÇ
+    // ── submitNewApplication ──
     builder
       .addCase(submitNewApplication.pending, (state) => {
         state.submittingApplication = true;
@@ -382,7 +382,7 @@ export const citizenSlice = createSlice({
         state.submitError = action.payload;
       });
 
-    // ΓöÇΓöÇ simulateApplicationPayment ΓöÇΓöÇ
+    // ── simulateApplicationPayment ──
     builder
       .addCase(simulateApplicationPayment.pending, (state) => {
         state.paymentProcessing = true;
@@ -397,7 +397,7 @@ export const citizenSlice = createSlice({
         state.paymentError = action.payload;
       });
 
-    // ΓöÇΓöÇ withdrawCitizenApplication ΓöÇΓöÇ
+    // ── withdrawCitizenApplication ──
     builder
       .addCase(withdrawCitizenApplication.fulfilled, (state, action) => {
         const id = action.payload;
@@ -412,7 +412,7 @@ export const citizenSlice = createSlice({
         }
       });
 
-    // ΓöÇΓöÇ respondToApplicationQuery ΓöÇΓöÇ
+    // ── respondToApplicationQuery ──
     builder
       .addCase(respondToApplicationQuery.fulfilled, (state, action) => {
         const updated = action.payload;
@@ -426,7 +426,7 @@ export const citizenSlice = createSlice({
         }
       });
 
-    // ΓöÇΓöÇ fetchGeographyTree ΓöÇΓöÇ
+    // ── fetchGeographyTree ──
     builder
       .addCase(fetchGeographyTree.pending, (state) => {
         state.loadingGeography = true;
@@ -441,7 +441,7 @@ export const citizenSlice = createSlice({
         state.geographyError = action.payload;
       });
 
-    // ΓöÇΓöÇ fetchMyGrievances ΓöÇΓöÇ
+    // ── fetchMyGrievances ──
     builder
       .addCase(fetchMyGrievances.pending, (state) => {
         state.loadingGrievances = true;

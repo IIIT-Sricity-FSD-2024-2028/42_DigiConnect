@@ -1,17 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   trackApplicationById,
+  respondToApplicationQuery,
   clearTrackedApplication,
 } from '../../store/slices/citizenSlice';
-import { apiRespondToQuery } from '../../api/citizenApi';
+import useToast from '../../hooks/useToast';
 import TimelineTracker from '../../components/citizen/TimelineTracker';
 import { downloadDigitalCertificate } from '../../utils/certificate';
 import { viewDocumentInNewTab } from '../../utils/documentViewer';
 
 export default function TrackApplicationPage() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+  const { trackedApplication: app, loadingTrack: loading, trackError: error } = useAppSelector(
+    (state) => state.citizen
+  );
+  const { showToast } = useToast();
+
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── Redux Tracking State ──
@@ -27,6 +33,7 @@ export default function TrackApplicationPage() {
     const initialId = searchParams.get('id');
     return initialId && initialId.trim() ? initialId.trim().toUpperCase() : '';
   });
+  const [localError, setLocalError] = useState(null);
 
   // Track last loaded ID to allow URL parameter navigation without infinite re-renders
   const lastLoadedIdRef = useRef('');
@@ -46,17 +53,13 @@ export default function TrackApplicationPage() {
   // Toast / notification message
   const [toastMsg, setToastMsg] = useState(null);
 
-  const showToast = (text, type = 'info') => {
-    setToastMsg({ text, type });
-    setTimeout(() => setToastMsg(null), 4000);
+  const loadApplication = (idToLoad) => {
+    if (!idToLoad || !idToLoad.trim()) return;
+    const cleanId = idToLoad.trim().toUpperCase();
+    lastLoadedIdRef.current = cleanId;
+    setLocalError(null);
+    dispatch(trackApplicationById(cleanId));
   };
-
-  // Clear stale tracking data on unmount
-  useEffect(() => {
-    return () => {
-      dispatch(clearTrackedApplication());
-    };
-  }, [dispatch]);
 
   // Synchronize with URL query parameter
   useEffect(() => {
@@ -88,10 +91,7 @@ export default function TrackApplicationPage() {
 
       dispatch(trackApplicationById(upperId));
     } else {
-      lastLoadedIdRef.current = '';
-      setValidationError('Please enter a valid Application ID.');
-
-      setSearchParams({});
+      setLocalError('Please enter a valid Application ID.');
       dispatch(clearTrackedApplication());
     }
   };
@@ -245,9 +245,15 @@ export default function TrackApplicationPage() {
       setQueryErrorMsg('');
       setQuerySuccessMsg('Submitting response and documents to officer...');
 
-      await apiRespondToQuery(app.id, queryNote.trim(), queryFiles);
+      await dispatch(
+        respondToApplicationQuery({
+          id: app.id,
+          response: queryNote.trim(),
+          files: queryFiles,
+        })
+      ).unwrap();
 
-      // Reload fresh enriched application state from backend via Redux
+      // Reload fresh enriched application state from backend via Redux thunk
       await dispatch(trackApplicationById(app.id)).unwrap();
 
       setQuerySuccessMsg('Documents and response submitted successfully. Review resumed by department officer.');
@@ -258,6 +264,7 @@ export default function TrackApplicationPage() {
         setQueryFiles([]);
         setQueryNote('');
         showToast('Query response submitted to officer. Review resumed.', 'success');
+        setToastMsg({ text: 'Query response submitted to officer. Review resumed.', type: 'success' });
       }, 1000);
     } catch (err) {
       console.error('Query response API error:', err);
@@ -265,7 +272,7 @@ export default function TrackApplicationPage() {
       setQuerySuccessMsg('');
       setQueryErrorMsg(errorText);
       showToast(errorText, 'error');
-      // Keep modal open so citizen can inspect and retry
+      setToastMsg({ text: errorText, type: 'error' });
     } finally {
       setIsSubmittingQuery(false);
     }
@@ -356,14 +363,14 @@ export default function TrackApplicationPage() {
       )}
 
       {/* ── Error / Not Found Alert ── */}
-      {!loadingTrack && (validationError || trackError) && (
+      {!loading && (localError || error) && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-lg)' }}>
-          {validationError || trackError}
+          {localError || error}
         </div>
       )}
 
       {/* ── Empty State ── */}
-      {!loadingTrack && !trackedApplication && !trackError && !validationError && (
+      {!loading && !app && !(localError || error) && (
         <div className="card" style={{ padding: 'var(--space-2xl)', textAlign: 'center', color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🔍</div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--navy-900)', marginBottom: '4px' }}>
