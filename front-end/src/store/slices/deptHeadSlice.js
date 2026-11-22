@@ -3,6 +3,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
   apiGetDeptAnalytics,
   apiGetDeptServices,
+  apiGetDeptServiceById,
+  apiCreateService,
+  apiUpdateService,
   apiGetDeptOfficers,
   apiOnboardOfficer,
   apiUpdateOfficerStatus,
@@ -239,6 +242,63 @@ export const deleteService = createAsyncThunk(
   }
 );
 
+/**
+ * 11. Fetch Single Service by ID (for builder editing)
+ * GET /department-head/services/:id
+ */
+export const fetchDeptServiceById = createAsyncThunk(
+  'deptHead/fetchServiceById',
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await apiGetDeptServiceById(id);
+      return res?.data || res;
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || `Failed to fetch service ${id}.`
+      );
+    }
+  }
+);
+
+/**
+ * 12. Create Dynamic Service (Create)
+ * POST /department-head/services
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const createService = createAsyncThunk(
+  'deptHead/createService',
+  async (serviceData, { rejectWithValue }) => {
+    try {
+      const res = await apiCreateService(serviceData);
+      return res?.data || res;
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || 'Failed to create dynamic service.'
+      );
+    }
+  }
+);
+
+/**
+ * 13. Update Dynamic Service (Update)
+ * PUT /department-head/services/:id
+ * State updates strictly after positive DB response in .fulfilled
+ */
+export const updateService = createAsyncThunk(
+  'deptHead/updateService',
+  async ({ id, serviceData }, { rejectWithValue }) => {
+    try {
+      const res = await apiUpdateService(id, serviceData);
+      const updated = res?.data || res;
+      return { id, service: updated };
+    } catch (err) {
+      return rejectWithValue(
+        err?.message || `Failed to update service ${id}.`
+      );
+    }
+  }
+);
+
 // ── Slice Definition ─────────────────────────────────────────────────────────
 
 export const deptHeadSlice = createSlice({
@@ -247,6 +307,9 @@ export const deptHeadSlice = createSlice({
   reducers: {
     clearDeptHeadError: (state) => {
       state.error = null;
+    },
+    clearSelectedService: (state) => {
+      state.selectedService = null;
     },
     resetDeptHeadState: () => initialState,
   },
@@ -416,6 +479,71 @@ export const deptHeadSlice = createSlice({
         state.error = action.payload;
       });
 
+    // ── fetchDeptServiceById ──
+    builder
+      .addCase(fetchDeptServiceById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDeptServiceById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.selectedService = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchDeptServiceById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── createService (CRUD: Create -> DB success -> Redux) ──
+    builder
+      .addCase(createService.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createService.fulfilled, (state, action) => {
+        state.loading = false;
+        const created = action.payload;
+        if (created && created.id) {
+          const exists = state.services.some((s) => s.id === created.id);
+          if (!exists) {
+            state.services.push(created);
+          }
+          state.stats.activeServices = state.services.length;
+          state.stats.totalServices = state.services.length;
+        }
+        state.selectedService = created;
+        state.error = null;
+      })
+      .addCase(createService.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
+    // ── updateService (CRUD: Update -> DB success -> Redux) ──
+    builder
+      .addCase(updateService.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateService.fulfilled, (state, action) => {
+        state.loading = false;
+        const { id, service } = action.payload;
+        const idx = state.services.findIndex((s) => s.id === id);
+        if (idx !== -1) {
+          state.services[idx] = {
+            ...state.services[idx],
+            ...(service || {}),
+          };
+        }
+        state.selectedService = service;
+        state.error = null;
+      })
+      .addCase(updateService.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+
     // ── fetchJurisdictionNodes ──
     builder
       .addCase(fetchJurisdictionNodes.pending, (state) => {
@@ -431,7 +559,7 @@ export const deptHeadSlice = createSlice({
   },
 });
 
-export const { clearDeptHeadError, resetDeptHeadState } = deptHeadSlice.actions;
+export const { clearDeptHeadError, clearSelectedService, resetDeptHeadState } = deptHeadSlice.actions;
 
 // ── Selectors ────────────────────────────────────────────────────────────────
 
