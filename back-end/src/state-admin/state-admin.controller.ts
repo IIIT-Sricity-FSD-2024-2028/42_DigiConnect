@@ -134,9 +134,9 @@ export class StateAdminController {
   @ApiOperation({ summary: 'Change department operational status (ACTIVE/SUSPENDED/INACTIVE)' })
   updateDepartmentStatus(
     @Param('id') id: string,
-    @Body() body: { status: string },
+    @Body() body: { status: string; suspendedBy?: string },
   ) {
-    const updated = this.stateAdminService.updateDepartmentStatus(id, body.status);
+    const updated = this.stateAdminService.updateDepartmentStatus(id, body.status, body.suspendedBy);
     return {
       success: true,
       message: `Department '${updated.name}' status set to ${updated.status}.`,

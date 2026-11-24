@@ -51,12 +51,27 @@ export default function ProtectedRoute({ allowedRoles = [], children }) {
     );
   }
 
-  // ── Guard 1c: Suspended Officer Guard ──
-  const isOfficer = (role || '').toLowerCase() === 'officer' || (user?.actualRole || '').toLowerCase() === 'officer';
-  if (isOfficer && (user?.isSuspended || user?.status === 'Suspended' || user?.status === 'Inactive')) {
+  // ── Guard 1c: Suspended Officer / Dept Head Guard ──
+  const roleLower = (role || '').toLowerCase();
+  const actualRoleLower = (user?.actualRole || '').toLowerCase();
+  const isOfficerOrHead =
+    ['officer', 'department_head', 'grievance', 'grievance_officer'].includes(roleLower) ||
+    ['officer', 'department_head', 'grievance', 'grievance_officer'].includes(actualRoleLower);
+
+  if (
+    isOfficerOrHead &&
+    (user?.isSuspended ||
+      user?.status === 'Suspended' ||
+      user?.status === 'Inactive' ||
+      user?.status === 'SUSPENDED')
+  ) {
+    const isStateAdminSuspension =
+      user?.suspendedByType === 'STATE_ADMIN' ||
+      user?.suspendedByRole === 'State Admin' ||
+      roleLower === 'department_head';
     return (
       <Navigate
-        to={`/login?officer_suspended=true&deptHeadName=${encodeURIComponent(user.suspendedBy || 'the Department Head')}&officerName=${encodeURIComponent(user.name || '')}`}
+        to={`/login?officer_suspended=true&suspendedByType=${isStateAdminSuspension ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD'}&stateAdminName=${encodeURIComponent(user.suspendedBy || 'the State Admin')}&deptHeadName=${encodeURIComponent(user.suspendedBy || 'the Department Head')}&suspendedBy=${encodeURIComponent(user.suspendedBy || '')}&officerName=${encodeURIComponent(user.name || '')}&role=${encodeURIComponent(user.role || '')}`}
         replace
       />
     );

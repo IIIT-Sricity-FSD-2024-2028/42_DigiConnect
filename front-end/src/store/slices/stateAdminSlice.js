@@ -188,9 +188,9 @@ export const assignDepartmentHead = createAsyncThunk(
 // 5. Update Department Operational Status (ACTIVE / SUSPENDED) (UPDATE)
 export const updateDepartmentStatus = createAsyncThunk(
   'stateAdmin/updateDepartmentStatus',
-  async ({ departmentId, status }, { rejectWithValue }) => {
+  async ({ departmentId, status, suspendedBy }, { rejectWithValue }) => {
     try {
-      const res = await apiUpdateDepartmentStatus(departmentId, status);
+      const res = await apiUpdateDepartmentStatus(departmentId, status, suspendedBy);
       return {
         departmentId,
         status,

@@ -240,13 +240,14 @@ export default function DepartmentsManagementPage() {
         updateDepartmentStatus({
           departmentId: dept.id,
           status: nextStatus,
+          suspendedBy: user?.name || 'State Admin',
         })
       );
 
       if (updateDepartmentStatus.fulfilled.match(resultAction)) {
         dispatch(
           showToast(
-            `Department "${dept.name}" status updated to ${nextStatus}.`,
+            `Department "${dept.name}" status updated to ${nextStatus}. ${nextStatus === 'SUSPENDED' ? 'Department officers and head account suspended.' : 'Department officers and head account activated.'}`,
             'success'
           )
         );

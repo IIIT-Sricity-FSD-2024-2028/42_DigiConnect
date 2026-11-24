@@ -105,13 +105,14 @@ export async function apiAssignDepartmentHead(departmentId, { name, email }) {
  * Toggle or update department operational status (ACTIVE / SUSPENDED / INACTIVE).
  * @param {string} departmentId - Department ID
  * @param {string} status - New status string
+ * @param {string} [suspendedBy] - Optional administrator name who triggered suspension
  * @returns {Promise<Object>} Updated department object
  */
-export async function apiUpdateDepartmentStatus(departmentId, status) {
+export async function apiUpdateDepartmentStatus(departmentId, status, suspendedBy) {
   // API Call: PATCH request to update operational status
   const res = await apiFetch(`/state-admin/departments/${departmentId}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, suspendedBy }),
   });
   return res?.data || res;
 }

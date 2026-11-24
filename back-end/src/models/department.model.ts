@@ -5,7 +5,7 @@ export interface Department {
   code: string;
   description?: string;
   headUserId?: string; // Appointed Department Head
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE' | string;
   createdAt: string;
   updatedAt?: string;
 }

@@ -368,8 +368,9 @@ export class StateAdminService {
 
   /**
    * Change department status (ACTIVE / SUSPENDED / INACTIVE).
+   * Cascades suspension / activation to appointed IAS Department Head and all department officers.
    */
-  updateDepartmentStatus(id: string, status: string): Department {
+  updateDepartmentStatus(id: string, status: string, suspendedBy?: string): Department {
     const dept = db.departments.find((d) => d.id === id);
     if (!dept) {
       throw new NotFoundException(`Department '${id}' not found.`);
@@ -378,13 +379,102 @@ export class StateAdminService {
     dept.status = status as any;
     dept.updatedAt = new Date().toISOString();
 
+    // Determine State Administrator name
+    let stateAdminName = suspendedBy;
+    if (!stateAdminName) {
+      const state = db.states.find((s) => s.id === dept.stateId);
+      const saUser = state
+        ? db.users.find(
+            (u) =>
+              u.id === state.stateAdminId ||
+              (u.role === 'state_admin' && (u.stateId === state.id || u.state === state.name)),
+          )
+        : null;
+      stateAdminName = saUser ? saUser.name : 'State Admin';
+    }
+
+    const isSuspended = status === 'SUSPENDED';
+
+    // 1. Cascade status to appointed IAS Department Head user
+    const headUsers = db.users.filter(
+      (u) =>
+        u.id === dept.headUserId ||
+        ((u.role === 'department_head' ||
+          (u.backendRole && (u.backendRole as string).toLowerCase() === 'department_head')) &&
+          (u.departmentId === dept.id || u.dept === dept.name)),
+    );
+    for (const head of headUsers) {
+      if (isSuspended) {
+        head.status = 'Suspended';
+        (head as any).isSuspended = true;
+        (head as any).suspendedBy = stateAdminName;
+        (head as any).suspendedByType = 'STATE_ADMIN';
+        (head as any).suspendedByRole = 'State Admin';
+        (head as any).suspendedDepartment = dept.name;
+      } else {
+        head.status = 'Active';
+        (head as any).isSuspended = false;
+        delete (head as any).suspendedBy;
+        delete (head as any).suspendedByType;
+        delete (head as any).suspendedByRole;
+        delete (head as any).suspendedDepartment;
+      }
+    }
+
+    // 2. Cascade status to all field officers under this department in db.officers
+    const deptOfficers = (db.officers || []).filter((o) => o.departmentId === dept.id);
+    for (const off of deptOfficers) {
+      if (isSuspended) {
+        off.status = 'Suspended';
+        (off as any).isSuspended = true;
+        (off as any).suspendedBy = stateAdminName;
+        (off as any).suspendedByType = 'STATE_ADMIN';
+        (off as any).suspendedByRole = 'State Admin';
+        (off as any).suspendedDepartment = dept.name;
+      } else {
+        off.status = 'Active';
+        (off as any).isSuspended = false;
+        delete (off as any).suspendedBy;
+        delete (off as any).suspendedByType;
+        delete (off as any).suspendedByRole;
+        delete (off as any).suspendedDepartment;
+      }
+    }
+
+    // 3. Cascade status to all user logins belonging to this department in db.users
+    const deptUsers = (db.users || []).filter(
+      (u) =>
+        (u.departmentId === dept.id || u.dept === dept.name) &&
+        (u.role === 'officer' ||
+          (u.backendRole && (u.backendRole as string).toLowerCase() === 'officer') ||
+          u.role === 'grievance' ||
+          (u.backendRole && (u.backendRole as string).toLowerCase() === 'grievance_officer')),
+    );
+    for (const u of deptUsers) {
+      if (isSuspended) {
+        u.status = 'Suspended';
+        (u as any).isSuspended = true;
+        (u as any).suspendedBy = stateAdminName;
+        (u as any).suspendedByType = 'STATE_ADMIN';
+        (u as any).suspendedByRole = 'State Admin';
+        (u as any).suspendedDepartment = dept.name;
+      } else {
+        u.status = 'Active';
+        (u as any).isSuspended = false;
+        delete (u as any).suspendedBy;
+        delete (u as any).suspendedByType;
+        delete (u as any).suspendedByRole;
+        delete (u as any).suspendedDepartment;
+      }
+    }
+
     db.auditLogs.push({
       id: `AUD-${Date.now()}`,
       action: `DEPARTMENT_${status.toUpperCase()}`,
-      actor: 'State Admin',
+      actor: stateAdminName || 'State Admin',
       role: 'STATE_ADMIN',
       date: new Date().toISOString(),
-      details: `Department '${dept.name}' status changed to '${status}'.`,
+      details: `Department '${dept.name}' status changed to '${status}'. Respective officers and department head status updated to ${isSuspended ? 'Suspended' : 'Active'} by ${stateAdminName}.`,
     });
 
     return dept;

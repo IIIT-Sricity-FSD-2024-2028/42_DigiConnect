@@ -65,6 +65,11 @@ export default function LoginPage() {
     isOpen: false,
     officerName: '',
     departmentHeadName: '',
+    stateAdminName: '',
+    suspendedBy: '',
+    suspendedByType: '',
+    role: '',
+    departmentName: '',
   });
 
   // ── Redux & Router hooks ──
@@ -84,10 +89,22 @@ export default function LoginPage() {
       });
     } else if (params.get('officer_suspended') === 'true') {
       dispatch(logout());
+      const type =
+        params.get('suspendedByType') ||
+        (params.get('stateAdminName') ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD');
       setSuspendedOfficerModal({
         isOpen: true,
         officerName: params.get('officerName') || '',
         departmentHeadName: params.get('deptHeadName') || 'the Department Head',
+        stateAdminName: params.get('stateAdminName') || params.get('suspendedBy') || 'the State Admin',
+        suspendedBy:
+          params.get('suspendedBy') ||
+          params.get('stateAdminName') ||
+          params.get('deptHeadName') ||
+          'the State Admin',
+        suspendedByType: type,
+        role: params.get('role') || '',
+        departmentName: params.get('departmentName') || '',
       });
     }
   }, [location.search, dispatch]);
@@ -103,12 +120,33 @@ export default function LoginPage() {
         return;
       }
 
-      const isOfficer = (role || '').toLowerCase() === 'officer' || (user?.actualRole || '').toLowerCase() === 'officer';
-      if (isOfficer && (user?.isSuspended || user?.status === 'Suspended' || user?.status === 'Inactive')) {
+      const roleLower = (role || '').toLowerCase();
+      const actualRoleLower = (user?.actualRole || '').toLowerCase();
+      const isOfficerOrHead =
+        ['officer', 'department_head', 'grievance', 'grievance_officer'].includes(roleLower) ||
+        ['officer', 'department_head', 'grievance', 'grievance_officer'].includes(actualRoleLower);
+
+      if (
+        isOfficerOrHead &&
+        (user?.isSuspended ||
+          user?.status === 'Suspended' ||
+          user?.status === 'Inactive' ||
+          user?.status === 'SUSPENDED')
+      ) {
+        const isStateAdminSuspension =
+          user?.suspendedByType === 'STATE_ADMIN' ||
+          user?.suspendedByRole === 'State Admin' ||
+          roleLower === 'department_head';
         setSuspendedOfficerModal({
           isOpen: true,
           officerName: user.name || '',
           departmentHeadName: user.suspendedBy || 'the Department Head',
+          stateAdminName: user.suspendedBy || 'the State Admin',
+          suspendedBy:
+            user.suspendedBy || (isStateAdminSuspension ? 'the State Admin' : 'the Department Head'),
+          suspendedByType: isStateAdminSuspension ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD',
+          role: user.role,
+          departmentName: user.departmentName || user.dept || '',
         });
         return;
       }
@@ -138,7 +176,16 @@ export default function LoginPage() {
 
   // ── Callback: close suspended officer modal and go to landing page ──
   const handleCloseSuspendedOfficerModal = () => {
-    setSuspendedOfficerModal({ isOpen: false, officerName: '', departmentHeadName: '' });
+    setSuspendedOfficerModal({
+      isOpen: false,
+      officerName: '',
+      departmentHeadName: '',
+      stateAdminName: '',
+      suspendedBy: '',
+      suspendedByType: '',
+      role: '',
+      departmentName: '',
+    });
     dispatch(logout());
     navigate('/', { replace: true });
   };
@@ -174,6 +221,16 @@ export default function LoginPage() {
               isOpen: true,
               officerName: payload.officerName || '',
               departmentHeadName: payload.departmentHeadName || 'the Department Head',
+              stateAdminName: payload.stateAdminName || payload.suspendedBy || 'the State Admin',
+              suspendedBy:
+                payload.suspendedBy ||
+                (payload.suspendedByType === 'STATE_ADMIN'
+                  ? 'the State Admin'
+                  : 'the Department Head'),
+              suspendedByType:
+                payload.suspendedByType || (payload.stateAdminName ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD'),
+              role: payload.role || '',
+              departmentName: payload.departmentName || '',
             });
             return;
           }
@@ -792,26 +849,53 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--slate-800)' }}>
-            You have been suspended by the Department Head, <strong>{suspendedOfficerModal.departmentHeadName}</strong>.
-          </p>
+          {suspendedOfficerModal.suspendedByType === 'STATE_ADMIN' ? (
+            <>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--slate-800)' }}>
+                You have been suspended by the State Admin, <strong>{suspendedOfficerModal.stateAdminName || suspendedOfficerModal.suspendedBy || 'the State Administrator'}</strong>.
+              </p>
 
-          <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--slate-600)' }}>
-            Your field officer account status has been set to <strong>Suspended</strong> by your Department Head (<strong>{suspendedOfficerModal.departmentHeadName}</strong>). Review queues, query handling, and certificate issuance access are currently inactive.
-          </p>
+              <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--slate-600)' }}>
+                Your field officer account status has been set to <strong>Suspended</strong> by your State Admin (<strong>{suspendedOfficerModal.stateAdminName || suspendedOfficerModal.suspendedBy}</strong>). Review queues, query handling, and certificate issuance access are currently inactive.
+              </p>
 
-          <div
-            style={{
-              padding: '12px 14px',
-              backgroundColor: 'var(--slate-50)',
-              borderRadius: '6px',
-              border: '1px solid var(--slate-200)',
-              fontSize: '0.825rem',
-              color: 'var(--slate-600)',
-            }}
-          >
-            Please go back to the landing page or contact your Department Secretariat if you believe this suspension is in error.
-          </div>
+              <div
+                style={{
+                  padding: '12px 14px',
+                  backgroundColor: 'var(--slate-50)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--slate-200)',
+                  fontSize: '0.825rem',
+                  color: 'var(--slate-600)',
+                }}
+              >
+                Please go back to the landing page or contact your State Secretariat if you believe this suspension is in error.
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--slate-800)' }}>
+                You have been suspended by the Department Head, <strong>{suspendedOfficerModal.departmentHeadName}</strong>.
+              </p>
+
+              <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--slate-600)' }}>
+                Your field officer account status has been set to <strong>Suspended</strong> by your Department Head (<strong>{suspendedOfficerModal.departmentHeadName}</strong>). Review queues, query handling, and certificate issuance access are currently inactive.
+              </p>
+
+              <div
+                style={{
+                  padding: '12px 14px',
+                  backgroundColor: 'var(--slate-50)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--slate-200)',
+                  fontSize: '0.825rem',
+                  color: 'var(--slate-600)',
+                }}
+              >
+                Please go back to the landing page or contact your Department Secretariat if you believe this suspension is in error.
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 

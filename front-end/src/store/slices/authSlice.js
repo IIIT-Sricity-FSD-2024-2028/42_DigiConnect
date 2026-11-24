@@ -107,16 +107,43 @@ export const loginUser = createAsyncThunk(
         });
       }
 
-      // Check if officer is suspended
-      const isSuspendedOfficer =
-        (user?.role === 'officer' || (user?.backendRole || '').toLowerCase() === 'officer') &&
-        (user?.isSuspended === true || user?.status === 'Suspended' || user?.status === 'Inactive');
-      if (isSuspendedOfficer) {
+      // Check if officer or department head is suspended
+      const roleLower = (user?.role || '').toLowerCase();
+      const backendRoleLower = (user?.backendRole || '').toLowerCase();
+      const isOfficerOrHead =
+        roleLower === 'officer' ||
+        backendRoleLower === 'officer' ||
+        roleLower === 'department_head' ||
+        backendRoleLower === 'department_head' ||
+        roleLower === 'grievance' ||
+        backendRoleLower === 'grievance_officer';
+
+      const isSuspended =
+        isOfficerOrHead &&
+        (user?.isSuspended === true ||
+          user?.status === 'Suspended' ||
+          user?.status === 'Inactive' ||
+          user?.status === 'SUSPENDED');
+
+      if (isSuspended) {
+        const isSuspendedByStateAdmin =
+          user?.suspendedByType === 'STATE_ADMIN' ||
+          user?.suspendedByRole === 'State Admin' ||
+          roleLower === 'department_head' ||
+          backendRoleLower === 'department_head';
+
         return rejectWithValue({
           type: 'OFFICER_SUSPENDED',
           officerName: user.name || '',
           departmentHeadName: user.suspendedBy || 'the Department Head',
-          message: 'Your officer account has been suspended.',
+          stateAdminName: user.suspendedBy || 'the State Admin',
+          suspendedBy: user.suspendedBy || (isSuspendedByStateAdmin ? 'the State Admin' : 'the Department Head'),
+          suspendedByType: isSuspendedByStateAdmin ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD',
+          role: user.role,
+          departmentName: user.departmentName || user.dept || '',
+          message: isSuspendedByStateAdmin
+            ? `You have been suspended by the State Admin, ${user.suspendedBy || 'the State Admin'}.`
+            : `You have been suspended by the Department Head, ${user.suspendedBy || 'the Department Head'}.`,
         });
       }
 

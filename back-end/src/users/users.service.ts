@@ -243,27 +243,81 @@ export class UsersService {
       ? (userState.status || '').toUpperCase() === 'INACTIVE'
       : false;
 
-    // Check if officer is suspended / deactivated by department head
+    // Check if officer or department head is suspended (by Department Head or State Admin)
     const roleLower = (user.role || '').toLowerCase();
-    const isOfficer = roleLower === 'officer' || (user.backendRole || '').toLowerCase() === 'officer';
-    const officerRecord = isOfficer ? db.officers.find(o => o.id === user.id) : null;
-    const currentStatus = officerRecord?.status || user.status;
-    const isSuspended = isOfficer && (currentStatus === 'Suspended' || currentStatus === 'Inactive');
+    const backendRoleLower = (user.backendRole || '').toLowerCase();
+    const isOfficer =
+      roleLower === 'officer' ||
+      backendRoleLower === 'officer' ||
+      roleLower === 'grievance' ||
+      backendRoleLower === 'grievance_officer';
+    const isDeptHead =
+      roleLower === 'department_head' || backendRoleLower === 'department_head';
 
+    const officerRecord = isOfficer ? db.officers.find((o) => o.id === user.id) : null;
+    const currentStatus = officerRecord?.status || user.status;
+
+    // Check department operational status
+    const deptId = officerRecord?.departmentId || user.departmentId;
+    const dept = db.departments.find(
+      (d) =>
+        (deptId && d.id === deptId) ||
+        (user.dept && d.name.toLowerCase() === user.dept.toLowerCase()) ||
+        d.headUserId === user.id,
+    );
+    const isDeptSuspended =
+      dept && (dept.status as string)?.toUpperCase() === 'SUSPENDED';
+
+    let isSuspended = false;
     let suspendedBy = (officerRecord as any)?.suspendedBy || (user as any).suspendedBy;
-    if (isSuspended && !suspendedBy) {
-      const deptId = officerRecord?.departmentId || user.departmentId;
-      const deptHead = db.users.find(
-        (u) =>
-          (u.role === 'department_head' || (u.backendRole && (u.backendRole as string).toLowerCase() === 'department_head')) &&
-          u.departmentId === deptId,
-      );
-      suspendedBy = deptHead ? deptHead.name : 'Department Head';
+    let suspendedByType =
+      (officerRecord as any)?.suspendedByType || (user as any).suspendedByType;
+
+    if (isOfficer || isDeptHead) {
+      if (
+        isDeptSuspended ||
+        currentStatus === 'Suspended' ||
+        currentStatus === 'Inactive' ||
+        currentStatus === 'SUSPENDED' ||
+        (user as any).isSuspended === true
+      ) {
+        isSuspended = true;
+      }
+    }
+
+    if (isSuspended) {
+      if (!suspendedBy) {
+        if (isDeptSuspended || isDeptHead || suspendedByType === 'STATE_ADMIN') {
+          const state =
+            userState || (dept?.stateId ? db.states.find((s) => s.id === dept.stateId) : null);
+          const stateAdmin = state
+            ? db.users.find(
+                (u) =>
+                  u.id === state.stateAdminId ||
+                  (u.role === 'state_admin' && (u.stateId === state.id || u.state === state.name)),
+              )
+            : null;
+          suspendedBy = stateAdmin ? stateAdmin.name : 'State Admin';
+          suspendedByType = 'STATE_ADMIN';
+        } else {
+          const deptHead = db.users.find(
+            (u) =>
+              (u.role === 'department_head' ||
+                (u.backendRole && (u.backendRole as string).toLowerCase() === 'department_head')) &&
+              (u.departmentId === deptId || u.dept === user.dept),
+          );
+          suspendedBy = deptHead ? deptHead.name : 'Department Head';
+          suspendedByType = 'DEPARTMENT_HEAD';
+        }
+      }
+      if (!suspendedByType) {
+        suspendedByType = isDeptSuspended || isDeptHead ? 'STATE_ADMIN' : 'DEPARTMENT_HEAD';
+      }
     }
 
     const enrichedUser: User = {
       ...user,
-      status: currentStatus,
+      status: isSuspended ? 'Suspended' : currentStatus,
       stateId: userState?.id || user.stateId,
       state: userState?.name || user.state,
       stateStatus: userState ? userState.status : 'ACTIVE',
@@ -271,14 +325,16 @@ export class UsersService {
       deactivatedStateName: userState?.name || user.state,
       isSuspended,
       suspendedBy: isSuspended ? suspendedBy : undefined,
+      suspendedByType: isSuspended ? suspendedByType : undefined,
+      departmentName: dept?.name || user.dept,
     };
 
     let auditAction = 'User Login';
     let auditDetails = `User ${user.name} (${user.email}) logged in successfully as ${user.role}.`;
 
     if (isSuspended) {
-      auditAction = 'Officer Login (Suspended)';
-      auditDetails = `Officer ${user.name} (${user.email}) logged in, but is currently suspended by ${suspendedBy}.`;
+      auditAction = isDeptHead ? 'Department Head Login (Suspended)' : 'Officer Login (Suspended)';
+      auditDetails = `${isDeptHead ? 'Department Head' : 'Officer'} ${user.name} (${user.email}) attempted to log in, but is currently suspended by ${suspendedBy}.`;
     } else if (isStateDeactivated) {
       auditAction = 'User Login (State Deactivated)';
       auditDetails = `User ${user.name} (${user.email}) logged in, but State Government '${userState?.name}' is currently deactivated.`;
