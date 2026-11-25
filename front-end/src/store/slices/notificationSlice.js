@@ -18,7 +18,6 @@ import {
  * - error: captures any operational error message
  * - lastFetched: ISO timestamp of last successful fetch
  *
- * NOTE: Ephemeral UI feedback (success/error toast messages) is strictly owned by uiSlice.js.
  */
 const initialState = {
   items: [],
@@ -238,10 +237,8 @@ export const {
 } = notificationSlice.actions;
 
 // ── Selectors ────────────────────────────────────────────────────────────────
-// Supports accessing state via either `state.notification` or `state.notifications`
 
-export const selectNotificationState = (state) =>
-  state?.notification || state?.notifications || {};
+export const selectNotificationState = (state) => state?.notification || {};
 
 export const selectNotifications = (state) =>
   selectNotificationState(state).items || [];

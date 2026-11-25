@@ -18,7 +18,6 @@ import {
 } from '../../api/departmentHeadApi';
 
 /**
- * Initial State for Member 3: Department Head & Dynamic Service Builder
  * Manages domain entities:
  * - stats: Department KPI metrics (active services, officers, designations, applications, revenue)
  * - services: List of configured dynamic citizen services

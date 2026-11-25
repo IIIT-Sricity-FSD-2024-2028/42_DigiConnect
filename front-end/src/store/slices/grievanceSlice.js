@@ -1,7 +1,4 @@
 // src/store/slices/grievanceSlice.js
-// DigiConnect Member 5 — Grievance Redressal & Appellate Workflows Redux Slice
-// Implements 1:1 mapping with grievanceApi.js and citizenApi.js
-// Follows Redux Toolkit best practices: createSlice, createAsyncThunk, extraReducers with builder.addCase
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {

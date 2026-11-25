@@ -10,8 +10,6 @@ import officerReducer from './slices/officerSlice';
 import centralAdminReducer from './slices/centralAdminSlice';
 import stateAdminReducer from './slices/stateAdminSlice';
 
-// Placeholder reducers for modules still under development
-const initialPlaceholder = (name) => (state = { status: 'idle' }) => state;
 
 export const store = configureStore({
   reducer: {
@@ -24,7 +22,6 @@ export const store = configureStore({
     grievance: grievanceReducer,
     ui: uiReducer,
     notification: notificationReducer,
-    notifications: notificationReducer,
   },
   devTools: process.env.NODE_ENV !== 'production',
 });
