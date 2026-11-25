@@ -212,8 +212,11 @@ export default function Topbar({ title = 'Dashboard', breadcrumbs = [], onToggle
           className="sidebar-toggle"
           aria-label="Toggle Sidebar"
           onClick={() => {
-            dispatch(toggleSidebar());
-            if (onToggleSidebar) onToggleSidebar();
+            if (onToggleSidebar) {
+              onToggleSidebar();
+            } else {
+              dispatch(toggleSidebar());
+            }
           }}
         >
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

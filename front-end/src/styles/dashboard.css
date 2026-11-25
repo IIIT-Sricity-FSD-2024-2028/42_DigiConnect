@@ -756,6 +756,34 @@ button.notif-btn:hover {
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .topbar {
+        margin-left: 0;
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+
+    .app-layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "topbar"
+            "main";
+    }
+
+    .sidebar-toggle {
+        display: flex;
+    }
+
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
@@ -770,34 +798,12 @@ button.notif-btn:hover {
 }
 
 @media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-    }
-
-    .sidebar.open {
-        transform: translateX(0);
-        box-shadow: var(--shadow-xl);
-    }
-
     .topbar {
-        margin-left: 0;
         padding: 0 var(--space-md);
     }
 
     .main-content {
-        margin-left: 0;
         padding: var(--space-md);
-    }
-
-    .app-layout {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "topbar"
-            "main";
-    }
-
-    .sidebar-toggle {
-        display: flex;
     }
 
     .topbar-search {
